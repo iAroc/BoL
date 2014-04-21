@@ -31,7 +31,7 @@ local spellExpired, HaveToCondemn = true, false
 local informationTable = {}
 local VP = nil
 
-local version = 1.43
+local version = 1.5
 local AUTOUPDATE = true
 local SCRIPT_NAME = "ShadowVayne"
 
