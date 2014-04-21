@@ -22,6 +22,7 @@
 	v1.2:	-Added VPrediction for VIP
 	v1.3:	-Fixed Bugsplat on AutoE Basicattack (hopefully)
 	v1.4:	-Found the Bugsplat, Fixed
+	v1.5:	-Autoupdate Added
 ]]
 
 if myHero.charName ~= "Vayne" then return end
@@ -47,15 +48,15 @@ end
 if DOWNLOADING_SOURCELIB then print("Downloading required libraries, please wait...") return end
 
 if AUTOUPDATE then
-	 SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/honda7/BoL/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/honda7/BoL/master/VersionFiles/"..SCRIPT_NAME..".version"):CheckUpdate()
+	 SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/Superx321/BoL/master/VersionFiles/"..SCRIPT_NAME..".version"):CheckUpdate()
 end
 
-local RequireI = Require("SourceLib")
-RequireI:Add("vPrediction", "https://raw.github.com/honda7/BoL/master/Common/VPrediction.lua")
-RequireI:Add("SOW", "https://raw.github.com/honda7/BoL/master/Common/SOW.lua")
-RequireI:Check()
+--~ local RequireI = Require("SourceLib")
+--~ RequireI:Add("vPrediction", "https://raw.github.com/honda7/BoL/master/Common/VPrediction.lua")
+--~ RequireI:Add("SOW", "https://raw.github.com/honda7/BoL/master/Common/SOW.lua")
+--~ RequireI:Check()
 
-if RequireI.downloadNeeded == true then return end
+--~ if RequireI.downloadNeeded == true then return end
 
 local isAGapcloserUnitTarget = {
         ['Akali']       = {true, spell = "AkaliShadowDance", 	spellKey = "R"},
