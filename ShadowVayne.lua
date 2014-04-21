@@ -31,7 +31,7 @@ local spellExpired, HaveToCondemn = true, false
 local informationTable = {}
 local VP = nil
 
-local version = 1.6
+local version = 1.41
 local AUTOUPDATE = true
 local SCRIPT_NAME = "ShadowVayne"
 
@@ -64,7 +64,7 @@ end
 --~ RequireI:Add("SOW", "https://raw.github.com/honda7/BoL/master/Common/SOW.lua")
 --~ RequireI:Check()
 
-if RequireI.downloadNeeded == true then return end
+--~ if RequireI.downloadNeeded == true then return end
 
 local isAGapcloserUnitTarget = {
         ['Akali']       = {true, spell = "AkaliShadowDance", 	spellKey = "R"},
