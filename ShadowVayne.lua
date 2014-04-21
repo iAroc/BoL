@@ -31,7 +31,7 @@ local spellExpired, HaveToCondemn = true, false
 local informationTable = {}
 local VP = nil
 
-local version = 1.42
+local version = 1.43
 local AUTOUPDATE = true
 local SCRIPT_NAME = "ShadowVayne"
 
@@ -49,6 +49,10 @@ if DOWNLOADING_SOURCELIB then print("Downloading required libraries, please wait
 
 if AUTOUPDATE then
 	 SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/Superx321/BoL/master/VersionFiles/"..SCRIPT_NAME..".version"):CheckUpdate()
+end
+
+if VIP_USER then
+	require "VPrediction"
 end
 
 local isAGapcloserUnitTarget = {
@@ -171,12 +175,8 @@ function OnLoad()
 	VayneMenu:addSubMenu("Draw Settings", "draw")
 	VayneMenu.draw:addParam("DrawERange", "Draw E Range", SCRIPT_PARAM_ONOFF, false)
 	VayneMenu.draw:addParam("DrawEColor", "E Range Color", SCRIPT_PARAM_LIST, 1, { "Riot standard", "Green", "Blue", "Red", "Purple" })
-		if VIP_USER then
-	require "VPrediction"
-	VP = VPrediction()
-	print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">VIP Version "..(version).." loaded</font>")
-	else
-	print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">Free Version "..(version).." loaded</font>")
+	if VIP_USER then
+		VP = VPrediction()
 	end
 
 end
