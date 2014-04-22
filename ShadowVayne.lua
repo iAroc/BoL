@@ -23,15 +23,16 @@
 	v1.3:	-Fixed Bugsplat on AutoE Basicattack (hopefully)
 	v1.4:	-Found the Bugsplat, Fixed
 	v1.5:	-Autoupdate Added
+	v1.6:	-Fixxed the field nil Error on line 298
 ]]
 
 if myHero.charName ~= "Vayne" then return end
 
-local spellExpired, HaveToCondemn = true, false
+spellExpired = false
 local informationTable = {}
 local VP = nil
 
-local version = 1.5
+local version = 1.6
 local AUTOUPDATE = true
 local SCRIPT_NAME = "ShadowVayne"
 
@@ -222,34 +223,6 @@ function OnTick()
 				end
 			end
 		end
-
---~ 		if not spellExpired and (GetTickCount() - informationTable.spellCastedTick) <= (informationTable.spellRange/informationTable.spellSpeed)*1000 then
---~ 			local spellDirection     = (informationTable.spellEndPos - informationTable.spellStartPos):normalized()
---~ 			local spellStartPosition = informationTable.spellStartPos + spellDirection
---~ 			local spellEndPosition   = informationTable.spellStartPos + spellDirection * informationTable.spellRange
---~ 			local heroPosition = Point(myHero.x, myHero.z)
---~ 			local lineSegment = LineSegment(Point(spellStartPosition.x, spellStartPosition.y), Point(spellEndPosition.x, spellEndPosition.y))
---~ 			if lineSegment:distance(heroPosition) <= (not informationTable.spellIsAnExpetion and 65 or 200) then
---~ 				CastSpell(_E, informationTable.spellSource)
---~ 			end
---~ 		else
---~ 			spellExpired = true
---~ 			informationTable = {}
---~ 		end
-
---~ 		if HaveToCondemn == true and GetTickCount() < (HaveToCondemnTime + 1000) then
---~ 			if GetTickCount() > (HaveToCondemnTime + 140) then
---~ 				CastSpell(_E, HaveToCondemnTarget)
---~ 				VayneMenu.keysetting.basiccondemn = false
---~ 				HaveToCondemn = false
---~ 			end
---~ 		else
---~ 			VayneMenu.keysetting.basiccondemn = false
---~ 			HaveToCondemn = false
---~ 		end
-
---~ 		if VayneMenu.keysetting.basiccondemn == false then HaveToCondemn = false end
-
 	end
 end
 
@@ -295,18 +268,20 @@ function OnProcessSpell(unit, spell)
 	end
 
 	if isAGapcloserUnitNoTarget[spell.name] and unit.charName == isAGapcloserUnitNoTarget[spell.name].champ and GetDistance(unit) <= 2000 then
-		if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then spellExpired = false end
-		if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.autocarry then spellExpired = false end
-		if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.autocarry then spellExpired = false end
-		if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.autocarry then spellExpired = false end
-		if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."Always"] then spellExpired = false end
-		informationTable = {
-			spellSource = unit,
-			spellCastedTick = GetTickCount(),
-			spellStartPos = Point(spell.startPos.x, spell.startPos.z),
-			spellEndPos = Point(spell.endPos.x, spell.endPos.z),
-			spellRange = isAGapcloserUnitNoTarget[spell.name].range,
-			spellSpeed = isAGapcloserUnitNoTarget[spell.name].projSpeed,
-		}
+		if spellExpired ~= nil and VayneMenu.keysetting.autocarry ~= nil and VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] ~= nil then
+			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then spellExpired = false end
+			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then spellExpired = false end
+			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then spellExpired = false end
+			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.lasthit then spellExpired = false end
+			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."Always"] then spellExpired = false end
+			informationTable = {
+				spellSource = unit,
+				spellCastedTick = GetTickCount(),
+				spellStartPos = Point(spell.startPos.x, spell.startPos.z),
+				spellEndPos = Point(spell.endPos.x, spell.endPos.z),
+				spellRange = isAGapcloserUnitNoTarget[spell.name].range,
+				spellSpeed = isAGapcloserUnitNoTarget[spell.name].projSpeed,
+			}
+		end
 	end
 end
