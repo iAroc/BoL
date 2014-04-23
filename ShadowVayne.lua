@@ -24,6 +24,7 @@
 	v1.4:	-Found the Bugsplat, Fixed
 	v1.5:	-Autoupdate Added
 	v1.6:	-Fixxed the field nil Error on line 298
+	v1.7:	-Fixxed Autoupdate
 ]]
 
 if myHero.charName ~= "Vayne" then return end
@@ -32,25 +33,31 @@ spellExpired = false
 local informationTable = {}
 local VP = nil
 
-local version = 1.6
+local version = 1.7
 local AUTOUPDATE = true
-local SCRIPT_NAME = "ShadowVayne"
 
-local SOURCELIB_URL = "https://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
-local SOURCELIB_PATH = LIB_PATH.."SourceLib.lua"
-
-if FileExist(SOURCELIB_PATH) then
-	require("SourceLib")
-else
-	DOWNLOADING_SOURCELIB = true
-	DownloadFile(SOURCELIB_URL, SOURCELIB_PATH, function() print("Required libraries downloaded successfully, please reload") end)
-end
-
-if DOWNLOADING_SOURCELIB then print("Downloading required libraries, please wait...") return end
+local SHADOWVAYNE_SCRIPT_URL = "https://raw.github.com/Superx321/BoL/master/ShadowVayne.lua"
+local SHADOWVAYNE_PATH = SCRIPT_PATH.."ShadowVayne.lua"
+local NeedReload = false
 
 if AUTOUPDATE then
-	 SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/Superx321/BoL/master/VersionFiles/"..SCRIPT_NAME..".version"):CheckUpdate()
+	local WebResult = GetWebResult("raw.github.com", "/Superx321/BoL/master/ShadowVayne.lua")
+	if WebResult then
+		local ServerVersionPos = string.find(WebResult, "local version =")
+		local ServerVersion = string.sub(WebResult, ServerVersionPos+16, ServerVersionPos+19)
+		local ServerVersionFinal = math.floor(tonumber(ServerVersion)*100)
+		local LocalVersionFinal = version*100
+		if LocalVersionFinal < ServerVersionFinal then
+			print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">New Version aviable, dont press F9 until its finished</font>")
+			DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">Updated to newest Version. Please reload with F9</font>") end)
+			NeedReload = true
+		else
+			print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">No Updates aviable. Loaded Version "..version.."</font>")
+		end
+	end
 end
+
+if NeedReload then return end
 
 if VIP_USER then
 	require "VPrediction"
