@@ -25,7 +25,7 @@
 	v1.5:	-Autoupdate Added
 	v1.6:	-Fixxed the field nil Error on line 298
 	v1.7:	-Fixxed Autoupdate
-	v1.8:	-Fixxed GetWebResult Rand
+	v1.8:	-Fixxed GetWebResult
 ]]
 
 if myHero.charName ~= "Vayne" then return end
@@ -42,12 +42,15 @@ local SHADOWVAYNE_PATH = SCRIPT_PATH.."ShadowVayne.lua"
 local NeedReload = false
 
 if AUTOUPDATE then
-	local WebResult = GetWebResult("raw.github.com", "/Superx321/BoL/master/ShadowVayne.lua")
+	math.randomseed(os.time())
+	local WebResult = GetWebResult("raw.github.com", "/Superx321/BoL/master/ShadowVayne.lua?rand="..tostring(math.random(1,10000)))
 	if WebResult then
 		local ServerVersionPos = string.find(WebResult, "local version =")
 		local ServerVersion = string.sub(WebResult, ServerVersionPos+16, ServerVersionPos+19)
 		local ServerVersionFinal = math.floor(tonumber(ServerVersion)*100)
 		local LocalVersionFinal = version*100
+		print("Local: "..LocalVersionFinal)
+		print("Server: "..ServerVersionFinal)
 		if LocalVersionFinal < ServerVersionFinal then
 			print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">New Version aviable, dont press F9 until its finished</font>")
 			DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">Updated to newest Version. Please reload with F9</font>") end)
