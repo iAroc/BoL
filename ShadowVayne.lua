@@ -1,6 +1,6 @@
 --[[
 
-	Shadow Vayne E Script by Superx321
+	Shadow Vayne Script by Superx321
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -26,6 +26,7 @@
 	v1.6:	-Fixxed the field nil Error on line 298
 	v1.7:	-Fixxed Autoupdate
 	v1.8:	-Fixxed GetWebResult
+	v1.9:	-Added AutoLevelSpell
 ]]
 
 if myHero.charName ~= "Vayne" then return end
@@ -34,7 +35,7 @@ spellExpired = false
 local informationTable = {}
 local VP = nil
 
-local version = 1.8
+local version = 1.9
 local AUTOUPDATE = true
 
 local SHADOWVAYNE_SCRIPT_URL = "https://raw.github.com/Superx321/BoL/master/ShadowVayne.lua"
@@ -49,8 +50,6 @@ if AUTOUPDATE then
 		local ServerVersion = string.sub(WebResult, ServerVersionPos+16, ServerVersionPos+19)
 		local ServerVersionFinal = math.floor(tonumber(ServerVersion)*100)
 		local LocalVersionFinal = version*100
---~ 		print("Local: "..LocalVersionFinal)
---~ 		print("Server: "..ServerVersionFinal)
 		if LocalVersionFinal < ServerVersionFinal then
 			print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">New Version aviable, dont press F9 until its finished</font>")
 			DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">Updated to newest Version. Please reload with F9</font>") end)
@@ -120,6 +119,16 @@ local isAChampToInterrupt = {
                 ["InfiniteDuress"]				= {true, champ = "Warwick",		spellKey = "R"}
 	}
 
+local AutoLevelSpellTable = {
+                ["SpellOrder"]	= {"QWE", "QEW", "WQE", "WEQ", "EQW", "EWQ"},
+                ["QWE"]	= {1,2,3,1,1,4,1,2,1,2,4,2,2,3,3,4,3,3},
+                ["QEW"]	= {1,3,2,1,1,4,1,3,1,3,4,3,3,2,2,4,2,2},
+                ["WQE"]	= {2,1,3,2,2,4,2,1,2,1,4,1,1,3,3,4,3,3},
+                ["WEQ"]	= {2,3,1,2,2,4,2,3,2,3,4,3,3,1,1,4,1,1},
+                ["EQW"]	= {3,1,2,3,3,4,3,1,3,1,4,1,1,2,2,4,2,2},
+                ["EWQ"]	= {3,2,1,3,3,4,3,2,3,2,4,2,2,1,1,4,1,1}
+	}
+
 function OnLoad()
 	VayneMenu = scriptConfig("Shadow Vayne", "ShadowVayne")
 	VayneMenu:addSubMenu("Key Settings", "keysetting")
@@ -187,10 +196,18 @@ function OnLoad()
 	VayneMenu:addSubMenu("Draw Settings", "draw")
 	VayneMenu.draw:addParam("DrawERange", "Draw E Range", SCRIPT_PARAM_ONOFF, false)
 	VayneMenu.draw:addParam("DrawEColor", "E Range Color", SCRIPT_PARAM_LIST, 1, { "Riot standard", "Green", "Blue", "Red", "Purple" })
+	VayneMenu:addSubMenu("AutoLevelSpells Settings", "autolevel")
+	VayneMenu.autolevel:addParam("UseAutoLevelfirst", "Use AutoLevelSpells Level 1-3", SCRIPT_PARAM_ONOFF, false)
+	VayneMenu.autolevel:addParam("UseAutoLevelrest", "Use AutoLevelSpells Level 4-18", SCRIPT_PARAM_ONOFF, false)
+	VayneMenu.autolevel:addParam("first3level", "Level 1-3:", SCRIPT_PARAM_LIST, 1, { "Q-W-E", "Q-E-W", "W-Q-E", "W-E-Q", "E-Q-W", "E-W-Q" })
+	VayneMenu.autolevel:addParam("restlevel", "Level 4-18:", SCRIPT_PARAM_LIST, 1, { "Q-W-E", "Q-E-W", "W-Q-E", "W-E-Q", "E-Q-W", "E-W-Q" })
+
 	if VIP_USER then
 		VP = VPrediction()
 	end
-
+local AutoLevelSpells = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+autoLevelSetFunction(AutoLevelSpell)
+autoLevelSetSequence(AutoLevelSpells)
 end
 
 function OnTick()
@@ -294,5 +311,15 @@ function OnProcessSpell(unit, spell)
 				spellSpeed = isAGapcloserUnitNoTarget[spell.name].projSpeed,
 			}
 		end
+	end
+end
+
+function AutoLevelSpell()
+	if VayneMenu.autolevel.UseAutoLevelfirst and myHero.level < 4 then
+		return AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][VayneMenu.autolevel.first3level]][myHero.level]
+	end
+
+	if VayneMenu.autolevel.UseAutoLevelrest and myHero.level > 3 then
+		return AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][VayneMenu.autolevel.restlevel]][myHero.level]
 	end
 end
