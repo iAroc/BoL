@@ -25,6 +25,7 @@
 	v1.5:	-Autoupdate Added
 	v1.6:	-Fixxed the field nil Error on line 298
 	v1.7:	-Fixxed Autoupdate
+	v1.8:	-Fixxed GetWebResult Rand
 ]]
 
 if myHero.charName ~= "Vayne" then return end
@@ -33,7 +34,7 @@ spellExpired = false
 local informationTable = {}
 local VP = nil
 
-local version = 1.7
+local version = 1.8
 local AUTOUPDATE = true
 
 local SHADOWVAYNE_SCRIPT_URL = "https://raw.github.com/Superx321/BoL/master/ShadowVayne.lua"
