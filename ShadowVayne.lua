@@ -49,8 +49,8 @@ if AUTOUPDATE then
 		local ServerVersion = string.sub(WebResult, ServerVersionPos+16, ServerVersionPos+19)
 		local ServerVersionFinal = math.floor(tonumber(ServerVersion)*100)
 		local LocalVersionFinal = version*100
-		print("Local: "..LocalVersionFinal)
-		print("Server: "..ServerVersionFinal)
+--~ 		print("Local: "..LocalVersionFinal)
+--~ 		print("Server: "..ServerVersionFinal)
 		if LocalVersionFinal < ServerVersionFinal then
 			print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">New Version aviable, dont press F9 until its finished</font>")
 			DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">Updated to newest Version. Please reload with F9</font>") end)
