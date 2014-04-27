@@ -89,7 +89,7 @@ local isAGapcloserUnitTarget = {
         ['Pantheon']    = {true, spell = "Pantheon_LeapBash",	spellKey = "W"},
         ['Poppy']       = {true, spell = "PoppyHeroicCharge",	spellKey = "E"},
 		['Quinn']       = {true, spell = "QuinnE",				spellKey = "E"},
-        ['XinZhao']     = {true, spell = "XenZhaoSweep",		spellKey = "E"}
+        ['XinZhao']     = {true, spell = "XenZhaoSweep",		spellKey = "E"},
         ['LeeSin']	    = {true, spell = "blindmonkqtwo",		spellKey = "Q"}
     }
 
