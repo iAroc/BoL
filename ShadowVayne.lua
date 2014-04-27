@@ -27,19 +27,30 @@
 	v1.7:	-Fixxed Autoupdate
 	v1.8:	-Fixxed GetWebResult
 	v1.9:	-Added AutoLevelSpell
+	v2.0:	-Fixed Error on Line 298 (for the 3rd time)
+			-Changed the AutoUpdater, so u can name the Script whatever u want
+			-Fixed that it wont AutoE NonTarget Gapcloser (such as Shyvana R)
+			-Fixed that it wont AutoE LeeSin Second Q
+			-Fixed Gragas E
+			-Added Misc Settings Menu
+			-Added Using VPred to Misc Menu (VIP Only)
+			-Added Using Packets to Misc Menu (VIP Only)
+			-Added Kill-E with 3rd Ring
 ]]
 
 if myHero.charName ~= "Vayne" then return end
 
-spellExpired = false
+spellExpired = true
 local informationTable = {}
+local AAInfoTable = {}
+local LastHittedTargetNetworkID, LastHittedTargetStacks, LastHittedTargetTick = nil, nil, 0
 local VP = nil
 
-local version = 1.9
+local version = 2.0
 local AUTOUPDATE = true
 
 local SHADOWVAYNE_SCRIPT_URL = "https://raw.github.com/Superx321/BoL/master/ShadowVayne.lua"
-local SHADOWVAYNE_PATH = SCRIPT_PATH.."ShadowVayne.lua"
+local SHADOWVAYNE_PATH = SCRIPT_PATH..(GetCurrentEnv().FILE_NAME)
 local NeedReload = false
 
 if AUTOUPDATE then
@@ -79,11 +90,12 @@ local isAGapcloserUnitTarget = {
         ['Poppy']       = {true, spell = "PoppyHeroicCharge",	spellKey = "E"},
 		['Quinn']       = {true, spell = "QuinnE",				spellKey = "E"},
         ['XinZhao']     = {true, spell = "XenZhaoSweep",		spellKey = "E"}
+        ['LeeSin']	    = {true, spell = "blindmonkqtwo",		spellKey = "Q"}
     }
 
 local isAGapcloserUnitNoTarget = {
 		["AatroxQ"]					= {true, champ = "Aatrox", 		range = 1000,  	projSpeed = 1200, spellKey = "Q"},
-		["GragasBodySlam"]			= {true, champ = "Gragas", 		range = 600,   	projSpeed = 2000, spellKey = "E"},
+		["GragasE"]					= {true, champ = "Gragas", 		range = 600,   	projSpeed = 2000, spellKey = "E"},
 		["GravesMove"]				= {true, champ = "Graves", 		range = 425,   	projSpeed = 2000, spellKey = "E"},
 		["HecarimUlt"]				= {true, champ = "Hecarim", 	range = 1000,   projSpeed = 1200, spellKey = "R"},
 		["JarvanIVDragonStrike"]	= {true, champ = "JarvanIV",	range = 770,   	projSpeed = 2000, spellKey = "Q"},
@@ -91,7 +103,6 @@ local isAGapcloserUnitNoTarget = {
 		["KhazixE"]					= {true, champ = "Khazix", 		range = 900,   	projSpeed = 2000, spellKey = "E"},
 		["LeblancSlide"]			= {true, champ = "Leblanc", 	range = 600,   	projSpeed = 2000, spellKey = "W"},
 		["LeblancSlideM"]			= {true, champ = "Leblanc", 	range = 600,   	projSpeed = 2000, spellKey = "WMimic"},
-		["blindmonkqtwo"]			= {true, champ = "LeeSin", 		range = 1300,  	projSpeed = 1800, spellKey = "Q"},
 		["LeonaZenithBlade"]		= {true, champ = "Leona", 		range = 900,  	projSpeed = 2000, spellKey = "E"},
 		["UFSlash"]					= {true, champ = "Malphite", 	range = 1000,  	projSpeed = 1800, spellKey = "R"},
 		["RenektonSliceAndDice"]	= {true, champ = "Renekton", 	range = 450,  	projSpeed = 2000, spellKey = "E"},
@@ -127,6 +138,16 @@ local AutoLevelSpellTable = {
                 ["WEQ"]	= {2,3,1,2,2,4,2,3,2,3,4,3,3,1,1,4,1,1},
                 ["EQW"]	= {3,1,2,3,3,4,3,1,3,1,4,1,1,2,2,4,2,2},
                 ["EWQ"]	= {3,2,1,3,3,4,3,2,3,2,4,2,2,1,1,4,1,1}
+	}
+
+local VayneDamage = {
+				["0"] = {BaseDMG = 00, MaxHPDmg = 0},
+				["1"] = {BaseDMG = 20, MaxHPDmg = 4},
+				["2"] = {BaseDMG = 30, MaxHPDmg = 5},
+				["3"] = {BaseDMG = 40, MaxHPDmg = 6},
+				["4"] = {BaseDMG = 50, MaxHPDmg = 7},
+				["5"] = {BaseDMG = 60, MaxHPDmg = 8},
+				["Q"] = {30, 35, 40, 45, 50}
 	}
 
 function OnLoad()
@@ -196,11 +217,19 @@ function OnLoad()
 	VayneMenu:addSubMenu("Draw Settings", "draw")
 	VayneMenu.draw:addParam("DrawERange", "Draw E Range", SCRIPT_PARAM_ONOFF, false)
 	VayneMenu.draw:addParam("DrawEColor", "E Range Color", SCRIPT_PARAM_LIST, 1, { "Riot standard", "Green", "Blue", "Red", "Purple" })
+
 	VayneMenu:addSubMenu("AutoLevelSpells Settings", "autolevel")
 	VayneMenu.autolevel:addParam("UseAutoLevelfirst", "Use AutoLevelSpells Level 1-3", SCRIPT_PARAM_ONOFF, false)
 	VayneMenu.autolevel:addParam("UseAutoLevelrest", "Use AutoLevelSpells Level 4-18", SCRIPT_PARAM_ONOFF, false)
 	VayneMenu.autolevel:addParam("first3level", "Level 1-3:", SCRIPT_PARAM_LIST, 1, { "Q-W-E", "Q-E-W", "W-Q-E", "W-E-Q", "E-Q-W", "E-W-Q" })
 	VayneMenu.autolevel:addParam("restlevel", "Level 4-18:", SCRIPT_PARAM_LIST, 1, { "Q-W-E", "Q-E-W", "W-Q-E", "W-E-Q", "E-Q-W", "E-W-Q" })
+
+		VayneMenu:addSubMenu("Misc Settings", "misc")
+	if VIP_USER then
+		VayneMenu.misc:addParam("EPackets", "Use Packets for E Cast", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.misc:addParam("vpred", "Use VPrediction", SCRIPT_PARAM_ONOFF, true)
+	end
+		VayneMenu.misc:addParam("KS3rdW", "Use E for 3rd Ring Proc Kill", SCRIPT_PARAM_ONOFF, true)
 
 	if VIP_USER then
 		VP = VPrediction()
@@ -214,7 +243,7 @@ function OnTick()
 	if not myHero.dead and myHero:CanUseSpell(_E) == READY then
 		for i, enemy in ipairs(GetEnemyHeroes()) do
 			local PredictPosition = enemy
-			if VIP_USER then local CastPosition,  HitChance,  PredictPosition = VP:GetLineCastPosition(enemy, 0.5, 65, 650, 1200, myHero, false) end
+			if VIP_USER and VayneMenu.misc.vpred then local CastPosition,  HitChance,  PredictPosition = VP:GetLineCastPosition(enemy, 0.5, 65, 650, 1200, myHero, false) end
 
 			if (VayneMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry) or
 			(VayneMenu.targets[enemy.charName][(enemy.charName).."MixedMode"] and VayneMenu.keysetting.mixedmode) or
@@ -230,11 +259,11 @@ function OnTick()
 						if PosIsWall then
 							if UnderTurret(ChecksWallPos, true) then
 								if VayneMenu.autostunn.towerstunn then
-									CastSpell(_E, PredictPosition)
+									if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = enemy.networkID }):send() else CastSpell(_E, PredictPosition) end
 									break
 								end
 							else
-								CastSpell(_E, PredictPosition)
+								if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = enemy.networkID }):send() else CastSpell(_E, PredictPosition) end
 								if VayneMenu.autostunn.trinked then
 									for k=1, VayneMenu.autostunn.accuracy, 1 do
 										local ChecksWallPos = PredictPosition + (Vector(PredictPosition) - myHero):normalized()*(CheckWallDistance*k)
@@ -251,6 +280,25 @@ function OnTick()
 				end
 			end
 		end
+
+		if spellExpired == false and (GetTickCount() - informationTable.spellCastedTick) <= (informationTable.spellRange/informationTable.spellSpeed)*1000 then
+			local spellDirection     = (informationTable.spellEndPos - informationTable.spellStartPos):normalized()
+			local spellStartPosition = informationTable.spellStartPos + spellDirection
+			local spellEndPosition   = informationTable.spellStartPos + spellDirection * informationTable.spellRange
+			local heroPosition = Point(myHero.x, myHero.z)
+			local SkillShot = LineSegment(Point(spellStartPosition.x, spellStartPosition.y), Point(spellEndPosition.x, spellEndPosition.y))
+			if heroPosition:distance(SkillShot) <= 250 then
+				if VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = informationTable.spellSource.networkID }):send() else CastSpell(_E, informationTable.spellSource) end
+			end
+		else
+			spellExpired = true
+			informationTable = {}
+		end
+	end
+
+	if (LastHittedTargetTick + 3000) < GetTickCount() and LastHittedTargetStacks ~= 0 then
+		LastHittedTargetStacks = 0
+		LastHittedTargetNetworkID = nil
 	end
 end
 
@@ -271,32 +319,46 @@ function OnDraw()
 end
 
 function OnProcessSpell(unit, spell)
-	if isAGapcloserUnitTarget[unit.charName] and spell.name == isAGapcloserUnitTarget[unit.charName].spell then
-		if spell.target ~= nil and spell.target.hash == myHero.hash then
-			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then CastSpell(_E, unit) end
-			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then CastSpell(_E, unit) end
-			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then CastSpell(_E, unit) end
-			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.lasthit then CastSpell(_E, unit) end
-			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."Always"] then  CastSpell(_E, unit) end
+	if not myHero.dead then
+		if isAGapcloserUnitTarget[unit.charName] and spell.name == isAGapcloserUnitTarget[unit.charName].spell then
+			if spell.target ~= nil and spell.target.hash == myHero.hash then
+				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
+				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
+				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
+				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.lasthit then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
+				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."Always"] then  if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
+			end
 		end
-	end
 
-	if isAChampToInterrupt[spell.name] and unit.charName == isAChampToInterrupt[spell.name].champ and GetDistance(unit) <= 715 then
-		if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then CastSpell(_E, unit) end
-		if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then CastSpell(_E, unit) end
-		if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then CastSpell(_E, unit) end
-		if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.lasthit then CastSpell(_E, unit) end
-		if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."Always"] then  CastSpell(_E, unit) end
-	end
+		if isAChampToInterrupt[spell.name] and unit.charName == isAChampToInterrupt[spell.name].champ and GetDistance(unit) <= 715 then
+			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
+			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
+			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
+			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.lasthit then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
+			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."Always"] then  if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
+		end
 
-	if unit.hash == myHero.hash and spell.name:find("Attack") and VayneMenu.keysetting.basiccondemn then
-		SpellTarget = spell.target
-		DelayAction(function() CastSpell(_E, SpellTarget) end, spell.windUpTime - GetLatency() / 1000)
-		VayneMenu.keysetting.basiccondemn = false
-	end
+		if unit.hash == myHero.hash and spell.name:find("Attack") and VayneMenu.keysetting.basiccondemn then
+			SpellTarget = spell.target
+			if VIP_USER and VayneMenu.misc.EPackets then
+				DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = SpellTarget.networkID }):send() end, spell.windUpTime - GetLatency() / 2000)
+			else
+				DelayAction(function() CastSpell(_E, SpellTarget) end, spell.windUpTime - GetLatency() / 2000)
+			end
+			VayneMenu.keysetting.basiccondemn = false
+		end
 
-	if isAGapcloserUnitNoTarget[spell.name] and unit.charName == isAGapcloserUnitNoTarget[spell.name].champ and GetDistance(unit) <= 2000 then
-		if spellExpired ~= nil and VayneMenu.keysetting.autocarry ~= nil and VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] ~= nil then
+		if unit.hash == myHero.hash and spell.name:find("Attack") then
+			if spell.name:find("Tumble") then TumbleDMG = (myHero.totalDamage)/(100/(VayneDamage["Q"][myHero:GetSpellData(_Q).level])) else TumbleDMG = 0 end
+			AAInfoTable = {
+				spellCastedTick = GetTickCount(),
+				spellTarget = spell.target,
+				spellTumbleDMG = TumbleDMG,
+				spellwindUpTime = spell.windUpTime
+			}
+		end
+
+		if isAGapcloserUnitNoTarget[spell.name] and unit.charName == isAGapcloserUnitNoTarget[spell.name].champ and GetDistance(unit) <= 2000 and spellExpired == true then
 			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then spellExpired = false end
 			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then spellExpired = false end
 			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then spellExpired = false end
@@ -311,6 +373,40 @@ function OnProcessSpell(unit, spell)
 				spellSpeed = isAGapcloserUnitNoTarget[spell.name].projSpeed,
 			}
 		end
+	end
+end
+
+function OnCreateObj(obj)
+	if obj.name == "vayne_basicAttack_mis.troy" or obj.name == "vayne_critAttack_mis.troy" then
+		if ((GetTickCount())- AAInfoTable.spellCastedTick) < 200 then
+			if LastHittedTargetNetworkID == AAInfoTable.spellTarget.networkID then
+				LastHittedTargetStacks = LastHittedTargetStacks + 1
+				if LastHittedTargetStacks == 4 then
+					LastHittedTargetStacks = 1
+				end
+				if LastHittedTargetStacks == 2 and (VayneMenu.misc.KS3rdW) and myHero:CanUseSpell(_E) == READY then
+					TargetTrueDmg = math.floor((((AAInfoTable.spellTarget.maxHealth)/100)*(VayneDamage[tostring(myHero:GetSpellData(_W).level)].MaxHPDmg))+(VayneDamage[tostring(myHero:GetSpellData(_W).level)].BaseDMG))
+					DMGThisAA = myHero:CalcDamage(AAInfoTable.spellTarget,myHero.totalDamage+AAInfoTable.spellTumbleDMG)
+					SpellTarget = AAInfoTable.spellTarget
+					if (TargetTrueDmg+DMGThisAA) > AAInfoTable.spellTarget.health+50 then
+						if VIP_USER and VayneMenu.misc.EPackets then
+							DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = SpellTarget.networkID }):send() end, AAInfoTable.spellwindUpTime - GetLatency() / 2000)
+						else
+							DelayAction(function() CastSpell(_E, SpellTarget) end, spell.windUpTime - GetLatency() / 2000)
+						end
+					end
+				end
+			else
+				LastHittedTargetNetworkID = AAInfoTable.spellTarget.networkID
+				LastHittedTargetStacks = 1
+			end
+		end
+	end
+end
+
+function OnDeleteObj(obj)
+	if obj.name == "vayne_basicAttack_mis.troy" or obj.name == "vayne_critAttack_mis.troy" then
+		LastHittedTargetTick = GetTickCount()
 	end
 end
 
