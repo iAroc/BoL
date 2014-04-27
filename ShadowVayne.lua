@@ -1,3 +1,4 @@
+local version = 2.0
 --[[
 
 	Shadow Vayne Script by Superx321
@@ -46,7 +47,6 @@ local AAInfoTable = {}
 local LastHittedTargetNetworkID, LastHittedTargetStacks, LastHittedTargetTick = nil, nil, 0
 local VP = nil
 
-local version = 2.0
 local AUTOUPDATE = true
 
 local SHADOWVAYNE_SCRIPT_URL = "https://raw.github.com/Superx321/BoL/master/ShadowVayne.lua"
@@ -58,6 +58,7 @@ if AUTOUPDATE then
 	local WebResult = GetWebResult("raw.github.com", "/Superx321/BoL/master/ShadowVayne.lua?rand="..tostring(math.random(1,10000)))
 	if WebResult then
 		local ServerVersionPos = string.find(WebResult, "local version =")
+	print (ServerVersionPos)
 		local ServerVersion = string.sub(WebResult, ServerVersionPos+16, ServerVersionPos+19)
 		local ServerVersionFinal = math.floor(tonumber(ServerVersion)*100)
 		local LocalVersionFinal = version*100
