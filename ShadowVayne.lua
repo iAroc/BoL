@@ -1,4 +1,4 @@
-local version = 2.1
+local version = 2.11
 --[[
 
 	Shadow Vayne Script by Superx321
@@ -38,6 +38,7 @@ local version = 2.1
 			-Added Using Packets to Misc Menu (VIP Only)
 			-Added Kill-E with 3rd Ring
 	v2.1:	-Fixed AutoUpdate
+	v2.11:	-It will only E Champs now
 ]]
 
 if myHero.charName ~= "Vayne" then return end
@@ -59,7 +60,6 @@ if AUTOUPDATE then
 	local WebResult = GetWebResult("raw.github.com", "/Superx321/BoL/master/ShadowVayne.lua?rand="..tostring(math.random(1,10000)))
 	if WebResult then
 		local ServerVersionPos = string.find(WebResult, "local version =")
---~ 	print (ServerVersionPos)
 		local ServerVersion = string.sub(WebResult, ServerVersionPos+16, ServerVersionPos+19)
 		local ServerVersionFinal = math.floor(tonumber(ServerVersion)*100)
 		local LocalVersionFinal = version*100
@@ -340,7 +340,7 @@ function OnProcessSpell(unit, spell)
 			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."Always"] then  if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
 		end
 
-		if unit.hash == myHero.hash and spell.name:find("Attack") and VayneMenu.keysetting.basiccondemn then
+		if unit.hash == myHero.hash and spell.name:find("Attack") and VayneMenu.keysetting.basiccondemn and spell.target.type == myHero.type then
 			SpellTarget = spell.target
 			if VIP_USER and VayneMenu.misc.EPackets then
 				DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = SpellTarget.networkID }):send() end, spell.windUpTime - GetLatency() / 2000)
@@ -380,27 +380,29 @@ end
 
 function OnCreateObj(obj)
 	if obj.name == "vayne_basicAttack_mis.troy" or obj.name == "vayne_critAttack_mis.troy" then
-		if ((GetTickCount())- AAInfoTable.spellCastedTick) < 200 then
-			if LastHittedTargetNetworkID == AAInfoTable.spellTarget.networkID then
-				LastHittedTargetStacks = LastHittedTargetStacks + 1
-				if LastHittedTargetStacks == 4 then
-					LastHittedTargetStacks = 1
-				end
-				if LastHittedTargetStacks == 2 and (VayneMenu.misc.KS3rdW) and myHero:CanUseSpell(_E) == READY then
-					TargetTrueDmg = math.floor((((AAInfoTable.spellTarget.maxHealth)/100)*(VayneDamage[tostring(myHero:GetSpellData(_W).level)].MaxHPDmg))+(VayneDamage[tostring(myHero:GetSpellData(_W).level)].BaseDMG))
-					DMGThisAA = myHero:CalcDamage(AAInfoTable.spellTarget,myHero.totalDamage+AAInfoTable.spellTumbleDMG)
-					SpellTarget = AAInfoTable.spellTarget
-					if (TargetTrueDmg+DMGThisAA) > AAInfoTable.spellTarget.health+50 then
-						if VIP_USER and VayneMenu.misc.EPackets then
-							DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = SpellTarget.networkID }):send() end, AAInfoTable.spellwindUpTime - GetLatency() / 2000)
-						else
-							DelayAction(function() CastSpell(_E, SpellTarget) end, spell.windUpTime - GetLatency() / 2000)
+		if  AAInfoTable.spellTarget.type == myHero.type then
+			if ((GetTickCount())- AAInfoTable.spellCastedTick) < 200 then
+				if LastHittedTargetNetworkID == AAInfoTable.spellTarget.networkID then
+					LastHittedTargetStacks = LastHittedTargetStacks + 1
+					if LastHittedTargetStacks == 4 then
+						LastHittedTargetStacks = 1
+					end
+					if LastHittedTargetStacks == 2 and (VayneMenu.misc.KS3rdW) and myHero:CanUseSpell(_E) == READY then
+						TargetTrueDmg = math.floor((((AAInfoTable.spellTarget.maxHealth)/100)*(VayneDamage[tostring(myHero:GetSpellData(_W).level)].MaxHPDmg))+(VayneDamage[tostring(myHero:GetSpellData(_W).level)].BaseDMG))
+						DMGThisAA = myHero:CalcDamage(AAInfoTable.spellTarget,myHero.totalDamage+AAInfoTable.spellTumbleDMG)
+						SpellTarget = AAInfoTable.spellTarget
+						if (TargetTrueDmg+DMGThisAA) > AAInfoTable.spellTarget.health+50 then
+							if VIP_USER and VayneMenu.misc.EPackets then
+								DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = SpellTarget.networkID }):send() end, AAInfoTable.spellwindUpTime - GetLatency() / 2000)
+							else
+								DelayAction(function() CastSpell(_E, SpellTarget) end, spell.windUpTime - GetLatency() / 2000)
+							end
 						end
 					end
+				else
+					LastHittedTargetNetworkID = AAInfoTable.spellTarget.networkID
+					LastHittedTargetStacks = 1
 				end
-			else
-				LastHittedTargetNetworkID = AAInfoTable.spellTarget.networkID
-				LastHittedTargetStacks = 1
 			end
 		end
 	end
