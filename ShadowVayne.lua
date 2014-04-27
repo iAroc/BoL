@@ -1,4 +1,4 @@
-local version = 2.11
+local version = 2.12
 --[[
 
 	Shadow Vayne Script by Superx321
@@ -395,7 +395,7 @@ function OnCreateObj(obj)
 							if VIP_USER and VayneMenu.misc.EPackets then
 								DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = SpellTarget.networkID }):send() end, AAInfoTable.spellwindUpTime - GetLatency() / 2000)
 							else
-								DelayAction(function() CastSpell(_E, SpellTarget) end, spell.windUpTime - GetLatency() / 2000)
+								DelayAction(function() CastSpell(_E, SpellTarget) end, AAInfoTable.spellwindUpTime - GetLatency() / 2000)
 							end
 						end
 					end
