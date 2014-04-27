@@ -1,4 +1,4 @@
-local version = 2.0
+local version = 2.1
 --[[
 
 	Shadow Vayne Script by Superx321
@@ -37,6 +37,7 @@ local version = 2.0
 			-Added Using VPred to Misc Menu (VIP Only)
 			-Added Using Packets to Misc Menu (VIP Only)
 			-Added Kill-E with 3rd Ring
+	v2.1:	-Fixed AutoUpdate
 ]]
 
 if myHero.charName ~= "Vayne" then return end
@@ -58,7 +59,7 @@ if AUTOUPDATE then
 	local WebResult = GetWebResult("raw.github.com", "/Superx321/BoL/master/ShadowVayne.lua?rand="..tostring(math.random(1,10000)))
 	if WebResult then
 		local ServerVersionPos = string.find(WebResult, "local version =")
-	print (ServerVersionPos)
+--~ 	print (ServerVersionPos)
 		local ServerVersion = string.sub(WebResult, ServerVersionPos+16, ServerVersionPos+19)
 		local ServerVersionFinal = math.floor(tonumber(ServerVersion)*100)
 		local LocalVersionFinal = version*100
