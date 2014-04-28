@@ -1,4 +1,4 @@
-local version = 2.12
+local version = 2.13
 --[[
 
 	Shadow Vayne Script by Superx321
@@ -393,9 +393,9 @@ function OnCreateObj(obj)
 						SpellTarget = AAInfoTable.spellTarget
 						if (TargetTrueDmg+DMGThisAA) > AAInfoTable.spellTarget.health+50 then
 							if VIP_USER and VayneMenu.misc.EPackets then
-								DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = SpellTarget.networkID }):send() end, AAInfoTable.spellwindUpTime - GetLatency() / 2000)
+--~ 								DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = SpellTarget.networkID }):send() end, AAInfoTable.spellwindUpTime - GetLatency() / 2000)
 							else
-								DelayAction(function() CastSpell(_E, SpellTarget) end, AAInfoTable.spellwindUpTime - GetLatency() / 2000)
+--~ 								DelayAction(function() CastSpell(_E, SpellTarget) end, AAInfoTable.spellwindUpTime - GetLatency() / 2000)
 							end
 						end
 					end
