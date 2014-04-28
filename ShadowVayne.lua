@@ -1,4 +1,4 @@
-local version = 2.13
+local version = 2.20
 --[[
 
 	Shadow Vayne Script by Superx321
@@ -39,6 +39,13 @@ local version = 2.13
 			-Added Kill-E with 3rd Ring
 	v2.1:	-Fixed AutoUpdate
 	v2.11:	-It will only E Champs now
+	v2.12:	-Fixed Autotrinked
+	v2.13:	-Changed Stunn-Code from OnTick -> Own Func, for later AddCallBack
+	v2.2	-Changed Stunnratio and VP, should now stunn better
+			-Changed Search-For-Wall logic, should now take less fps
+			-Fixed Autotrinked complete
+			-Deactivated "Use E for 3rd Ring Proc Kill", since its Random E sometimes
+			-Added Misc -> Debug, if u get Random E's, activate it to see why my Script used Condemn
 ]]
 
 if myHero.charName ~= "Vayne" then return end
@@ -48,6 +55,7 @@ local informationTable = {}
 local AAInfoTable = {}
 local LastHittedTargetNetworkID, LastHittedTargetStacks, LastHittedTargetTick = nil, nil, 0
 local VP = nil
+local CastedLastE = 0
 
 local AUTOUPDATE = true
 
@@ -64,11 +72,11 @@ if AUTOUPDATE then
 		local ServerVersionFinal = math.floor(tonumber(ServerVersion)*100)
 		local LocalVersionFinal = version*100
 		if LocalVersionFinal < ServerVersionFinal then
-			print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">New Version aviable, dont press F9 until its finished</font>")
+			print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">New Version available, dont press F9 until its finished</font>")
 			DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">Updated to newest Version. Please reload with F9</font>") end)
 			NeedReload = true
 		else
-			print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">No Updates aviable. Loaded Version "..version.."</font>")
+			print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">No Updates available. Loaded Version "..version.."</font>")
 		end
 	end
 end
@@ -231,7 +239,8 @@ function OnLoad()
 		VayneMenu.misc:addParam("EPackets", "Use Packets for E Cast", SCRIPT_PARAM_ONOFF, true)
 		VayneMenu.misc:addParam("vpred", "Use VPrediction", SCRIPT_PARAM_ONOFF, true)
 	end
-		VayneMenu.misc:addParam("KS3rdW", "Use E for 3rd Ring Proc Kill", SCRIPT_PARAM_ONOFF, true)
+--~ 		VayneMenu.misc:addParam("KS3rdW", "Use E for 3rd Ring Proc Kill", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.misc:addParam("debug", "Debug Print", SCRIPT_PARAM_ONOFF, false)
 
 	if VIP_USER then
 		VP = VPrediction()
@@ -241,48 +250,47 @@ autoLevelSetFunction(AutoLevelSpell)
 autoLevelSetSequence(AutoLevelSpells)
 end
 
-function OnTick()
-	if not myHero.dead and myHero:CanUseSpell(_E) == READY then
+function CheckEnemyStunnAble()
+	if not myHero.dead and myHero:CanUseSpell(_E) == READY and CastedLastE < GetTickCount() then
 		for i, enemy in ipairs(GetEnemyHeroes()) do
-			local PredictPosition = enemy
-			if VIP_USER and VayneMenu.misc.vpred then local CastPosition,  HitChance,  PredictPosition = VP:GetLineCastPosition(enemy, 0.5, 65, 650, 1200, myHero, false) end
-
-			if (VayneMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry) or
-			(VayneMenu.targets[enemy.charName][(enemy.charName).."MixedMode"] and VayneMenu.keysetting.mixedmode) or
-			(VayneMenu.targets[enemy.charName][(enemy.charName).."LaneClear"] and VayneMenu.keysetting.laneclear) or
-			(VayneMenu.targets[enemy.charName][(enemy.charName).."LastHit"] and VayneMenu.keysetting.lasthit) or
-			(VayneMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
-				if GetDistance(PredictPosition) <= 715 and not enemy.dead and enemy.visible then
-					local PushPos = PredictPosition + (Vector(PredictPosition) - myHero):normalized()*VayneMenu.autostunn.pushDistance
-					local CheckWallDistance = math.ceil((VayneMenu.autostunn.pushDistance)/VayneMenu.autostunn.accuracy)
-					for k=1, VayneMenu.autostunn.accuracy, 1 do
-						local ChecksWallPos = PredictPosition + (Vector(PredictPosition) - myHero):normalized()*(CheckWallDistance*k)
-						local PosIsWall = IsWall(D3DXVECTOR3(ChecksWallPos.x, ChecksWallPos.y, ChecksWallPos.z))
-						if PosIsWall then
+			if 	(VayneMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry) or
+				(VayneMenu.targets[enemy.charName][(enemy.charName).."MixedMode"] and VayneMenu.keysetting.mixedmode) or
+				(VayneMenu.targets[enemy.charName][(enemy.charName).."LaneClear"] and VayneMenu.keysetting.laneclear) or
+				(VayneMenu.targets[enemy.charName][(enemy.charName).."LastHit"] and VayneMenu.keysetting.lasthit) or
+				(VayneMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
+				if GetDistance(enemy) <= 715 and not enemy.dead and enemy.visible then
+					if VIP_USER and VayneMenu.misc.vpred then local CastPosition,  HitChance, enemy = VP:GetLineCastPosition(enemy, 0.26, 0, (GetDistance(enemy)+VayneMenu.autostunn.pushDistance), VP:GetProjectileSpeed(myHero), myHero, false) end
+					for i = 1, VayneMenu.autostunn.accuracy  do
+						local CheckWallPos = enemy + (Vector(enemy) - myHero):normalized()*math.floor((VayneMenu.autostunn.pushDistance/VayneMenu.autostunn.accuracy)*i)
+						if not BushFound and IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
+							BushFound = true
+							BushPos = CheckWallPos
+						end
+						if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
 							if UnderTurret(ChecksWallPos, true) then
-								if VayneMenu.autostunn.towerstunn then
-									if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = enemy.networkID }):send() else CastSpell(_E, PredictPosition) end
-									break
-								end
-							else
-								if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = enemy.networkID }):send() else CastSpell(_E, PredictPosition) end
-								if VayneMenu.autostunn.trinked then
-									for k=1, VayneMenu.autostunn.accuracy, 1 do
-										local ChecksWallPos = PredictPosition + (Vector(PredictPosition) - myHero):normalized()*(CheckWallDistance*k)
-										local PosIsWallOfGrass = IsWallOfGrass(D3DXVECTOR3(ChecksWallPos.x, ChecksWallPos.y, ChecksWallPos.z))
-										if PosIsWallOfGrass then
-											CastSpell(ITEM_7, ChecksWallPos)
-											break
-										end
+									if VayneMenu.autostunn.towerstunn then
+										CastESpell(enemy, "AutoStunn Undertower ("..(enemy.charName)..")")
+										if BushFound and VayneMenu.autostunn.trinket then DelayAction(function() CastSpell(ITEM_7, BushPos.x, BushPos.z) end, 0.25)	else BushFound = false end
+										break
 									end
-								end
+							else
+								CastESpell(enemy, "AutoStunn Not Undertower ("..(enemy.charName)..")")
+								if BushFound and VayneMenu.autostunn.trinket then DelayAction(function() CastSpell(ITEM_7, BushPos.x, BushPos.z) end, 0.25)	else BushFound = false end
+								break
 							end
 						end
 					end
 				end
 			end
 		end
+	end
+end
 
+
+
+function OnTick()
+CheckEnemyStunnAble()
+	if not myHero.dead and myHero:CanUseSpell(_E) == READY then
 		if spellExpired == false and (GetTickCount() - informationTable.spellCastedTick) <= (informationTable.spellRange/informationTable.spellSpeed)*1000 then
 			local spellDirection     = (informationTable.spellEndPos - informationTable.spellStartPos):normalized()
 			local spellStartPosition = informationTable.spellStartPos + spellDirection
@@ -290,7 +298,7 @@ function OnTick()
 			local heroPosition = Point(myHero.x, myHero.z)
 			local SkillShot = LineSegment(Point(spellStartPosition.x, spellStartPosition.y), Point(spellEndPosition.x, spellEndPosition.y))
 			if heroPosition:distance(SkillShot) <= 250 then
-				if VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = informationTable.spellSource.networkID }):send() else CastSpell(_E, informationTable.spellSource) end
+				if VayneMenu.misc.EPackets then CastESpell(informationTable.spellSource, "Gapcloser NonTargeted ("..(informationTable.spellName)..")") end
 			end
 		else
 			spellExpired = true
@@ -298,10 +306,10 @@ function OnTick()
 		end
 	end
 
-	if (LastHittedTargetTick + 3000) < GetTickCount() and LastHittedTargetStacks ~= 0 then
-		LastHittedTargetStacks = 0
-		LastHittedTargetNetworkID = nil
-	end
+--~ 	if (LastHittedTargetTick + 3000) < GetTickCount() and LastHittedTargetStacks ~= 0 then
+--~ 		LastHittedTargetStacks = 0
+--~ 		LastHittedTargetNetworkID = nil
+--~ 	end
 end
 
 function OnDraw()
@@ -324,44 +332,44 @@ function OnProcessSpell(unit, spell)
 	if not myHero.dead then
 		if isAGapcloserUnitTarget[unit.charName] and spell.name == isAGapcloserUnitTarget[unit.charName].spell then
 			if spell.target ~= nil and spell.target.hash == myHero.hash then
-				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
-				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
-				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
-				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.lasthit then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
-				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."Always"] then  if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
+				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / AutoCarry Mode") end
+				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Lasthit Mode") end
+				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Mixed Mode") end
+				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.lasthit then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Laneclear Mode") end
+				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."Always"] then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Always") end
 			end
 		end
 
 		if isAChampToInterrupt[spell.name] and unit.charName == isAChampToInterrupt[spell.name].champ and GetDistance(unit) <= 715 then
-			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
-			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
-			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
-			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.lasthit then if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
-			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."Always"] then  if VIP_USER and VayneMenu.misc.EPackets then Packet('S_CAST', { spellId = _E, targetNetworkId = unit.networkID }):send() else CastSpell(_E, unit) end end
+			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then CastESpell(unit, "Interrupt ("..(spell.name)..") / AutoCarry Mode") end
+			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then CastESpell(unit, "Interrupt ("..(spell.name)..") / Lasthit Mode") end
+			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then CastESpell(unit, "Interrupt ("..(spell.name)..") / Mixed Mode") end
+			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.lasthit then CastESpell(unit, "Interrupt ("..(spell.name)..") / Laneclear Mode") end
+			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."Always"] then CastESpell(unit, "Interrupt ("..(spell.name)..") / Always") end
 		end
 
 		if unit.hash == myHero.hash and spell.name:find("Attack") and VayneMenu.keysetting.basiccondemn and spell.target.type == myHero.type then
-			SpellTarget = spell.target
-			if VIP_USER and VayneMenu.misc.EPackets then
-				DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = SpellTarget.networkID }):send() end, spell.windUpTime - GetLatency() / 2000)
-			else
-				DelayAction(function() CastSpell(_E, SpellTarget) end, spell.windUpTime - GetLatency() / 2000)
-			end
+			CastESpell(spell.target, "E After Autohit ("..(spell.target.charName)..")", (spell.windUpTime - GetLatency() / 2000))
 			VayneMenu.keysetting.basiccondemn = false
 		end
 
-		if unit.hash == myHero.hash and spell.name:find("Attack") then
-			if spell.name:find("Tumble") then TumbleDMG = (myHero.totalDamage)/(100/(VayneDamage["Q"][myHero:GetSpellData(_Q).level])) else TumbleDMG = 0 end
-			AAInfoTable = {
-				spellCastedTick = GetTickCount(),
-				spellTarget = spell.target,
-				spellTumbleDMG = TumbleDMG,
-				spellwindUpTime = spell.windUpTime
-			}
-		end
+--~ 		if unit.hash == myHero.hash and spell.name:find("Attack") then
+--~ 			if spell.name:find("Tumble") then TumbleDMG = (myHero.totalDamage)/(100/(VayneDamage["Q"][myHero:GetSpellData(_Q).level])) else TumbleDMG = 0 end
+--~ 			AAInfoTable = {
+--~ 				spellCastedTick = GetTickCount(),
+--~ 				spellTarget = spell.target,
+--~ 				spellTumbleDMG = TumbleDMG,
+--~ 				spellwindUpTime = spell.windUpTime
+--~ 			}
+--~ 		end
 
-		if isAGapcloserUnitNoTarget[spell.name] and unit.charName == isAGapcloserUnitNoTarget[spell.name].champ and GetDistance(unit) <= 2000 and spellExpired == true then
-			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then spellExpired = false end
+		if unit.charName ~= nil and isAGapcloserUnitNoTarget[spell.name] and unit.charName == isAGapcloserUnitNoTarget[spell.name].champ and GetDistance(unit) <= 2000 and spellExpired == true then
+			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] then
+--~ 				print(VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)])
+				if VayneMenu.keysetting.autocarry then
+					spellExpired = false
+				end
+			end
 			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then spellExpired = false end
 			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then spellExpired = false end
 			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.lasthit then spellExpired = false end
@@ -373,46 +381,64 @@ function OnProcessSpell(unit, spell)
 				spellEndPos = Point(spell.endPos.x, spell.endPos.z),
 				spellRange = isAGapcloserUnitNoTarget[spell.name].range,
 				spellSpeed = isAGapcloserUnitNoTarget[spell.name].projSpeed,
+				spellName = spell.name
 			}
 		end
 	end
 end
 
-function OnCreateObj(obj)
-	if obj.name == "vayne_basicAttack_mis.troy" or obj.name == "vayne_critAttack_mis.troy" then
-		if  AAInfoTable.spellTarget.type == myHero.type then
-			if ((GetTickCount())- AAInfoTable.spellCastedTick) < 200 then
-				if LastHittedTargetNetworkID == AAInfoTable.spellTarget.networkID then
-					LastHittedTargetStacks = LastHittedTargetStacks + 1
-					if LastHittedTargetStacks == 4 then
-						LastHittedTargetStacks = 1
-					end
-					if LastHittedTargetStacks == 2 and (VayneMenu.misc.KS3rdW) and myHero:CanUseSpell(_E) == READY then
-						TargetTrueDmg = math.floor((((AAInfoTable.spellTarget.maxHealth)/100)*(VayneDamage[tostring(myHero:GetSpellData(_W).level)].MaxHPDmg))+(VayneDamage[tostring(myHero:GetSpellData(_W).level)].BaseDMG))
-						DMGThisAA = myHero:CalcDamage(AAInfoTable.spellTarget,myHero.totalDamage+AAInfoTable.spellTumbleDMG)
-						SpellTarget = AAInfoTable.spellTarget
-						if (TargetTrueDmg+DMGThisAA) > AAInfoTable.spellTarget.health+50 then
-							if VIP_USER and VayneMenu.misc.EPackets then
+--~ function OnCreateObj(obj)
+--~ 	if obj.name == "vayne_basicAttack_mis.troy" or obj.name == "vayne_critAttack_mis.troy" then
+--~ 		if  AAInfoTable.spellTarget.type == myHero.type then
+--~ 			if ((GetTickCount())- AAInfoTable.spellCastedTick) < 200 then
+--~ 				if LastHittedTargetNetworkID == AAInfoTable.spellTarget.networkID then
+--~ 					LastHittedTargetStacks = LastHittedTargetStacks + 1
+--~ 					if LastHittedTargetStacks == 4 then
+--~ 						LastHittedTargetStacks = 1
+--~ 					end
+--~ 					if LastHittedTargetStacks == 2 and (VayneMenu.misc.KS3rdW) and myHero:CanUseSpell(_E) == READY then
+--~ 						TargetTrueDmg = math.floor((((AAInfoTable.spellTarget.maxHealth)/100)*(VayneDamage[tostring(myHero:GetSpellData(_W).level)].MaxHPDmg))+(VayneDamage[tostring(myHero:GetSpellData(_W).level)].BaseDMG))
+--~ 						DMGThisAA = myHero:CalcDamage(AAInfoTable.spellTarget,myHero.totalDamage+AAInfoTable.spellTumbleDMG)
+--~ 						SpellTarget = AAInfoTable.spellTarget
+--~ 						if (TargetTrueDmg+DMGThisAA) > AAInfoTable.spellTarget.health+50 then
+--~ 							CastESpell(_E, SpellTarget, AAInfoTable.spellwindUpTime - GetLatency() / 2000)
+--~ 							if VIP_USER and VayneMenu.misc.EPackets then
 --~ 								DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = SpellTarget.networkID }):send() end, AAInfoTable.spellwindUpTime - GetLatency() / 2000)
-							else
---~ 								DelayAction(function() CastSpell(_E, SpellTarget) end, AAInfoTable.spellwindUpTime - GetLatency() / 2000)
-							end
-						end
-					end
-				else
-					LastHittedTargetNetworkID = AAInfoTable.spellTarget.networkID
-					LastHittedTargetStacks = 1
-				end
-			end
-		end
+--~ 							else
+--~ 								CastESpell(_E, SpellTarget, AAInfoTable.spellwindUpTime - GetLatency() / 2000)
+--~ 								DelayAction(function() CastESpell(_E, SpellTarget) end, AAInfoTable.spellwindUpTime - GetLatency() / 2000)
+--~ 							end
+--~ 						end
+--~ 					end
+--~ 				else
+--~ 					LastHittedTargetNetworkID = AAInfoTable.spellTarget.networkID
+--~ 					LastHittedTargetStacks = 1
+--~ 				end
+--~ 			end
+--~ 		end
+--~ 	end
+--~ end
+
+function CastESpell(Target, Reason, Delay)
+	CastedLastE = GetTickCount() + 500
+	if VIP_USER and VayneMenu.misc.EPackets then
+		DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = Target.networkID }):send() end, Delay)
+	else
+		DelayAction(function() CastSpell(_E, Target) end, Delay)
+	end
+
+	if VayneMenu.misc.debug then
+		print("Casting E Spell")
+		print("Target: "..(Target.charName))
+		print("Reason: "..(Reason))
 	end
 end
 
-function OnDeleteObj(obj)
-	if obj.name == "vayne_basicAttack_mis.troy" or obj.name == "vayne_critAttack_mis.troy" then
-		LastHittedTargetTick = GetTickCount()
-	end
-end
+--~ function OnDeleteObj(obj)
+--~ 	if obj.name == "vayne_basicAttack_mis.troy" or obj.name == "vayne_critAttack_mis.troy" then
+--~ 		LastHittedTargetTick = GetTickCount()
+--~ 	end
+--~ end
 
 function AutoLevelSpell()
 	if VayneMenu.autolevel.UseAutoLevelfirst and myHero.level < 4 then
