@@ -1,4 +1,4 @@
-local version = 2.21
+local version = 2.22
 --[[
 
 	Shadow Vayne Script by Superx321
@@ -48,6 +48,7 @@ local version = 2.21
 			-Deactivated "Use E for 3rd Ring Proc Kill", since its Random E sometimes (will Reactivate in next updates)
 			-Added Misc -> Debug, if u get Random E's, activate it to see why my Script used Condemn
 	v2.21:	-Added Debug for NonTargetGapCloser
+	v2.22:	-Fixed a Bug in the AutoUpdate
 ]]
 
 if myHero.charName ~= "Vayne" then return end
@@ -61,7 +62,7 @@ local CastedLastE = 0
 
 local AUTOUPDATE = true
 
-local SHADOWVAYNE_SCRIPT_URL = "https://raw.github.com/Superx321/BoL/master/ShadowVayne.lua"
+local SHADOWVAYNE_SCRIPT_URL = "https://raw.github.com/Superx321/BoL/master/ShadowVayne.lua?rand="..tostring(math.random(1,10000))
 local SHADOWVAYNE_PATH = SCRIPT_PATH..(GetCurrentEnv().FILE_NAME)
 local NeedReload = false
 
