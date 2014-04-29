@@ -1,4 +1,4 @@
-local version = 2.20
+local version = 2.21
 --[[
 
 	Shadow Vayne Script by Superx321
@@ -39,13 +39,15 @@ local version = 2.20
 			-Added Kill-E with 3rd Ring
 	v2.1:	-Fixed AutoUpdate
 	v2.11:	-It will only E Champs now
-	v2.12:	-Fixed Autotrinked
-	v2.13:	-Changed Stunn-Code from OnTick -> Own Func, for later AddCallBack
-	v2.2	-Changed Stunnratio and VP, should now stunn better
+	v2.12:	-Fixed Autotrinked (Typo)
+	v2.13:	-Changed some Typo's
+	v2.20:	-Changed Stunn-Code from OnTick -> Own Func, for later AddCallBack
+			-Changed Stunnratio and VP, should now stunn better
 			-Changed Search-For-Wall logic, should now take less fps
 			-Fixed Autotrinked complete
-			-Deactivated "Use E for 3rd Ring Proc Kill", since its Random E sometimes
+			-Deactivated "Use E for 3rd Ring Proc Kill", since its Random E sometimes (will Reactivate in next updates)
 			-Added Misc -> Debug, if u get Random E's, activate it to see why my Script used Condemn
+	v2.21:	-Added Debug for NonTargetGapCloser
 ]]
 
 if myHero.charName ~= "Vayne" then return end
@@ -111,6 +113,7 @@ local isAGapcloserUnitNoTarget = {
 		["JarvanIVDragonStrike"]	= {true, champ = "JarvanIV",	range = 770,   	projSpeed = 2000, spellKey = "Q"},
 		["JarvanIVCataclysm"]		= {true, champ = "JarvanIV", 	range = 650,   	projSpeed = 2000, spellKey = "R"},
 		["KhazixE"]					= {true, champ = "Khazix", 		range = 900,   	projSpeed = 2000, spellKey = "E"},
+		["khazixelong"]				= {true, champ = "Khazix", 		range = 900,   	projSpeed = 2000, spellKey = "E"},
 		["LeblancSlide"]			= {true, champ = "Leblanc", 	range = 600,   	projSpeed = 2000, spellKey = "W"},
 		["LeblancSlideM"]			= {true, champ = "Leblanc", 	range = 600,   	projSpeed = 2000, spellKey = "WMimic"},
 		["LeonaZenithBlade"]		= {true, champ = "Leona", 		range = 900,  	projSpeed = 2000, spellKey = "E"},
@@ -362,14 +365,26 @@ function OnProcessSpell(unit, spell)
 --~ 				spellwindUpTime = spell.windUpTime
 --~ 			}
 --~ 		end
-
+--~ print(spell.name)
 		if unit.charName ~= nil and isAGapcloserUnitNoTarget[spell.name] and unit.charName == isAGapcloserUnitNoTarget[spell.name].champ and GetDistance(unit) <= 2000 and spellExpired == true then
+			if VayneMenu.misc.debug then
+				if spell.target == nil then SpellTargetName = "nil" else SpellTargetName = spell.target.charName end
+
+				print(" ")
+				print("<font color=\"#662f8d\"><b>Debug is on. Please Screen this and send it in the Thread</b></font>")
+				print("<font color=\"#6648da\"><b>SpellName:</b></font> <font color=\"#FF48da\">"..(spell.name).." </font>   <font color=\"#6648da\"><b>SpellTarget: </b></font><font color=\"#FF48da\">"..(SpellTargetName).."</font>")
+				print("<font color=\"#6648da\"><b>Distance:</b></font> <font color=\"#FF48da\">"..(math.round(GetDistance(unit))).." </font>   <font color=\"#6648da\"><b>SpellExpired: </b></font><font color=\"#FF48da\">"..tostring(spellExpired).."</font>")
+				print("<font color=\"#6648da\"><b>UnitName:</b></font> <font color=\"#FF48da\">"..(unit.charName).." </font>   <font color=\"#6648da\"><b>IsGapCloser: </b></font><font color=\"#FF48da\">"..tostring((isAGapcloserUnitNoTarget[spell.name][1])).."</font>")
+				print("<font color=\"#6648da\"><b>GapCloserName:</b></font> <font color=\"#FF48da\">"..(isAGapcloserUnitNoTarget[spell.name].champ).." </font>   <font color=\"#6648da\"><b>GapCloseKey: </b></font><font color=\"#FF48da\">"..(isAGapcloserUnitNoTarget[spell.name].spellKey).."</font>")
+				print("<font color=\"#6648da\"><b>VanyeMenu #1:</b></font> <font color=\"#FF48da\">"..((unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)).."</font>")
+				print(" ")
+			end
 			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] then
---~ 				print(VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)])
 				if VayneMenu.keysetting.autocarry then
 					spellExpired = false
 				end
 			end
+			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then spellExpired = false end
 			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then spellExpired = false end
 			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then spellExpired = false end
 			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.lasthit then spellExpired = false end
