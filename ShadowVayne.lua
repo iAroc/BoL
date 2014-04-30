@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.26
+	Version: 2.27
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -472,7 +472,6 @@ end
 --~ end
 
 function CastESpell(Target, Reason, Delay)
-print("ey")
 	CastedLastE = GetTickCount() + 500
 	if VIP_USER and VayneMenu.misc.EPackets then
 		DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = Target.networkID }):send() end, Delay)
