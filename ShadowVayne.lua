@@ -1,7 +1,7 @@
-local version = 2.23
 --[[
 
 	Shadow Vayne Script by Superx321
+	Version: 2.25
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -50,43 +50,45 @@ local version = 2.23
 	v2.21:	-Added Debug for NonTargetGapCloser
 	v2.22:	-Fixed a Bug in the AutoUpdate
 	v2.23:	-Finally Fixed the "field nil" Error
-			-Added SAC Interaction, if SAC is loaded, i will automatic use the Keysettings from there
+			-Added SAC Interaction, if SAC is loaded, it will automatic use the Keysettings from there
+	v2.24:	-Change some things in the Autoupdater
+	v2.25:	-More Changes on Autoupdater
 ]]
 
 if myHero.charName ~= "Vayne" then return end
-
 spellExpired = true
 local informationTable = {}
 local AAInfoTable = {}
 local LastHittedTargetNetworkID, LastHittedTargetStacks, LastHittedTargetTick = nil, nil, 0
 local VP = nil
 local CastedLastE = 0
+local TickCountScriptStart, OnLoadDone, Beta = GetTickCount(), nil, false
 
-local AUTOUPDATE = true
-
-local SHADOWVAYNE_SCRIPT_URL = "https://raw.github.com/Superx321/BoL/master/ShadowVayne.lua?rand="..tostring(math.random(1,10000))
-local SHADOWVAYNE_PATH = SCRIPT_PATH..(GetCurrentEnv().FILE_NAME)
-local NeedReload = false
-
-if AUTOUPDATE then
-	math.randomseed(os.time())
-	local WebResult = GetWebResult("raw.github.com", "/Superx321/BoL/master/ShadowVayne.lua?rand="..tostring(math.random(1,10000)))
-	if WebResult then
-		local ServerVersionPos = string.find(WebResult, "local version =")
-		local ServerVersion = string.sub(WebResult, ServerVersionPos+16, ServerVersionPos+19)
-		local ServerVersionFinal = math.floor(tonumber(ServerVersion)*100)
-		local LocalVersionFinal = version*100
-		if LocalVersionFinal < ServerVersionFinal then
-			print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">New Version available, dont press F9 until its finished</font>")
-			DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">Updated to newest Version. Please reload with F9</font>") end)
-			NeedReload = true
-		else
-			print("<font color=\"#6699ff\"><b>ShadowVayne:</b></font> <font color=\"#FFFFFF\">No Updates available. Loaded Version "..version.."</font>")
+function GetUpdate()
+	if not AlreadyChecked then
+		if not OnLoadDone then
+			if Beta then SCRIPT_NAME = "ShadowVayneBeta" else SCRIPT_NAME = "ShadowVayne" end
+				OwnScriptFile = io.open(SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), "r")
+				LocalVersion = string.sub(OwnScriptFile:read("*a"), 51, 54)
+				FileClose = OwnScriptFile:close()
+			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Loaded Version "..(LocalVersion).."</font>")
+			OnLoadDone = true
+			SHADOWVAYNE_SCRIPT_URL = "http://raw.github.com/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,100000))
+			SHADOWVAYNE_PATH = SCRIPT_PATH..(GetCurrentEnv().FILE_NAME)
+			ServerVersion = string.sub(GetWebResult("raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,100000))), 51, 54)
+		end
+		if GetTickCount() > (TickCountScriptStart + 3000) then
+			if tonumber(LocalVersion) < tonumber(ServerVersion) then
+				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">New Version ("..(ServerVersion)..") available, downloading...</font>")
+				DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updated to Version "..(ServerVersion)..". Please reload with F9</font>") end)
+			else
+				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">No Updates available</font>")
+			end
+			AlreadyChecked = true
 		end
 	end
 end
 
---~ if NeedReload then return end
 
 if VIP_USER then
 	require "VPrediction"
@@ -322,6 +324,7 @@ end
 
 function OnTick()
 CheckEnemyStunnAble()
+GetUpdate()
 --~ PrintFloatText(myHero, 10, "1234")
 --~ print(Crosshair.Attack_Crosshair)
 
