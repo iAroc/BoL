@@ -86,7 +86,7 @@ if AUTOUPDATE then
 	end
 end
 
-if NeedReload then return end
+--~ if NeedReload then return end
 
 if VIP_USER then
 	require "VPrediction"
