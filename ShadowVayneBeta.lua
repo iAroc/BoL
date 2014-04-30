@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.25
+	Version: 2.13
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -62,22 +62,25 @@ local AAInfoTable = {}
 local LastHittedTargetNetworkID, LastHittedTargetStacks, LastHittedTargetTick = nil, nil, 0
 local VP = nil
 local CastedLastE = 0
-local TickCountScriptStart, OnLoadDone, Beta = GetTickCount(), nil, false
+local TickCountScriptStart, OnLoadDone, Beta = GetTickCount(), nil, true
 
 function GetUpdate()
 	if not AlreadyChecked then
 		if not OnLoadDone then
 			if Beta then SCRIPT_NAME = "ShadowVayneBeta" else SCRIPT_NAME = "ShadowVayne" end
-			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Loaded Version "..(version).."</font>")
+				OwnScriptFile = io.open(SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), "r")
+				LocalVersion = string.sub(OwnScriptFile:read("*a"), 51, 54)
+				FileClose = OwnScriptFile:close()
+			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Loaded Version "..(LocalVersion).."</font>")
 			OnLoadDone = true
 			SHADOWVAYNE_SCRIPT_URL = "http://raw.github.com/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,100000))
 			SHADOWVAYNE_PATH = SCRIPT_PATH..(GetCurrentEnv().FILE_NAME)
-			ServerVersion = string.sub(GetWebResult("raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,100000))), 17, 20)
+			ServerVersion = string.sub(GetWebResult("raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,100000))), 51, 54)
 		end
 		if GetTickCount() > (TickCountScriptStart + 0) then
-			if tonumber(version) < tonumber(ServerVersion) then
+			if tonumber(LocalVersion) < tonumber(ServerVersion) then
 				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">New Version ("..(ServerVersion)..") available, downloading...</font>")
-				DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH.."2", function () print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updated to Version "..(ServerVersion)..". Please reload with F9</font>") end)
+				DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updated to Version "..(ServerVersion)..". Please reload with F9</font>") end)
 				AlreadyChecked = true
 			end
 		end
