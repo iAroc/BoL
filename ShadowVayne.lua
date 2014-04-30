@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.33
+	Version: 2.34
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -73,19 +73,18 @@ function GetUpdate()
 				FileClose = OwnScriptFile:close()
 			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Loaded Version "..(LocalVersion).."</font>")
 			OnLoadDone = true
-		end
-		if GetTickCount() > (TickCountScriptStart + 3000) then
 			SHADOWVAYNE_SCRIPT_URL = "http://raw.github.com/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,100000))
 			SHADOWVAYNE_PATH = SCRIPT_PATH..(GetCurrentEnv().FILE_NAME)
 			ServerVersion = string.sub(GetWebResult("raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,100000))), 51, 54)
-		if tonumber(LocalVersion) < tonumber(ServerVersion) then
+		end
+		if GetTickCount() > (TickCountScriptStart + 3000) then
+			if tonumber(LocalVersion) < tonumber(ServerVersion) then
 				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">New Version ("..(ServerVersion)..") available, downloading...</font>")
 				DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updated to Version "..(ServerVersion)..". Please reload with F9</font>") end)
-				AlreadyChecked = true
 			else
---~ 				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">No Updates available</font>")
+				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">No Updates available</font>")
 			end
-			TickCountScriptStart = TickCountScriptStart + 10000
+			AlreadyChecked = true
 		end
 	end
 end
