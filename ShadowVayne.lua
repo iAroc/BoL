@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.34
+	Version: 2.40
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -53,6 +53,8 @@
 			-Added SAC Interaction, if SAC is loaded, it will automatic use the Keysettings from there
 	v2.24:	-Change some things in the Autoupdater
 	v2.25:	-More Changes on Autoupdater
+	v2.40:	-Fixxed some Stunn-issues
+			-Added Revamped Support
 ]]
 
 if myHero.charName ~= "Vayne" then return end
@@ -171,17 +173,18 @@ local VayneDamage = {
 function OnLoad()
 	VayneMenu = scriptConfig("Shadow Vayne", "ShadowVayne")
 	VayneMenu:addSubMenu("Key Settings", "keysetting")
-	if AutoCarry == nil then
-	VayneMenu.keysetting:addParam("autocarry","Auto Carry Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "V" ))
-	VayneMenu.keysetting:addParam("mixedmode","Mixed Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "C" ))
-	VayneMenu.keysetting:addParam("laneclear","Lane Clear Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "M" ))
-	VayneMenu.keysetting:addParam("lasthit","Last Hit Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "N" ))
+	if AutoCarry == nil then Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses() end
+	if Keys == nil then
+		VayneMenu.keysetting:addParam("autocarry","Auto Carry Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "V" ))
+		VayneMenu.keysetting:addParam("mixedmode","Mixed Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "C" ))
+		VayneMenu.keysetting:addParam("laneclear","Lane Clear Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "M" ))
+		VayneMenu.keysetting:addParam("lasthit","Last Hit Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "N" ))
 	end
 	VayneMenu.keysetting:addParam("basiccondemn","Condemn on next BasicAttack:", SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte( "E" ))
 	VayneMenu.keysetting.basiccondemn = false
 	VayneMenu.keysetting:permaShow("basiccondemn")
 
-	if AutoCarry ~= nil then
+	if Keys ~= nil then
 		VayneMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
 		VayneMenu.keysetting:addParam("nil","Sida's AutoCarry found", SCRIPT_PARAM_INFO, "")
 		VayneMenu.keysetting:addParam("nil","It will use the Keysettings from there", SCRIPT_PARAM_INFO, "")
@@ -310,16 +313,16 @@ function CheckEnemyStunnAble()
 end
 
 function GetRunningModes()
-	if AutoCarry == nil then
-		ShadowVayneAutoCarry = VayneMenu.keysetting.autocarry
-		ShadowVayneMixedMode = VayneMenu.keysetting.mixedmode
-		ShadowVayneLaneClear = VayneMenu.keysetting.laneclear
-		ShadowVayneLastHit = VayneMenu.keysetting.lasthit
-	else
+	if Keys ~= nil then
 		ShadowVayneAutoCarry = Keys.AutoCarry
 		ShadowVayneMixedMode = Keys.MixedMode
 		ShadowVayneLaneClear = Keys.LastHit
 		ShadowVayneLastHit = Keys.LaneClear
+	else
+		ShadowVayneAutoCarry = VayneMenu.keysetting.autocarry
+		ShadowVayneMixedMode = VayneMenu.keysetting.mixedmode
+		ShadowVayneLaneClear = VayneMenu.keysetting.laneclear
+		ShadowVayneLastHit = VayneMenu.keysetting.lasthit
 	end
 end
 
