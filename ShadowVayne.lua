@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.25
+	Version: 2.26
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -370,8 +370,8 @@ function OnDraw()
 end
 
 function OnProcessSpell(unit, spell)
-	if not myHero.dead and unit.team ~= myHero.team then
-		if isAGapcloserUnitTarget[unit.charName] and spell.name == isAGapcloserUnitTarget[unit.charName].spell then
+	if not myHero.dead then
+		if isAGapcloserUnitTarget[unit.charName] and spell.name == isAGapcloserUnitTarget[unit.charName].spell and unit.team ~= myHero.team then
 			if spell.target ~= nil and spell.target.hash == myHero.hash then
 				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / AutoCarry Mode") end
 				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Lasthit Mode") end
@@ -381,7 +381,7 @@ function OnProcessSpell(unit, spell)
 			end
 		end
 
-		if isAChampToInterrupt[spell.name] and unit.charName == isAChampToInterrupt[spell.name].champ and GetDistance(unit) <= 715 then
+		if isAChampToInterrupt[spell.name] and unit.charName == isAChampToInterrupt[spell.name].champ and GetDistance(unit) <= 715 and unit.team ~= myHero.team then
 			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then CastESpell(unit, "Interrupt ("..(spell.name)..") / AutoCarry Mode") end
 			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then CastESpell(unit, "Interrupt ("..(spell.name)..") / Lasthit Mode") end
 			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then CastESpell(unit, "Interrupt ("..(spell.name)..") / Mixed Mode") end
@@ -404,7 +404,7 @@ function OnProcessSpell(unit, spell)
 --~ 			}
 --~ 		end
 --~ print(spell.name)
-		if unit.charName ~= nil and isAGapcloserUnitNoTarget[spell.name] and unit.charName == isAGapcloserUnitNoTarget[spell.name].champ and GetDistance(unit) <= 2000 and spellExpired == true and (spell.target == nil or spell.target.isMe) then
+		if unit.charName ~= nil and isAGapcloserUnitNoTarget[spell.name] and unit.charName == isAGapcloserUnitNoTarget[spell.name].champ and GetDistance(unit) <= 2000 and spellExpired == true and (spell.target == nil or spell.target.isMe) and unit.team ~= myHero.team then
 			if VayneMenu.misc.debug then
 				if spell.target == nil then SpellTargetName = "nil" else SpellTargetName = spell.target.charName end
 				print(" ")
@@ -472,6 +472,7 @@ end
 --~ end
 
 function CastESpell(Target, Reason, Delay)
+print("ey")
 	CastedLastE = GetTickCount() + 500
 	if VIP_USER and VayneMenu.misc.EPackets then
 		DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = Target.networkID }):send() end, Delay)
