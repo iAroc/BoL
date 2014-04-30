@@ -1,4 +1,4 @@
-local version = 2.22
+local version = 2.23
 --[[
 
 	Shadow Vayne Script by Superx321
@@ -49,6 +49,8 @@ local version = 2.22
 			-Added Misc -> Debug, if u get Random E's, activate it to see why my Script used Condemn
 	v2.21:	-Added Debug for NonTargetGapCloser
 	v2.22:	-Fixed a Bug in the AutoUpdate
+	v2.23:	-Finally Fixed the "field nil" Error
+			-Added SAC Interaction, if SAC is loaded, i will automatic use the Keysettings from there
 ]]
 
 if myHero.charName ~= "Vayne" then return end
@@ -167,13 +169,24 @@ local VayneDamage = {
 function OnLoad()
 	VayneMenu = scriptConfig("Shadow Vayne", "ShadowVayne")
 	VayneMenu:addSubMenu("Key Settings", "keysetting")
+	if AutoCarry == nil then
 	VayneMenu.keysetting:addParam("autocarry","Auto Carry Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "V" ))
 	VayneMenu.keysetting:addParam("mixedmode","Mixed Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "C" ))
 	VayneMenu.keysetting:addParam("laneclear","Lane Clear Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "M" ))
 	VayneMenu.keysetting:addParam("lasthit","Last Hit Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "N" ))
+	end
 	VayneMenu.keysetting:addParam("basiccondemn","Condemn on next BasicAttack:", SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte( "E" ))
 	VayneMenu.keysetting.basiccondemn = false
 	VayneMenu.keysetting:permaShow("basiccondemn")
+
+	if AutoCarry ~= nil then
+		VayneMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
+		VayneMenu.keysetting:addParam("nil","Sida's AutoCarry found", SCRIPT_PARAM_INFO, "")
+		VayneMenu.keysetting:addParam("nil","It will use the Keysettings from there", SCRIPT_PARAM_INFO, "")
+		Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
+	end
+		GetRunningModes()
+
 
 	VayneMenu:addSubMenu("AntiGapCloser Settings", "anticapcloser")
 	for i, enemy in ipairs(GetEnemyHeroes()) do
@@ -209,7 +222,7 @@ function OnLoad()
 			VayneMenu.targets:addSubMenu(enemy.charName, enemy.charName)
 			VayneMenu.targets[enemy.charName]:addParam("sep", "Stunn "..(enemy.charName), SCRIPT_PARAM_INFO, "")
 			VayneMenu.targets[enemy.charName]:addParam((enemy.charName).."AutoCarry", "in AutoCarry", SCRIPT_PARAM_ONOFF, true)
-			VayneMenu.targets[enemy.charName]:addParam((enemy.charName).."MixedMode", "in MixedMode", SCRIPT_PARAM_ONOFF, true)
+			VayneMenu.targets[enemy.charName]:addParam((enemy.charName).."MixedMode", "in MixedMode", SCRIPT_PARAM_ONOFF, false)
 			VayneMenu.targets[enemy.charName]:addParam((enemy.charName).."LaneClear", "in LaneClear", SCRIPT_PARAM_ONOFF, false)
 			VayneMenu.targets[enemy.charName]:addParam((enemy.charName).."LastHit", "in LastHit", SCRIPT_PARAM_ONOFF, false)
 			VayneMenu.targets[enemy.charName]:addParam((enemy.charName).."Always", "Always", SCRIPT_PARAM_ONOFF, false)
@@ -252,15 +265,16 @@ function OnLoad()
 local AutoLevelSpells = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 autoLevelSetFunction(AutoLevelSpell)
 autoLevelSetSequence(AutoLevelSpells)
+
 end
 
 function CheckEnemyStunnAble()
 	if not myHero.dead and myHero:CanUseSpell(_E) == READY and CastedLastE < GetTickCount() then
 		for i, enemy in ipairs(GetEnemyHeroes()) do
-			if 	(VayneMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry) or
-				(VayneMenu.targets[enemy.charName][(enemy.charName).."MixedMode"] and VayneMenu.keysetting.mixedmode) or
-				(VayneMenu.targets[enemy.charName][(enemy.charName).."LaneClear"] and VayneMenu.keysetting.laneclear) or
-				(VayneMenu.targets[enemy.charName][(enemy.charName).."LastHit"] and VayneMenu.keysetting.lasthit) or
+			if 	(VayneMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and ShadowVayneAutoCarry) or
+				(VayneMenu.targets[enemy.charName][(enemy.charName).."MixedMode"] and ShadowVayneMixedMode) or
+				(VayneMenu.targets[enemy.charName][(enemy.charName).."LaneClear"] and ShadowVayneLaneClear) or
+				(VayneMenu.targets[enemy.charName][(enemy.charName).."LastHit"] and ShadowVayneLastHit) or
 				(VayneMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
 				if GetDistance(enemy) <= 715 and not enemy.dead and enemy.visible then
 					if VIP_USER and VayneMenu.misc.vpred then local CastPosition,  HitChance, enemy = VP:GetLineCastPosition(enemy, 0.26, 0, (GetDistance(enemy)+VayneMenu.autostunn.pushDistance), VP:GetProjectileSpeed(myHero), myHero, false) end
@@ -290,10 +304,27 @@ function CheckEnemyStunnAble()
 	end
 end
 
+function GetRunningModes()
+	if AutoCarry == nil then
+		ShadowVayneAutoCarry = VayneMenu.keysetting.autocarry
+		ShadowVayneMixedMode = VayneMenu.keysetting.mixedmode
+		ShadowVayneLaneClear = VayneMenu.keysetting.laneclear
+		ShadowVayneLastHit = VayneMenu.keysetting.lasthit
+	else
+		ShadowVayneAutoCarry = Keys.AutoCarry
+		ShadowVayneMixedMode = Keys.MixedMode
+		ShadowVayneLaneClear = Keys.LastHit
+		ShadowVayneLastHit = Keys.LaneClear
+	end
+end
+
 
 
 function OnTick()
 CheckEnemyStunnAble()
+--~ PrintFloatText(myHero, 10, "1234")
+--~ print(Crosshair.Attack_Crosshair)
+
 	if not myHero.dead and myHero:CanUseSpell(_E) == READY then
 		if spellExpired == false and (GetTickCount() - informationTable.spellCastedTick) <= (informationTable.spellRange/informationTable.spellSpeed)*1000 then
 			local spellDirection     = (informationTable.spellEndPos - informationTable.spellStartPos):normalized()
@@ -317,7 +348,10 @@ CheckEnemyStunnAble()
 end
 
 function OnDraw()
-	if VayneMenu.draw.DrawERange then
+--~ vPos = GetUnitHPBarPos(myHero)
+
+--~   DrawText("Log Enabled",16,vPos.x,vPos.y,0xFF80FF00)
+  if VayneMenu.draw.DrawERange then
 		if VayneMenu.draw.DrawEColor == 1 then
 			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x80FFFF)
 		elseif VayneMenu.draw.DrawEColor == 2 then
@@ -333,22 +367,22 @@ function OnDraw()
 end
 
 function OnProcessSpell(unit, spell)
-	if not myHero.dead then
+	if not myHero.dead and unit.team ~= myHero.team then
 		if isAGapcloserUnitTarget[unit.charName] and spell.name == isAGapcloserUnitTarget[unit.charName].spell then
 			if spell.target ~= nil and spell.target.hash == myHero.hash then
-				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / AutoCarry Mode") end
-				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Lasthit Mode") end
-				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Mixed Mode") end
-				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.lasthit then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Laneclear Mode") end
+				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / AutoCarry Mode") end
+				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Lasthit Mode") end
+				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Mixed Mode") end
+				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Laneclear Mode") end
 				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."Always"] then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Always") end
 			end
 		end
 
 		if isAChampToInterrupt[spell.name] and unit.charName == isAChampToInterrupt[spell.name].champ and GetDistance(unit) <= 715 then
-			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then CastESpell(unit, "Interrupt ("..(spell.name)..") / AutoCarry Mode") end
-			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then CastESpell(unit, "Interrupt ("..(spell.name)..") / Lasthit Mode") end
-			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then CastESpell(unit, "Interrupt ("..(spell.name)..") / Mixed Mode") end
-			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.lasthit then CastESpell(unit, "Interrupt ("..(spell.name)..") / Laneclear Mode") end
+			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then CastESpell(unit, "Interrupt ("..(spell.name)..") / AutoCarry Mode") end
+			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then CastESpell(unit, "Interrupt ("..(spell.name)..") / Lasthit Mode") end
+			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then CastESpell(unit, "Interrupt ("..(spell.name)..") / Mixed Mode") end
+			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then CastESpell(unit, "Interrupt ("..(spell.name)..") / Laneclear Mode") end
 			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."Always"] then CastESpell(unit, "Interrupt ("..(spell.name)..") / Always") end
 		end
 
@@ -367,10 +401,9 @@ function OnProcessSpell(unit, spell)
 --~ 			}
 --~ 		end
 --~ print(spell.name)
-		if unit.charName ~= nil and isAGapcloserUnitNoTarget[spell.name] and unit.charName == isAGapcloserUnitNoTarget[spell.name].champ and GetDistance(unit) <= 2000 and spellExpired == true then
+		if unit.charName ~= nil and isAGapcloserUnitNoTarget[spell.name] and unit.charName == isAGapcloserUnitNoTarget[spell.name].champ and GetDistance(unit) <= 2000 and spellExpired == true and (spell.target == nil or spell.target.isMe) then
 			if VayneMenu.misc.debug then
 				if spell.target == nil then SpellTargetName = "nil" else SpellTargetName = spell.target.charName end
-
 				print(" ")
 				print("<font color=\"#662f8d\"><b>Debug is on. Please Screen this and send it in the Thread</b></font>")
 				print("<font color=\"#6648da\"><b>SpellName:</b></font> <font color=\"#FF48da\">"..(spell.name).." </font>   <font color=\"#6648da\"><b>SpellTarget: </b></font><font color=\"#FF48da\">"..(SpellTargetName).."</font>")
@@ -381,14 +414,14 @@ function OnProcessSpell(unit, spell)
 				print(" ")
 			end
 			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] then
-				if VayneMenu.keysetting.autocarry then
+				if ShadowVayneAutoCarry then
 					spellExpired = false
 				end
 			end
-			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] and VayneMenu.keysetting.autocarry then spellExpired = false end
-			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LastHit"] and VayneMenu.keysetting.mixedmode then spellExpired = false end
-			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."MixedMode"] and VayneMenu.keysetting.laneclear then spellExpired = false end
-			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LaneClear"] and VayneMenu.keysetting.lasthit then spellExpired = false end
+			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then spellExpired = false end
+			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then spellExpired = false end
+			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then spellExpired = false end
+			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then spellExpired = false end
 			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."Always"] then spellExpired = false end
 			informationTable = {
 				spellSource = unit,
