@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.27
+	Version: 2.28
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -187,7 +187,6 @@ function OnLoad()
 		VayneMenu.keysetting:addParam("nil","It will use the Keysettings from there", SCRIPT_PARAM_INFO, "")
 		Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
 	end
-		GetRunningModes()
 
 
 	VayneMenu:addSubMenu("AntiGapCloser Settings", "anticapcloser")
@@ -271,6 +270,7 @@ autoLevelSetSequence(AutoLevelSpells)
 end
 
 function CheckEnemyStunnAble()
+--~ print(math.ceil((VayneMenu.autostunn.pushDistance/VayneMenu.autostunn.accuracy)))
 	if not myHero.dead and myHero:CanUseSpell(_E) == READY and CastedLastE < GetTickCount() then
 		for i, enemy in ipairs(GetEnemyHeroes()) do
 			if 	(VayneMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and ShadowVayneAutoCarry) or
@@ -280,8 +280,11 @@ function CheckEnemyStunnAble()
 				(VayneMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
 				if GetDistance(enemy) <= 715 and not enemy.dead and enemy.visible then
 					if VIP_USER and VayneMenu.misc.vpred then local CastPosition,  HitChance, enemy = VP:GetLineCastPosition(enemy, 0.26, 0, (GetDistance(enemy)+VayneMenu.autostunn.pushDistance), VP:GetProjectileSpeed(myHero), myHero, false) end
+--~ 								if VIP_USER then local CastPosition,  HitChance,  enemy = VP:GetLineCastPosition(enemy, 0.5, 65, 650, 1200, myHero, false) end
+--~ 					print(enemy.charName)
+
 					for i = 1, VayneMenu.autostunn.accuracy  do
-						local CheckWallPos = enemy + (Vector(enemy) - myHero):normalized()*math.floor((VayneMenu.autostunn.pushDistance/VayneMenu.autostunn.accuracy)*i)
+						local CheckWallPos = enemy + (Vector(enemy) - myHero):normalized()*math.ceil((VayneMenu.autostunn.pushDistance/VayneMenu.autostunn.accuracy)*i)
 						if not BushFound and IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
 							BushFound = true
 							BushPos = CheckWallPos
@@ -323,6 +326,8 @@ end
 
 
 function OnTick()
+--~ print(ShadowVayneAutoCarry)
+GetRunningModes()
 CheckEnemyStunnAble()
 GetUpdate()
 --~ PrintFloatText(myHero, 10, "1234")
@@ -392,6 +397,10 @@ function OnProcessSpell(unit, spell)
 		if unit.hash == myHero.hash and spell.name:find("Attack") and VayneMenu.keysetting.basiccondemn and spell.target.type == myHero.type then
 			CastESpell(spell.target, "E After Autohit ("..(spell.target.charName)..")", (spell.windUpTime - GetLatency() / 2000))
 			VayneMenu.keysetting.basiccondemn = false
+		end
+
+		if unit.isMe and spell.name:find("CondemnMissile") then
+				CastedLastE = GetTickCount() + 500
 		end
 
 --~ 		if unit.hash == myHero.hash and spell.name:find("Attack") then
@@ -472,9 +481,8 @@ end
 --~ end
 
 function CastESpell(Target, Reason, Delay)
-	CastedLastE = GetTickCount() + 500
 	if VIP_USER and VayneMenu.misc.EPackets then
-		DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = Target.networkID }):send() end, Delay)
+		DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = Target.networkID }):send(true) end, Delay)
 	else
 		DelayAction(function() CastSpell(_E, Target) end, Delay)
 	end
