@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.31
+	Version: 2.32
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -86,6 +86,7 @@ function GetUpdate()
 --~ 				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">No Updates available</font>")
 			end
 			TickCountScriptStart = TickCountScriptStart + 10000
+			OnLoadDone = false
 		end
 	end
 end
