@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.40
+	Version: 2.41
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -173,7 +173,7 @@ local VayneDamage = {
 function OnLoad()
 	VayneMenu = scriptConfig("Shadow Vayne", "ShadowVayne")
 	VayneMenu:addSubMenu("Key Settings", "keysetting")
-	if AutoCarry == nil then Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses() end
+	if AutoCarry ~= nil then Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses() end
 	if Keys == nil then
 		VayneMenu.keysetting:addParam("autocarry","Auto Carry Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "V" ))
 		VayneMenu.keysetting:addParam("mixedmode","Mixed Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "C" ))
@@ -362,19 +362,19 @@ function OnDraw()
 --~ vPos = GetUnitHPBarPos(myHero)
 
 --~   DrawText("Log Enabled",16,vPos.x,vPos.y,0xFF80FF00)
-  if VayneMenu.draw.DrawERange then
-		if VayneMenu.draw.DrawEColor == 1 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x80FFFF)
-		elseif VayneMenu.draw.DrawEColor == 2 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x0080FF)
-		elseif VayneMenu.draw.DrawEColor == 3 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x5555FF)
-		elseif VayneMenu.draw.DrawEColor == 4 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0xFF2D2D)
-		elseif VayneMenu.draw.DrawEColor == 5 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x8B42B3)
-		end
-	end
+--~   if VayneMenu.draw.DrawERange then
+--~ 		if VayneMenu.draw.DrawEColor == 1 then
+--~ 			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x80FFFF)
+--~ 		elseif VayneMenu.draw.DrawEColor == 2 then
+--~ 			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x0080FF)
+--~ 		elseif VayneMenu.draw.DrawEColor == 3 then
+--~ 			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x5555FF)
+--~ 		elseif VayneMenu.draw.DrawEColor == 4 then
+--~ 			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0xFF2D2D)
+--~ 		elseif VayneMenu.draw.DrawEColor == 5 then
+--~ 			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x8B42B3)
+--~ 		end
+--~ 	end
 end
 
 function OnProcessSpell(unit, spell)
