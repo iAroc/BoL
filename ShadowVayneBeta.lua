@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.46
+	Version: 2.47
 
 	Functions:
 	- AntiCapCloser with Settings
