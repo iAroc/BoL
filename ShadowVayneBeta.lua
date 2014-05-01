@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.42
+	Version: 2.43
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -72,7 +72,7 @@ function GetUpdate()
 			if Beta then SCRIPT_NAME = "ShadowVayneBeta" else SCRIPT_NAME = "ShadowVayne" end
 				LocalScriptFile = io.open(SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), "r")
 				LocalVersion = string.sub(LocalScriptFile:read("*a"), 51, 54)
-				FileClose = OwnScriptFile:close()
+				FileClose = LocalScriptFile:close()
 			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Loaded Version "..(LocalVersion).."</font>")
 			OnLoadDone = true
 			LIB_PATH = LIB_PATH:gsub("\\", "/")
@@ -83,11 +83,11 @@ function GetUpdate()
 --~ 			ServerVersion = string.sub(GetWebResult("raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,100000))), 51, 54)
 		end
 		if GetTickCount() > (TickCountScriptStart + 5000) then
-			DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_LIB_PATH)
+			DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_LIB_PATH, function() end)
 				if FileExist(SHADOWVAYNE_LIB_PATH) then
 					ServerScriptFile = io.open(SHADOWVAYNE_LIB_PATH, "r")
 					ServerVersion = string.sub(ServerScriptFile:read("*a"), 51, 54)
-					FileClose = OwnScriptFile:close()
+					FileClose = ServerScriptFile:close()
 					if tonumber(LocalVersion) < tonumber(ServerVersion) then
 						print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">New Version ("..(ServerVersion)..") available, downloading...</font>")
 						DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updated to Version "..(ServerVersion)..". Please reload with F9</font>") end)
