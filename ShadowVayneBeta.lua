@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.15
+	Version: 2.42
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -52,10 +52,12 @@
 	v2.23:	-Finally Fixed the "field nil" Error
 			-Added SAC Interaction, if SAC is loaded, it will automatic use the Keysettings from there
 	v2.24:	-Change some things in the Autoupdater
+	v2.25:	-More Changes on Autoupdater
+	v2.40:	-Fixxed some Stunn-issues
+			-Added Revamped Support
 ]]
 
 if myHero.charName ~= "Vayne" then return end
-VIP_USER = false
 spellExpired = true
 local informationTable = {}
 local AAInfoTable = {}
@@ -68,23 +70,32 @@ function GetUpdate()
 	if not AlreadyChecked then
 		if not OnLoadDone then
 			if Beta then SCRIPT_NAME = "ShadowVayneBeta" else SCRIPT_NAME = "ShadowVayne" end
-				OwnScriptFile = io.open(SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), "r")
-				LocalVersion = string.sub(OwnScriptFile:read("*a"), 51, 54)
+				LocalScriptFile = io.open(SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), "r")
+				LocalVersion = string.sub(LocalScriptFile:read("*a"), 51, 54)
 				FileClose = OwnScriptFile:close()
 			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Loaded Version "..(LocalVersion).."</font>")
 			OnLoadDone = true
+			LIB_PATH = LIB_PATH:gsub("\\", "/")
+
 			SHADOWVAYNE_SCRIPT_URL = "http://raw.github.com/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,100000))
-			SHADOWVAYNE_PATH = SCRIPT_PATH..(GetCurrentEnv().FILE_NAME)
-			ServerVersion = string.sub(GetWebResult("raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,100000))), 51, 54)
+			SHADOWVAYNE_PATH = SCRIPT_PATH:gsub("\\", "/")..(GetCurrentEnv().FILE_NAME)
+			SHADOWVAYNE_LIB_PATH = LIB_PATH:gsub("\\", "/")..(GetCurrentEnv().FILE_NAME)
+--~ 			ServerVersion = string.sub(GetWebResult("raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,100000))), 51, 54)
 		end
-		if GetTickCount() > (TickCountScriptStart + 0) then
-			if tonumber(LocalVersion) < tonumber(ServerVersion) then
-				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">New Version ("..(ServerVersion)..") available, downloading...</font>")
-				DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updated to Version "..(ServerVersion)..". Please reload with F9</font>") end)
-			else
-				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">No Updates available</font>")
-			end
-			AlreadyChecked = true
+		if GetTickCount() > (TickCountScriptStart + 5000) then
+			DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_LIB_PATH)
+				if FileExist(SHADOWVAYNE_LIB_PATH) then
+					ServerScriptFile = io.open(SHADOWVAYNE_LIB_PATH, "r")
+					ServerVersion = string.sub(ServerScriptFile:read("*a"), 51, 54)
+					FileClose = OwnScriptFile:close()
+					if tonumber(LocalVersion) < tonumber(ServerVersion) then
+						print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">New Version ("..(ServerVersion)..") available, downloading...</font>")
+						DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updated to Version "..(ServerVersion)..". Please reload with F9</font>") end)
+						AlreadyChecked = true
+					else
+						TickCountScriptStart = TickCountScriptStart + 5000
+					end
+				end
 		end
 	end
 end
@@ -171,23 +182,23 @@ local VayneDamage = {
 function OnLoad()
 	VayneMenu = scriptConfig("Shadow Vayne", "ShadowVayne")
 	VayneMenu:addSubMenu("Key Settings", "keysetting")
-	if AutoCarry == nil then
-	VayneMenu.keysetting:addParam("autocarry","Auto Carry Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "V" ))
-	VayneMenu.keysetting:addParam("mixedmode","Mixed Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "C" ))
-	VayneMenu.keysetting:addParam("laneclear","Lane Clear Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "M" ))
-	VayneMenu.keysetting:addParam("lasthit","Last Hit Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "N" ))
+	if AutoCarry ~= nil then Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses() end
+	if Keys == nil then
+		VayneMenu.keysetting:addParam("autocarry","Auto Carry Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "V" ))
+		VayneMenu.keysetting:addParam("mixedmode","Mixed Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "C" ))
+		VayneMenu.keysetting:addParam("laneclear","Lane Clear Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "M" ))
+		VayneMenu.keysetting:addParam("lasthit","Last Hit Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "N" ))
 	end
 	VayneMenu.keysetting:addParam("basiccondemn","Condemn on next BasicAttack:", SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte( "E" ))
 	VayneMenu.keysetting.basiccondemn = false
 	VayneMenu.keysetting:permaShow("basiccondemn")
 
-	if AutoCarry ~= nil then
+	if Keys ~= nil then
 		VayneMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
 		VayneMenu.keysetting:addParam("nil","Sida's AutoCarry found", SCRIPT_PARAM_INFO, "")
 		VayneMenu.keysetting:addParam("nil","It will use the Keysettings from there", SCRIPT_PARAM_INFO, "")
 		Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
 	end
-		GetRunningModes()
 
 
 	VayneMenu:addSubMenu("AntiGapCloser Settings", "anticapcloser")
@@ -271,6 +282,7 @@ autoLevelSetSequence(AutoLevelSpells)
 end
 
 function CheckEnemyStunnAble()
+--~ print(math.ceil((VayneMenu.autostunn.pushDistance/VayneMenu.autostunn.accuracy)))
 	if not myHero.dead and myHero:CanUseSpell(_E) == READY and CastedLastE < GetTickCount() then
 		for i, enemy in ipairs(GetEnemyHeroes()) do
 			if 	(VayneMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and ShadowVayneAutoCarry) or
@@ -280,8 +292,11 @@ function CheckEnemyStunnAble()
 				(VayneMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
 				if GetDistance(enemy) <= 715 and not enemy.dead and enemy.visible then
 					if VIP_USER and VayneMenu.misc.vpred then local CastPosition,  HitChance, enemy = VP:GetLineCastPosition(enemy, 0.26, 0, (GetDistance(enemy)+VayneMenu.autostunn.pushDistance), VP:GetProjectileSpeed(myHero), myHero, false) end
+--~ 								if VIP_USER then local CastPosition,  HitChance,  enemy = VP:GetLineCastPosition(enemy, 0.5, 65, 650, 1200, myHero, false) end
+--~ 					print(enemy.charName)
+
 					for i = 1, VayneMenu.autostunn.accuracy  do
-						local CheckWallPos = enemy + (Vector(enemy) - myHero):normalized()*math.floor((VayneMenu.autostunn.pushDistance/VayneMenu.autostunn.accuracy)*i)
+						local CheckWallPos = enemy + (Vector(enemy) - myHero):normalized()*math.ceil((VayneMenu.autostunn.pushDistance/VayneMenu.autostunn.accuracy)*i)
 						if not BushFound and IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
 							BushFound = true
 							BushPos = CheckWallPos
@@ -307,22 +322,24 @@ function CheckEnemyStunnAble()
 end
 
 function GetRunningModes()
-	if AutoCarry == nil then
-		ShadowVayneAutoCarry = VayneMenu.keysetting.autocarry
-		ShadowVayneMixedMode = VayneMenu.keysetting.mixedmode
-		ShadowVayneLaneClear = VayneMenu.keysetting.laneclear
-		ShadowVayneLastHit = VayneMenu.keysetting.lasthit
-	else
+	if Keys ~= nil then
 		ShadowVayneAutoCarry = Keys.AutoCarry
 		ShadowVayneMixedMode = Keys.MixedMode
 		ShadowVayneLaneClear = Keys.LastHit
 		ShadowVayneLastHit = Keys.LaneClear
+	else
+		ShadowVayneAutoCarry = VayneMenu.keysetting.autocarry
+		ShadowVayneMixedMode = VayneMenu.keysetting.mixedmode
+		ShadowVayneLaneClear = VayneMenu.keysetting.laneclear
+		ShadowVayneLastHit = VayneMenu.keysetting.lasthit
 	end
 end
 
 
 
 function OnTick()
+--~ print(ShadowVayneAutoCarry)
+GetRunningModes()
 CheckEnemyStunnAble()
 GetUpdate()
 --~ PrintFloatText(myHero, 10, "1234")
@@ -354,24 +371,24 @@ function OnDraw()
 --~ vPos = GetUnitHPBarPos(myHero)
 
 --~   DrawText("Log Enabled",16,vPos.x,vPos.y,0xFF80FF00)
-  if VayneMenu.draw.DrawERange then
-		if VayneMenu.draw.DrawEColor == 1 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x80FFFF)
-		elseif VayneMenu.draw.DrawEColor == 2 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x0080FF)
-		elseif VayneMenu.draw.DrawEColor == 3 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x5555FF)
-		elseif VayneMenu.draw.DrawEColor == 4 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0xFF2D2D)
-		elseif VayneMenu.draw.DrawEColor == 5 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x8B42B3)
-		end
-	end
+--~   if VayneMenu.draw.DrawERange then
+--~ 		if VayneMenu.draw.DrawEColor == 1 then
+--~ 			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x80FFFF)
+--~ 		elseif VayneMenu.draw.DrawEColor == 2 then
+--~ 			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x0080FF)
+--~ 		elseif VayneMenu.draw.DrawEColor == 3 then
+--~ 			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x5555FF)
+--~ 		elseif VayneMenu.draw.DrawEColor == 4 then
+--~ 			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0xFF2D2D)
+--~ 		elseif VayneMenu.draw.DrawEColor == 5 then
+--~ 			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x8B42B3)
+--~ 		end
+--~ 	end
 end
 
 function OnProcessSpell(unit, spell)
-	if not myHero.dead and unit.team ~= myHero.team then
-		if isAGapcloserUnitTarget[unit.charName] and spell.name == isAGapcloserUnitTarget[unit.charName].spell then
+	if not myHero.dead then
+		if isAGapcloserUnitTarget[unit.charName] and spell.name == isAGapcloserUnitTarget[unit.charName].spell and unit.team ~= myHero.team then
 			if spell.target ~= nil and spell.target.hash == myHero.hash then
 				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / AutoCarry Mode") end
 				if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Lasthit Mode") end
@@ -381,7 +398,7 @@ function OnProcessSpell(unit, spell)
 			end
 		end
 
-		if isAChampToInterrupt[spell.name] and unit.charName == isAChampToInterrupt[spell.name].champ and GetDistance(unit) <= 715 then
+		if isAChampToInterrupt[spell.name] and unit.charName == isAChampToInterrupt[spell.name].champ and GetDistance(unit) <= 715 and unit.team ~= myHero.team then
 			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then CastESpell(unit, "Interrupt ("..(spell.name)..") / AutoCarry Mode") end
 			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then CastESpell(unit, "Interrupt ("..(spell.name)..") / Lasthit Mode") end
 			if VayneMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then CastESpell(unit, "Interrupt ("..(spell.name)..") / Mixed Mode") end
@@ -394,6 +411,10 @@ function OnProcessSpell(unit, spell)
 			VayneMenu.keysetting.basiccondemn = false
 		end
 
+		if unit.isMe and spell.name:find("CondemnMissile") then
+				CastedLastE = GetTickCount() + 500
+		end
+
 --~ 		if unit.hash == myHero.hash and spell.name:find("Attack") then
 --~ 			if spell.name:find("Tumble") then TumbleDMG = (myHero.totalDamage)/(100/(VayneDamage["Q"][myHero:GetSpellData(_Q).level])) else TumbleDMG = 0 end
 --~ 			AAInfoTable = {
@@ -404,7 +425,7 @@ function OnProcessSpell(unit, spell)
 --~ 			}
 --~ 		end
 --~ print(spell.name)
-		if unit.charName ~= nil and isAGapcloserUnitNoTarget[spell.name] and unit.charName == isAGapcloserUnitNoTarget[spell.name].champ and GetDistance(unit) <= 2000 and spellExpired == true and (spell.target == nil or spell.target.isMe) then
+		if unit.charName ~= nil and isAGapcloserUnitNoTarget[spell.name] and unit.charName == isAGapcloserUnitNoTarget[spell.name].champ and GetDistance(unit) <= 2000 and spellExpired == true and (spell.target == nil or spell.target.isMe) and unit.team ~= myHero.team then
 			if VayneMenu.misc.debug then
 				if spell.target == nil then SpellTargetName = "nil" else SpellTargetName = spell.target.charName end
 				print(" ")
@@ -472,9 +493,8 @@ end
 --~ end
 
 function CastESpell(Target, Reason, Delay)
-	CastedLastE = GetTickCount() + 500
 	if VIP_USER and VayneMenu.misc.EPackets then
-		DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = Target.networkID }):send() end, Delay)
+		DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = Target.networkID }):send(true) end, Delay)
 	else
 		DelayAction(function() CastSpell(_E, Target) end, Delay)
 	end
