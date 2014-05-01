@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.44
+	Version: 2.45
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -89,7 +89,7 @@ function GetUpdate()
 			ServerScriptFile = io.open(SHADOWVAYNE_LIB_PATH, "r")
 			ServerVersion = string.sub(ServerScriptFile:read("*a"), 51, 54)
 			FileClose = ServerScriptFile:close()
-			os.remove(SHADOWVAYNE_LIB_PATH)
+--~ 			os.remove(SHADOWVAYNE_LIB_PATH)
 			print("Local: "..tonumber(LocalVersion).." Server: "..tonumber(ServerVersion))
 			if tonumber(LocalVersion) < tonumber(ServerVersion) then
 				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">New Version ("..(ServerVersion)..") available, downloading...</font>")
