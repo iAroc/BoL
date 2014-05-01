@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.47
+	Version: 2.30
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -70,35 +70,23 @@ function GetUpdate()
 	if not AlreadyChecked then
 		if not OnLoadDone then
 			if Beta then SCRIPT_NAME = "ShadowVayneBeta" else SCRIPT_NAME = "ShadowVayne" end
-			LocalScriptFile = io.open(SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), "r")
-			LocalVersion = string.sub(LocalScriptFile:read("*a"), 51, 54)
-			FileClose = LocalScriptFile:close()
+				OwnScriptFile = io.open(SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), "r")
+				LocalVersion = string.sub(OwnScriptFile:read("*a"), 51, 54)
+				FileClose = OwnScriptFile:close()
 			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Loaded Version "..(LocalVersion).."</font>")
 			OnLoadDone = true
-			LIB_PATH = LIB_PATH:gsub("\\", "/")
-
-			SHADOWVAYNE_PATH = SCRIPT_PATH:gsub("\\", "/")..(GetCurrentEnv().FILE_NAME)
-			SHADOWVAYNE_LIB_PATH = LIB_PATH:gsub("\\", "/")..(GetCurrentEnv().FILE_NAME)
-		end
-		if GetTickCount() > (TickCountScriptStart + 5000) then
 			SHADOWVAYNE_SCRIPT_URL = "http://raw.github.com/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,100000))
-			DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_LIB_PATH, function() end)
-			TickCountScriptStart = TickCountScriptStart + 5000
---~ 			print(SHADOWVAYNE_SCRIPT_URL)
+			SHADOWVAYNE_PATH = SCRIPT_PATH..(GetCurrentEnv().FILE_NAME)
+			ServerVersion = string.sub(GetWebResult("raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,100000))), 51, 54)
 		end
-		if FileExist(SHADOWVAYNE_LIB_PATH) then
-			ServerScriptFile = io.open(SHADOWVAYNE_LIB_PATH, "r")
-			ServerVersion = string.sub(ServerScriptFile:read("*a"), 51, 54)
-			FileClose = ServerScriptFile:close()
-			os.remove(SHADOWVAYNE_LIB_PATH)
-			print("Local: "..tonumber(LocalVersion).." Server: "..tonumber(ServerVersion))
+		if GetTickCount() > (TickCountScriptStart + 3000) then
 			if tonumber(LocalVersion) < tonumber(ServerVersion) then
 				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">New Version ("..(ServerVersion)..") available, downloading...</font>")
 				DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updated to Version "..(ServerVersion)..". Please reload with F9</font>") end)
-				AlreadyChecked = true
 			else
---~ 				TickCountScriptStart = TickCountScriptStart + 5000
+				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">No Updates available</font>")
 			end
+			AlreadyChecked = true
 		end
 	end
 end
