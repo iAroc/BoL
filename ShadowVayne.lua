@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.41
+	Version: 2.42
 
 	Functions:
 	- AntiCapCloser with Settings
@@ -55,6 +55,7 @@
 	v2.25:	-More Changes on Autoupdater
 	v2.40:	-Fixxed some Stunn-issues
 			-Added Revamped Support
+	v2.42:	-Fixxed Revamped Target nil Error
 ]]
 
 if myHero.charName ~= "Vayne" then return end
@@ -173,8 +174,15 @@ local VayneDamage = {
 function OnLoad()
 	VayneMenu = scriptConfig("Shadow Vayne", "ShadowVayne")
 	VayneMenu:addSubMenu("Key Settings", "keysetting")
-	if AutoCarry ~= nil then Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses() end
-	if Keys == nil then
+	if AutoCarry ~= nil then
+		if AutoCarry.Helper ~= nil then
+			Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
+			SACLoaded = true
+		else
+			RevampedLoaded = true
+		end
+	end
+	if not SACLoaded and not RevampedLoaded then
 		VayneMenu.keysetting:addParam("autocarry","Auto Carry Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "V" ))
 		VayneMenu.keysetting:addParam("mixedmode","Mixed Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "C" ))
 		VayneMenu.keysetting:addParam("laneclear","Lane Clear Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "M" ))
@@ -184,13 +192,19 @@ function OnLoad()
 	VayneMenu.keysetting.basiccondemn = false
 	VayneMenu.keysetting:permaShow("basiccondemn")
 
-	if Keys ~= nil then
+	if SACLoaded then
 		VayneMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
-		VayneMenu.keysetting:addParam("nil","Sida's AutoCarry found", SCRIPT_PARAM_INFO, "")
+		VayneMenu.keysetting:addParam("nil","Sida's AutoCarry Reborn found", SCRIPT_PARAM_INFO, "")
 		VayneMenu.keysetting:addParam("nil","It will use the Keysettings from there", SCRIPT_PARAM_INFO, "")
-		Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
+		DelayAction(function() print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">SAC:Reborn found. Using the Keysettings from there</font>") end, 1)
 	end
 
+	if RevampedLoaded then
+		VayneMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
+		VayneMenu.keysetting:addParam("nil","Sida's AutoCarry Revamped found", SCRIPT_PARAM_INFO, "")
+		VayneMenu.keysetting:addParam("nil","It will use the Keysettings from there", SCRIPT_PARAM_INFO, "")
+		DelayAction(function() print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">SAC:Revamped found. Using the Keysettings from there</font>") end, 1)
+	end
 
 	VayneMenu:addSubMenu("AntiGapCloser Settings", "anticapcloser")
 	for i, enemy in ipairs(GetEnemyHeroes()) do
@@ -313,11 +327,16 @@ function CheckEnemyStunnAble()
 end
 
 function GetRunningModes()
-	if Keys ~= nil then
+	if SACLoaded then
 		ShadowVayneAutoCarry = Keys.AutoCarry
 		ShadowVayneMixedMode = Keys.MixedMode
 		ShadowVayneLaneClear = Keys.LastHit
 		ShadowVayneLastHit = Keys.LaneClear
+	elseif RevampedLoaded then
+		ShadowVayneAutoCarry = AutoCarry.MainMenu.AutoCarry
+		ShadowVayneMixedMode =AutoCarry.MainMenu.MixedMode
+		ShadowVayneLaneClear =AutoCarry.MainMenu.LaneClear
+		ShadowVayneLastHit = AutoCarry.MainMenu.LastHit
 	else
 		ShadowVayneAutoCarry = VayneMenu.keysetting.autocarry
 		ShadowVayneMixedMode = VayneMenu.keysetting.mixedmode
@@ -329,7 +348,12 @@ end
 
 
 function OnTick()
---~ print(ShadowVayneAutoCarry)
+--~ i = ""
+--~ 		for k,v in pairs(_G.AutoCarry) do
+--~ 			i = i.." "..k
+--~ 		end
+--~ print(AutoCarry.MainMenu.AutoCarry)
+--~ print(AutoCarry.MODE_AUTOCARRY)
 GetRunningModes()
 CheckEnemyStunnAble()
 GetUpdate()
