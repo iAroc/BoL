@@ -352,7 +352,6 @@ function _GetUpdate()
 				OwnScriptFile = io.open(SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), "r")
 				LocalVersion = string.sub(OwnScriptFile:read("*a"), 51, 54)
 				FileClose = OwnScriptFile:close()
---~ 			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Loaded Version "..(LocalVersion).."</font>")
 				_PrintScriptMsg("Loaded Version: "..(LocalVersion))
 			OnLoadDone = true
 			SHADOWVAYNE_SCRIPT_URL = "http://raw.github.com/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,10000))
@@ -363,10 +362,9 @@ function _GetUpdate()
 			if ServerVersion ~= nil then
 				if tonumber(LocalVersion) < tonumber(ServerVersion) then
 					_PrintScriptMsg("New Version ("..(ServerVersion)..") available, downloading...")
-					print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">New Version ("..(ServerVersion)..") available, downloading...</font>")
-					DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updated to Version "..(ServerVersion)..". Please reload with F9</font>") end)
+					DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () _PrintScriptMsg("Updated to Version "..(ServerVersion)..". Please reload with F9") end)
 				else
-					print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">No Updates available</font>")
+					_PrintScriptMsg("No Updates available")
 				end
 				AlreadyChecked = true
 			else
@@ -449,12 +447,4 @@ function _LoadTables()
 				["5"] = {BaseDMG = 60, MaxHPDmg = 8},
 				["Q"] = {30, 35, 40, 45, 50}
 	}
-
-	MyPosSaved = { ["MyOldPos"] = {MyPos = ""} }
-	MyPosSaved["MyOldPos"].MyPos = myHero
---~ 	for i, enemy in ipairs(GetEnemyHeroes()) do
---~ 		EnemyPos[i] = {name=enemy.charName, x=enemy.x, z=enemy.z}
---~ 	end
-
-
 end
