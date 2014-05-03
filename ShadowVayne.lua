@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.50
+	Version: 2.51
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -360,14 +360,18 @@ function _GetUpdate()
 			ServerVersion = string.sub(GetWebResult("raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,10000))), 51, 54)
 		end
 		if GetTickCount() > (ScriptStartTick + 3000) then
-			if tonumber(LocalVersion) < tonumber(ServerVersion) then
-				_PrintScriptMsg("New Version ("..(ServerVersion)..") available, downloading...")
-				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">New Version ("..(ServerVersion)..") available, downloading...</font>")
-				DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updated to Version "..(ServerVersion)..". Please reload with F9</font>") end)
+			if ServerVersion ~= nil then
+				if tonumber(LocalVersion) < tonumber(ServerVersion) then
+					_PrintScriptMsg("New Version ("..(ServerVersion)..") available, downloading...")
+					print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">New Version ("..(ServerVersion)..") available, downloading...</font>")
+					DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updated to Version "..(ServerVersion)..". Please reload with F9</font>") end)
+				else
+					print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">No Updates available</font>")
+				end
+				AlreadyChecked = true
 			else
-				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">No Updates available</font>")
+				ScriptStartTick = ScriptStartTick + 3000
 			end
-			AlreadyChecked = true
 		end
 	end
 end
