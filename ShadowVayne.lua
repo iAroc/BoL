@@ -158,7 +158,7 @@ function _CheckEnemyStunnAble()
 								if not BushFound and IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
 									BushFound = true
 									BushPos = CheckWallPos
-								end
+--~ 								end
 								if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
 									if UnderTurret(ChecksWallPos, true) then
 											if VayneMenu.autostunn.towerstunn then
@@ -183,7 +183,7 @@ function _CheckEnemyStunnAble()
 								if not BushFound and IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
 									BushFound = true
 									BushPos = CheckWallPos
-								end
+--~ 								end
 								if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
 									if UnderTurret(ChecksWallPos, true) then
 											if VayneMenu.autostunn.towerstunn then
