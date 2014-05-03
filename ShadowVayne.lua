@@ -13,7 +13,7 @@
 
 if myHero.charName ~= "Vayne" then return end
 local informationTable, AAInfoTable, CastedLastE, ScriptStartTick = {}, {}, 0, 0
-local TickCountScriptStart, OnLoadDone, spellExpired, Beta = GetTickCount(), nil, true, true
+local TickCountScriptStart, OnLoadDone, spellExpired, Beta = GetTickCount(), nil, true, false
 
 if VIP_USER then
 	require "VPrediction"
