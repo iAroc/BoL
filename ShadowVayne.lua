@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.51
+	Version: 2.52
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -150,28 +150,54 @@ function _CheckEnemyStunnAble()
 				(VayneMenu.targets[enemy.charName][(enemy.charName).."LaneClear"] and ShadowVayneLaneClear) or
 				(VayneMenu.targets[enemy.charName][(enemy.charName).."LastHit"] and ShadowVayneLastHit) or
 				(VayneMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
-				if GetDistance(enemy) <= 650 and not enemy.dead and enemy.visible then
-					if VIP_USER and VayneMenu.misc.vpred then
-					local CastPosition,  HitChance, PredictEnemyPos = VP:GetLineCastPosition(enemy, 0.25, 65, 715, 2500, myHero, false)  -- Enemy, Delay, Range (scan?), Speed, Source, collosion)
-					for i = 1, VayneMenu.autostunn.accuracy*2  do
-							local CheckWallPos = PredictEnemyPos + (Vector(PredictEnemyPos) - myHero):normalized()*math.ceil((VayneMenu.autostunn.pushDistance/(VayneMenu.autostunn.accuracy*2))*i)
-							if not BushFound and IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
-								BushFound = true
-								BushPos = CheckWallPos
-							end
-							if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
-								if UnderTurret(ChecksWallPos, true) then
-										if VayneMenu.autostunn.towerstunn then
-											if GetDistance(enemy) <= 650 then
-												_CastESpell(enemy, "AutoStunn Undertower ("..(enemy.charName)..")")
-												if BushFound and VayneMenu.autostunn.trinket then DelayAction(function() CastSpell(ITEM_7, BushPos.x, BushPos.z) end, 0.25)	else BushFound = false end
-												break
+				if GetDistance(enemy) <= 715 and not enemy.dead and enemy.visible then
+					if VIP_USER and VayneMenu.misc.vpred then --If VIP User
+						local CastPosition,  HitChance, PredictEnemyPos = VP:GetLineCastPosition(enemy, 0.25, 65, 715, 2500, myHero, false)  -- Enemy, Delay, Range (scan?), Speed, Source, collosion)
+						for i = 1, VayneMenu.autostunn.accuracy*2  do
+								local CheckWallPos = PredictEnemyPos + (Vector(PredictEnemyPos) - myHero):normalized()*math.ceil((VayneMenu.autostunn.pushDistance/(VayneMenu.autostunn.accuracy*2))*i)
+								if not BushFound and IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
+									BushFound = true
+									BushPos = CheckWallPos
+								end
+								if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
+									if UnderTurret(ChecksWallPos, true) then
+											if VayneMenu.autostunn.towerstunn then
+												if GetDistance(enemy) <= 650 then
+													_CastESpell(enemy, "AutoStunn Undertower ("..(enemy.charName)..")")
+													if BushFound and VayneMenu.autostunn.trinket then DelayAction(function() CastSpell(ITEM_7, BushPos.x, BushPos.z) end, 0.25)	else BushFound = false end
+													break
+												end
 											end
-										end
-								else
-									_CastESpell(enemy, "AutoStunn Not Undertower ("..(enemy.charName)..")")
-									if BushFound and VayneMenu.autostunn.trinket then DelayAction(function() CastSpell(ITEM_7, BushPos.x, BushPos.z) end, 0.25)	else BushFound = false end
-									break
+									else
+										_CastESpell(enemy, "AutoStunn Not Undertower ("..(enemy.charName)..")")
+										if BushFound and VayneMenu.autostunn.trinket then DelayAction(function() CastSpell(ITEM_7, BushPos.x, BushPos.z) end, 0.25)	else BushFound = false end
+										break
+									end
+								end
+							end
+						end
+					else --If FreeUser or not using VPred
+						local CastPosition,  HitChance, PredictEnemyPos = VP:GetLineCastPosition(enemy, 0.25, 65, 715, 2500, myHero, false)  -- Enemy, Delay, Range (scan?), Speed, Source, collosion)
+						for i = 1, VayneMenu.autostunn.accuracy*2  do
+								local CheckWallPos = PredictEnemyPos + (Vector(PredictEnemyPos) - myHero):normalized()*math.ceil((VayneMenu.autostunn.pushDistance/(VayneMenu.autostunn.accuracy*2))*i)
+								if not BushFound and IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
+									BushFound = true
+									BushPos = CheckWallPos
+								end
+								if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
+									if UnderTurret(ChecksWallPos, true) then
+											if VayneMenu.autostunn.towerstunn then
+												if GetDistance(enemy) <= 715 then
+													_CastESpell(enemy, "AutoStunn Undertower ("..(enemy.charName)..")")
+													if BushFound and VayneMenu.autostunn.trinket then DelayAction(function() CastSpell(ITEM_7, BushPos.x, BushPos.z) end, 0.25)	else BushFound = false end
+													break
+												end
+											end
+									else
+										_CastESpell(enemy, "AutoStunn Not Undertower ("..(enemy.charName)..")")
+										if BushFound and VayneMenu.autostunn.trinket then DelayAction(function() CastSpell(ITEM_7, BushPos.x, BushPos.z) end, 0.25)	else BushFound = false end
+										break
+									end
 								end
 							end
 						end
