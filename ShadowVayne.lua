@@ -153,11 +153,9 @@ function _CheckEnemyStunnAble()
 				(VayneMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
 				if GetDistance(enemy, myHero) <= 715 and not enemy.dead and enemy.visible then
 					if VIP_USER and VayneMenu.misc.vpred then
-
 						local CastPosition,  HitChance, enemy = VP:GetLineCastPosition(enemy, 0.25, 65, 1200, 2500, myHero, false)  -- Enemy, Delay, Range (scan?), Speed, Source, collosion)
---~ 						PredictEnemyPos = Vector(PredictEnemyPos)
 					else
---~ 						local PredictEnemyPos = enemy
+						local PredictEnemyPos = enemy
 					end
 					for i = 1, VayneMenu.autostunn.accuracy  do
 						local CheckWallPos = enemy + (Vector(enemy) - myHero):normalized()*(math.ceil(VayneMenu.autostunn.pushDistance/VayneMenu.autostunn.accuracy)*i)
