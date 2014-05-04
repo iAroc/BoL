@@ -203,7 +203,7 @@ function _NonTargetGapCloserAfterCast()
 end
 
 function _PrintScriptMsg(Msg)
-			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
+	print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
 end
 
 function _GetRunningModes()
