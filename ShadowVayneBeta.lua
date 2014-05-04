@@ -140,7 +140,6 @@ function _CastESpell(Target, Reason, Delay)
 	else
 		DelayAction(function() CastSpell(_E, Target) end, Delay)
 	end
-	print("Stunned: "..(Target.charName))
 end
 
 function _CheckEnemyStunnAble()
