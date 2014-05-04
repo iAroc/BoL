@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.54
+	Version: 2.55
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -15,14 +15,17 @@ if myHero.charName ~= "Vayne" then return end
 local informationTable, AAInfoTable, CastedLastE, ScriptStartTick = {}, {}, 0, 0
 local TickCountScriptStart, OnLoadDone, spellExpired, Beta = GetTickCount(), nil, true, false
 
-if VIP_USER then
+if not FileExist(SCRIPT_PATH.."/Common/VPrediction.lua") then
+	print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">VPrediction not found. You need this Lib, else it cant work</font>")
+	return
+else
 	require "VPrediction"
-	VP = VPrediction()
+	VP = VPrediction(true)
 end
 
 function OnLoad()
 	_LoadTables()
-	_CheckSAC()
+	_CheckSACMMASOW()
 	_LoadMenu()
 	AddTickCallback(_GetRunningModes)
 	AddTickCallback(_CheckEnemyStunnAble)
@@ -208,11 +211,16 @@ function _PrintScriptMsg(Msg)
 end
 
 function _GetRunningModes()
-	if Keys ~= nil then
+	if SACLoaded then
 		ShadowVayneAutoCarry = Keys.AutoCarry
 		ShadowVayneMixedMode = Keys.MixedMode
 		ShadowVayneLaneClear = Keys.LastHit
 		ShadowVayneLastHit = Keys.LaneClear
+	elseif SOWLoaded then
+		ShadowVayneAutoCarry = VayneMenu.sow.Mode0
+		ShadowVayneMixedMode = VayneMenu.sow.Mode1
+		ShadowVayneLaneClear = VayneMenu.sow.Mode2
+		ShadowVayneLastHit = VayneMenu.sow.Mode3
 	else
 		ShadowVayneAutoCarry = VayneMenu.keysetting.autocarry
 		ShadowVayneMixedMode = VayneMenu.keysetting.mixedmode
@@ -231,8 +239,24 @@ function _LoadMenu()
 	VayneMenu:addSubMenu("Draw Settings", "draw")
 	VayneMenu:addSubMenu("AutoLevelSpells Settings", "autolevel")
 	VayneMenu:addSubMenu("Misc Settings", "misc")
+	VayneMenu:addSubMenu("AutoUpdate Settings", "autoup")
+	if SOWLoaded then
+		require "SOW"
+	  	VayneMenu:addSubMenu("Simple Orbwalker", "sow")
+		if FileExist(SCRIPT_PATH.."/Common/SourceLib.lua") then
+			require "SourceLib"
+			VayneMenu:addSubMenu("Target selector", "STS")
+			STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
+			SOWi = SOW(VP, STS)
+			SOWi:LoadToMenu(VayneMenu.sow)
+			STS:AddToMenu(VayneMenu.STS)
+		else
+			SOWi = SOW(VP)
+			SOWi:LoadToMenu(VayneMenu.sow)
+		end
+	end
 
-	if not SACLoaded and not RevampedLoaded then
+	if not SACLoaded and not RevampedLoaded and not SOWLoaded then
 		VayneMenu.keysetting:addParam("autocarry","Auto Carry Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "V" ))
 		VayneMenu.keysetting:addParam("mixedmode","Mixed Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "C" ))
 		VayneMenu.keysetting:addParam("laneclear","Lane Clear Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "M" ))
@@ -246,14 +270,22 @@ function _LoadMenu()
 		VayneMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
 		VayneMenu.keysetting:addParam("nil","Sida's AutoCarry Reborn found", SCRIPT_PARAM_INFO, "")
 		VayneMenu.keysetting:addParam("nil","It will use the Keysettings from there", SCRIPT_PARAM_INFO, "")
-		DelayAction(function() print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">SAC:Reborn found. Using the Keysettings from there</font>") end, 1)
+		DelayAction(function()  _PrintScriptMsg("SAC:Reborn found. Using the Keysettings from there") end, 1)
 	end
 
 	if RevampedLoaded then
 		VayneMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
 		VayneMenu.keysetting:addParam("nil","Sida's AutoCarry Revamped found", SCRIPT_PARAM_INFO, "")
 		VayneMenu.keysetting:addParam("nil","It will use the Keysettings from there", SCRIPT_PARAM_INFO, "")
-		DelayAction(function() print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">SAC:Revamped found. Using the Keysettings from there</font>") end, 1)
+		DelayAction(function()  _PrintScriptMsg("SAC:Revamped found. Using the Keysettings from there") end, 1)
+	end
+
+	if SOWLoaded then
+		VayneMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
+		VayneMenu.keysetting:addParam("nil","Simple Orbwalker found.", SCRIPT_PARAM_INFO, "")
+		VayneMenu.keysetting:addParam("nil","It will use the Keysettings from there", SCRIPT_PARAM_INFO, "")
+		DelayAction(function() _PrintScriptMsg("SOW found. It will use the Keysettings from there") end, 1)
+		if not FileExist(SCRIPT_PATH.."/Common/SourceLib.lua") then DelayAction(function() _PrintScriptMsg("SourceLib not found. Please download SourceLib from the Forum") end, 1) end
 	end
 
 	for i, enemy in ipairs(GetEnemyHeroes()) do
@@ -330,20 +362,51 @@ function _LoadMenu()
 		VayneMenu.misc:addParam("epermashow", "PermaShow \"E on Next BasicAttack\"", SCRIPT_PARAM_ONOFF, true)
 --~ 		VayneMenu.misc:addParam("debug", "Debug Print", SCRIPT_PARAM_ONOFF, false)
 --~ 		VayneMenu.misc:addParam("KS3rdW", "Use E for 3rd Ring Proc Kill", SCRIPT_PARAM_ONOFF, true)
+		if SOWLoaded then
+			VayneMenu.misc:addParam("carrypermashow", "PermaShow SOW: \"Carry Me!\"", SCRIPT_PARAM_ONOFF, true)
+			VayneMenu.misc:addParam("mixedpermashow", "PermaShow SOW: \"Mixed Mode!\"", SCRIPT_PARAM_ONOFF, true)
+			VayneMenu.misc:addParam("laneclearpermashow", "PermaShow SOW: \"Laneclear!\"", SCRIPT_PARAM_ONOFF, true)
+			VayneMenu.misc:addParam("lasthitpermashow", "PermaShow SOW: \"Last hit!\"", SCRIPT_PARAM_ONOFF, true)
+		end
+
+
+--~ 	AutoUpdate Menu
+		VayneMenu.autoup:addParam("autoupcheck", "Check for Updates", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.autoup:addParam("autoupdown", "Download Available Updates", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.autoup:addParam("fap", "", SCRIPT_PARAM_INFO, "","" )
+		VayneMenu.autoup:addParam("fap", "The first will check if download is available", SCRIPT_PARAM_INFO, "","" )
+		VayneMenu.autoup:addParam("fap", "The second will download it", SCRIPT_PARAM_INFO, "","" )
 
 --~ 	Permashow
-		if VayneMenu.misc.epermashow then
-			VayneMenu.keysetting:permaShow("basiccondemn")
+		if VayneMenu.misc.epermashow then VayneMenu.keysetting:permaShow("basiccondemn") end
+		if SOWLoaded then
+			if VayneMenu.misc.carrypermashow then VayneMenu.sow:permaShow("Mode0") end
+			if VayneMenu.misc.mixedpermashow then VayneMenu.sow:permaShow("Mode1") end
+			if VayneMenu.misc.laneclearpermashow then VayneMenu.sow:permaShow("Mode2") end
+			if VayneMenu.misc.lasthitpermashow then VayneMenu.sow:permaShow("Mode3") end
 		end
 end
 
-function _CheckSAC()
+function _CheckSACMMASOW()
 	if AutoCarry ~= nil then
 		if AutoCarry.Helper ~= nil then
 			Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
 			SACLoaded = true
 		else
 			RevampedLoaded = true
+		end
+	end
+
+	if _G.MMA_Loaded then
+		MMALoaded = true
+	end
+
+	if not MMALoaded and not SACLoaded and not RevampedLoaded then
+		if not FileExist(SCRIPT_PATH.."/Common/SOW.lua") then
+			DelayAction(function() _PrintScriptMsg("No Orbwalker found. It will use the raw Keysettings") end, 1)
+			DelayAction(function() _PrintScriptMsg("Download SOW from the Forum") end, 1)
+		else
+			SOWLoaded = true
 		end
 	end
 end
@@ -359,19 +422,29 @@ function _GetUpdate()
 			OnLoadDone = true
 			SHADOWVAYNE_SCRIPT_URL = "http://raw.github.com/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,10000))
 			SHADOWVAYNE_PATH = SCRIPT_PATH..(GetCurrentEnv().FILE_NAME)
-			ServerVersion = string.sub(GetWebResult("raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,10000))), 51, 54)
+			ServerWebResult = GetWebResult("raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,10000)))
+			if ServerWebResult ~= nil then
+				ServerVersion = string.sub(ServerWebResult, 51, 54)
+			else
+				ServerVersion = nil
+			end
 		end
-		if GetTickCount() > (ScriptStartTick + 3000) then
+		if GetTickCount() > (ScriptStartTick + 3000) and VayneMenu.autoup.autoupcheck then
 			if ServerVersion ~= nil then
 				if tonumber(LocalVersion) < tonumber(ServerVersion) then
-					_PrintScriptMsg("New Version ("..(ServerVersion)..") available, downloading...")
-					DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () _PrintScriptMsg("Updated to Version "..(ServerVersion)..". Please reload with F9") end)
+					if VayneMenu.autoup.autoupdown then
+						_PrintScriptMsg("New Version ("..(ServerVersion)..") available, downloading...")
+						DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function () _PrintScriptMsg("Updated to Version "..(ServerVersion)..". Please reload with F9") end)
+					else
+						_PrintScriptMsg("New Version is available. Turn on AutoUpdate or download manually")
+					end
 				else
 					_PrintScriptMsg("No Updates available")
 				end
 				AlreadyChecked = true
 			else
 				ScriptStartTick = ScriptStartTick + 3000
+				ServerVersion = string.sub(GetWebResult("raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,10000))), 51, 54)
 			end
 		end
 	end
