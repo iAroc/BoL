@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.53
+	Version: 2.54
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -140,6 +140,7 @@ function _CastESpell(Target, Reason, Delay)
 	else
 		DelayAction(function() CastSpell(_E, Target) end, Delay)
 	end
+--~ 	print("Stunned: "..(Target.charName))
 end
 
 function _CheckEnemyStunnAble()
@@ -152,12 +153,14 @@ function _CheckEnemyStunnAble()
 				(VayneMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
 				if GetDistance(enemy, myHero) <= 715 and not enemy.dead and enemy.visible then
 					if VIP_USER and VayneMenu.misc.vpred then
-						local CastPosition,  HitChance, PredictEnemyPos = VP:GetLineCastPosition(enemy, 0.25, 65, 715, 2500, myHero, false)  -- Enemy, Delay, Range (scan?), Speed, Source, collosion)
+
+						local CastPosition,  HitChance, enemy = VP:GetLineCastPosition(enemy, 0.25, 65, 1200, 2500, myHero, false)  -- Enemy, Delay, Range (scan?), Speed, Source, collosion)
+--~ 						PredictEnemyPos = Vector(PredictEnemyPos)
 					else
-						local PredictEnemyPos = enemy
+--~ 						local PredictEnemyPos = enemy
 					end
 					for i = 1, VayneMenu.autostunn.accuracy  do
-						local CheckWallPos = PredictEnemyPos + (Vector(PredictEnemyPos) - myHero):normalized()*(math.ceil(VayneMenu.autostunn.pushDistance/VayneMenu.autostunn.accuracy)*i)
+						local CheckWallPos = enemy + (Vector(enemy) - myHero):normalized()*(math.ceil(VayneMenu.autostunn.pushDistance/VayneMenu.autostunn.accuracy)*i)
 						if not BushFound and IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
 							BushFound = true
 							BushPos = CheckWallPos
