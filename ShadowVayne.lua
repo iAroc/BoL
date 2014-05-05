@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.55
+	Version: 2.56
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -14,45 +14,55 @@
 if myHero.charName ~= "Vayne" then return end
 local informationTable, AAInfoTable, CastedLastE, ScriptStartTick = {}, {}, 0, 0
 local TickCountScriptStart, OnLoadDone, spellExpired, Beta = GetTickCount(), nil, true, false
+local ScriptOnLoadDone = false
+local LastPrioUpdate = 0
 
-if not FileExist(SCRIPT_PATH.."/Common/VPrediction.lua") then
-	print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">VPrediction not found. You need this Lib, else it cant work</font>")
-	return
-else
-	require "VPrediction"
-	VP = VPrediction(true)
-end
-
-function OnLoad()
-	_LoadTables()
-	_CheckSACMMASOW()
-	_LoadMenu()
-	AddTickCallback(_GetRunningModes)
-	AddTickCallback(_CheckEnemyStunnAble)
-	AddTickCallback(_GetUpdate)
-	AddTickCallback(_NonTargetGapCloserAfterCast)
-	autoLevelSetFunction(_AutoLevelSpell)
-	autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+function OnTick()
+	if not ScriptOnLoadDone then
+		DownloadLib("TheRealSource/public/raw/master/common/SourceLib.lua", "SourceLib")
+		DownloadLib("honda7/BoL/raw/master/Common/VPrediction.lua", "VPrediction")
+		DownloadLib("honda7/BoL/raw/master/Common/SOW.lua", "SOW")
+		if FileExist(SCRIPT_PATH.."/Common/SOW.lua") and FileExist(SCRIPT_PATH.."/Common/VPrediction.lua") and FileExist(SCRIPT_PATH.."/Common/SourceLib.lua") then
+			if HadToDownload then _PrintScriptMsg("All Librarys are successfully downloaded") end
+			require "SourceLib"
+			require "VPrediction"
+			require "SOW"
+			VP = VPrediction(true)
+			_LoadTables()
+			_CheckSACMMASOW()
+			_LoadMenu()
+			AddTickCallback(_GetRunningModes)
+			AddTickCallback(_CheckEnemyStunnAble)
+			AddTickCallback(_GetUpdate)
+			AddTickCallback(_NonTargetGapCloserAfterCast)
+			AddTickCallback(_SetNewPrioOrder)
+			autoLevelSetFunction(_AutoLevelSpell)
+			autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+			ScriptOnLoadDone = true
+		end
+	end
 end
 
 function OnDraw()
-	if VayneMenu.draw.DrawNeededAutohits then
-		for i, enemy in ipairs(GetEnemyHeroes()) do
-			DrawText(tostring(_GetNeededAutoHits(enemy)),16,GetUnitHPBarPos(enemy).x,GetUnitHPBarPos(enemy).y,0xFF80FF00)
+	if ScriptOnLoadDone then
+		if VayneMenu.draw.DrawNeededAutohits then
+			for i, enemy in ipairs(GetEnemyHeroes()) do
+				DrawText(tostring(_GetNeededAutoHits(enemy)),16,GetUnitHPBarPos(enemy).x,GetUnitHPBarPos(enemy).y,0xFF80FF00)
+			end
 		end
-	end
 
-	if VayneMenu.draw.DrawERange then
-		if VayneMenu.draw.DrawEColor == 1 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x80FFFF)
-		elseif VayneMenu.draw.DrawEColor == 2 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x0080FF)
-		elseif VayneMenu.draw.DrawEColor == 3 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x5555FF)
-		elseif VayneMenu.draw.DrawEColor == 4 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0xFF2D2D)
-		elseif VayneMenu.draw.DrawEColor == 5 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x8B42B3)
+		if VayneMenu.draw.DrawERange then
+			if VayneMenu.draw.DrawEColor == 1 then
+				DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x80FFFF)
+			elseif VayneMenu.draw.DrawEColor == 2 then
+				DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x0080FF)
+			elseif VayneMenu.draw.DrawEColor == 3 then
+				DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x5555FF)
+			elseif VayneMenu.draw.DrawEColor == 4 then
+				DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0xFF2D2D)
+			elseif VayneMenu.draw.DrawEColor == 5 then
+				DrawCircle(myHero.x, myHero.y, myHero.z, 715, 0x8B42B3)
+			end
 		end
 	end
 end
@@ -120,21 +130,79 @@ function _AutoLevelSpell()
 end
 
 function _GetNeededAutoHits(enemy)
-	local PredictHP = enemy.health
-	local PrintHP = ""
-	for i = 1,50,1 do
-		ThisAA = i
-		DMGThisAA = math.floor((math.floor(myHero.totalDamage)) * 100 / (100 + enemy.armor))
-		BladeDMG = math.floor(math.floor(PredictHP)*5 / (100 + enemy.armor))
-		TargetTrueDmg = math.floor(((((enemy.maxHealth)/100)*(VayneDamage[tostring(myHero:GetSpellData(_W).level)].MaxHPDmg))+(VayneDamage[tostring(myHero:GetSpellData(_W).level)].BaseDMG))/3)
-		MyDMG = DMGThisAA + BladeDMG + TargetTrueDmg
-		PredictHP = PredictHP - MyDMG
-		if PredictHP <= 0 then
-			AutoHitsNeeded = i
-			break
+		local PredictHP = math.ceil(enemy.health)
+		local ThisAA = 0
+		local BladeSlot = GetInventorySlotItem(3153)
+		if myHero:GetSpellData(_W).level > 0 then TargetTrueDmg = math.floor((((enemy.maxHealth/100)*((3+myHero:GetSpellData(_W).level)/100))+(10 +(myHero:GetSpellData(_W).level)*10))/3) else	TargetTrueDmg = 0 end
+		while PredictHP > 0 do
+			ThisAA = ThisAA + 1
+			DMGThisAA = math.floor((math.floor(myHero.totalDamage)) * 100 / (100 + enemy.armor))
+			if BladeSlot ~= nil then BladeDMG = math.floor(math.floor(PredictHP)*5 / (100 + enemy.armor)) else BladeDMG = 0 end
+			MyDMG = DMGThisAA + BladeDMG + TargetTrueDmg
+			PredictHP = PredictHP - MyDMG
+		end
+
+		if ThisAA ~= math.floor(ThisAA/3)*3 then
+			local PredictHP = math.ceil(enemy.health)
+			for i = 1,math.floor(ThisAA/3)*3,1 do
+				DMGThisAA = math.floor((math.floor(myHero.totalDamage)) * 100 / (100 + enemy.armor))
+				if BladeSlot ~= nil then BladeDMG = math.floor(math.floor(PredictHP)*5 / (100 + enemy.armor)) else BladeDMG = 0 end
+				MyDMG = DMGThisAA + BladeDMG + TargetTrueDmg
+				PredictHP = PredictHP - MyDMG
+			end
+
+			for i = 1,2,1 do
+				DMGThisAA = math.floor((math.floor(myHero.totalDamage)) * 100 / (100 + enemy.armor))
+				if BladeSlot ~= nil then BladeDMG = math.floor(math.floor(PredictHP)*5 / (100 + enemy.armor)) else BladeDMG = 0 end
+				MyDMG = DMGThisAA + BladeDMG
+				PredictHP = PredictHP - MyDMG
+			end
+
+			if PredictHP > 0 then
+				ThisAA = (math.ceil(ThisAA/3)*3)
+			end
+		end
+	return ThisAA
+end
+
+function _SetNewPrioOrder()
+	if LastPrioUpdate + 100 < GetTickCount() and SOWLoaded then
+		LastPrioUpdate = GetTickCount()
+		local PrioOrder = 1
+		local AATable = {}
+		for i, enemy in ipairs(GetEnemyHeroes()) do
+			AATable[(_GetNeededAutoHits(enemy))] = enemy.hash
+		end
+		for NeedAA, ChampHash in SortAATable(AATable) do
+			for i, enemy in ipairs(GetEnemyHeroes()) do
+				if enemy.hash == ChampHash then
+					if enemy.dead then
+						VayneMenu.STS.STS[ChampHash] = 5
+					else
+						VayneMenu.STS.STS[ChampHash] = PrioOrder
+					end
+					PrioOrder = PrioOrder + 1
+					break
+				end
+			end
 		end
 	end
-	return AutoHitsNeeded
+end
+
+function SortAATable(t, f)
+	local a = {}
+		for n in pairs(t) do table.insert(a, n) end
+			table.sort(a, f)
+			local i = 0
+			local iter = function ()
+			i = i + 1
+			if a[i] == nil then
+				return nil
+			else
+				return a[i], t[a[i]]
+			end
+		end
+    return iter
 end
 
 function _CastESpell(Target, Reason, Delay)
@@ -444,8 +512,19 @@ function _GetUpdate()
 				AlreadyChecked = true
 			else
 				ScriptStartTick = ScriptStartTick + 3000
-				ServerVersion = string.sub(GetWebResult("raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,10000))), 51, 54)
+				ServerWebResult = GetWebResult("raw.github.com", "/Superx321/BoL/master/"..SCRIPT_NAME..".lua?rand="..tostring(math.random(1,10000)))
+				if ServerWebResult ~= nil then ServerVersion = string.sub(ServerWebResult, 51, 54) end
 			end
+		end
+	end
+end
+
+function DownloadLib(FilePath, LibName)
+	if not FileExist(SCRIPT_PATH.."Common/"..LibName..".lua") then
+		if not DownloadStarted then
+			DownloadStarted = true
+			_PrintScriptMsg("Downloading Library ("..LibName.."), please wait until its finished")
+			DownloadFile("http://github.com/"..FilePath.."?rand="..tostring(math.random(1,10000)), SCRIPT_PATH.."Common/"..LibName..".lua",  function() DownloadStarted, HadToDownload = false, true end)
 		end
 	end
 end
@@ -514,13 +593,11 @@ function _LoadTables()
                 ["EWQ"]	= {3,2,1,3,3,4,3,2,3,2,4,2,2,1,1,4,1,1}
 	}
 
-	VayneDamage = {
-				["0"] = {BaseDMG = 00, MaxHPDmg = 0},
-				["1"] = {BaseDMG = 20, MaxHPDmg = 4},
-				["2"] = {BaseDMG = 30, MaxHPDmg = 5},
-				["3"] = {BaseDMG = 40, MaxHPDmg = 6},
-				["4"] = {BaseDMG = 50, MaxHPDmg = 7},
-				["5"] = {BaseDMG = 60, MaxHPDmg = 8},
-				["Q"] = {30, 35, 40, 45, 50}
+	EnemyNeededAutoHits = {
+				[1] = {PrioOrder = 0, NeededAutoHits = 0},
+				[2] = {PrioOrder = 0, NeededAutoHits = 0},
+				[3] = {PrioOrder = 0, NeededAutoHits = 0},
+				[4] = {PrioOrder = 0, NeededAutoHits = 0},
+				[5] = {PrioOrder = 0, NeededAutoHits = 0},
 	}
 end
