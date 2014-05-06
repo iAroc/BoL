@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.57
+	Version: 2.58
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -71,7 +71,7 @@ function OnDraw()
 end
 
 function OnProcessSpell(unit, spell)
-	if not myHero.dead then
+	if not myHero.dead and ScriptOnLoadDone then
 		-- AntiGapCloser Targeted Spells
 		if isAGapcloserUnitTarget[unit.charName] and spell.name == isAGapcloserUnitTarget[unit.charName].spell and unit.team ~= myHero.team then
 			if spell.target ~= nil and spell.target.hash == myHero.hash then
@@ -213,7 +213,7 @@ function _SortAATable(t, f)
 end
 
 function _CastESpell(Target, Reason, Delay)
-	if VIP_USER and VayneMenu.misc.EPackets then
+	if VIP_USER and VayneMenu.vip.EPackets then
 		DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = Target.networkID }):send(true) end, Delay)
 	else
 		DelayAction(function() CastSpell(_E, Target) end, Delay)
@@ -230,7 +230,7 @@ function _CheckEnemyStunnAble()
 				(VayneMenu.targets[enemy.charName][(enemy.charName).."LastHit"] and ShadowVayneLastHit) or
 				(VayneMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
 				if GetDistance(enemy, myHero) <= 715 and not enemy.dead and enemy.visible then
-					if VIP_USER and VayneMenu.misc.vpred then
+					if VIP_USER and VayneMenu.vip.vpred then
 						local CastPosition,  HitChance, enemy = VP:GetLineCastPosition(enemy, 0.25, 65, 1200, 2500, myHero, false)  -- Enemy, Delay, Range (scan?), Speed, Source, collosion)
 					else
 						local PredictEnemyPos = enemy
