@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.58
+	Version: 2.59
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -272,7 +272,7 @@ function _NonTargetGapCloserAfterCast()
 			local heroPosition = Point(myHero.x, myHero.z)
 			local SkillShot = LineSegment(Point(spellStartPosition.x, spellStartPosition.y), Point(spellEndPosition.x, spellEndPosition.y))
 			if heroPosition:distance(SkillShot) <= 250 then
-				if VayneMenu.misc.EPackets then _CastESpell(informationTable.spellSource, "Gapcloser NonTargeted ("..(informationTable.spellName)..")") end
+				if VayneMenu.vip.EPackets then _CastESpell(informationTable.spellSource, "Gapcloser NonTargeted ("..(informationTable.spellName)..")") end
 			end
 		else
 			spellExpired = true
@@ -660,13 +660,5 @@ function _LoadTables()
                 ["WEQ"]	= {2,3,1,2,2,4,2,3,2,3,4,3,3,1,1,4,1,1},
                 ["EQW"]	= {3,1,2,3,3,4,3,1,3,1,4,1,1,2,2,4,2,2},
                 ["EWQ"]	= {3,2,1,3,3,4,3,2,3,2,4,2,2,1,1,4,1,1}
-	}
-
-	EnemyNeededAutoHits = {
-				[1] = {PrioOrder = 0, NeededAutoHits = 0},
-				[2] = {PrioOrder = 0, NeededAutoHits = 0},
-				[3] = {PrioOrder = 0, NeededAutoHits = 0},
-				[4] = {PrioOrder = 0, NeededAutoHits = 0},
-				[5] = {PrioOrder = 0, NeededAutoHits = 0},
 	}
 end
