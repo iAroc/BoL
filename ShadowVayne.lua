@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.56
+	Version: 2.57
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -14,14 +14,14 @@
 if myHero.charName ~= "Vayne" then return end
 local informationTable, AAInfoTable, CastedLastE, ScriptStartTick = {}, {}, 0, 0
 local TickCountScriptStart, OnLoadDone, spellExpired, Beta = GetTickCount(), nil, true, false
-local ScriptOnLoadDone = false
+local ScriptOnLoadDone, LastAttackedEnemy = false, nil
 local LastPrioUpdate = 0
 
 function OnTick()
 	if not ScriptOnLoadDone then
-		DownloadLib("TheRealSource/public/raw/master/common/SourceLib.lua", "SourceLib")
-		DownloadLib("honda7/BoL/raw/master/Common/VPrediction.lua", "VPrediction")
-		DownloadLib("honda7/BoL/raw/master/Common/SOW.lua", "SOW")
+		_DownloadLib("TheRealSource/public/raw/master/common/SourceLib.lua", "SourceLib")
+		_DownloadLib("honda7/BoL/raw/master/Common/VPrediction.lua", "VPrediction")
+		_DownloadLib("honda7/BoL/raw/master/Common/SOW.lua", "SOW")
 		if FileExist(SCRIPT_PATH.."/Common/SOW.lua") and FileExist(SCRIPT_PATH.."/Common/VPrediction.lua") and FileExist(SCRIPT_PATH.."/Common/SourceLib.lua") then
 			if HadToDownload then _PrintScriptMsg("All Librarys are successfully downloaded") end
 			require "SourceLib"
@@ -36,6 +36,9 @@ function OnTick()
 			AddTickCallback(_GetUpdate)
 			AddTickCallback(_NonTargetGapCloserAfterCast)
 			AddTickCallback(_SetNewPrioOrder)
+			AddTickCallback(_UseBotRK)
+			AddTickCallback(_ClickThreshLantern)
+			AddCreateObjCallback(_ThreshLanternObj)
 			autoLevelSetFunction(_AutoLevelSpell)
 			autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 			ScriptOnLoadDone = true
@@ -90,10 +93,14 @@ function OnProcessSpell(unit, spell)
 		end
 
 		if unit.isMe then
-			if spell.name:find("Attack") and VayneMenu.keysetting.basiccondemn and spell.target.type == myHero.type then -- Auto-E after AA
-				_CastESpell(spell.target, "E After Autohit ("..(spell.target.charName)..")", (spell.windUpTime - GetLatency() / 2000))
-				VayneMenu.keysetting.basiccondemn = false
+			if spell.name:find("Attack") then
+				LastAttackedEnemy = spell.target
+				if VayneMenu.keysetting.basiccondemn and spell.target.type == myHero.type then -- Auto-E after AA
+					_CastESpell(spell.target, "E After Autohit ("..(spell.target.charName)..")", (spell.windUpTime - GetLatency() / 2000))
+					VayneMenu.keysetting.basiccondemn = false
+				end
 			end
+
 
 			if spell.name:find("CondemnMissile") then -- E detected, cooldown for next E 500 ticks
 				CastedLastE = GetTickCount() + 500
@@ -173,7 +180,7 @@ function _SetNewPrioOrder()
 		for i, enemy in ipairs(GetEnemyHeroes()) do
 			AATable[(_GetNeededAutoHits(enemy))] = enemy.hash
 		end
-		for NeedAA, ChampHash in SortAATable(AATable) do
+		for NeedAA, ChampHash in _SortAATable(AATable) do
 			for i, enemy in ipairs(GetEnemyHeroes()) do
 				if enemy.hash == ChampHash then
 					if enemy.dead then
@@ -189,7 +196,7 @@ function _SetNewPrioOrder()
 	end
 end
 
-function SortAATable(t, f)
+function _SortAATable(t, f)
 	local a = {}
 		for n in pairs(t) do table.insert(a, n) end
 			table.sort(a, f)
@@ -289,6 +296,11 @@ function _GetRunningModes()
 		ShadowVayneMixedMode = VayneMenu.sow.Mode1
 		ShadowVayneLaneClear = VayneMenu.sow.Mode2
 		ShadowVayneLastHit = VayneMenu.sow.Mode3
+	elseif RevampedLoaded then
+		ShadowVayneAutoCarry = AutoCarry.MainMenu.AutoCarry
+		ShadowVayneMixedMode = AutoCarry.MainMenu.MixedMode
+		ShadowVayneLaneClear = AutoCarry.MainMenu.LaneClear
+		ShadowVayneLastHit = AutoCarry.MainMenu.LastHit
 	else
 		ShadowVayneAutoCarry = VayneMenu.keysetting.autocarry
 		ShadowVayneMixedMode = VayneMenu.keysetting.mixedmode
@@ -299,21 +311,27 @@ end
 
 function _LoadMenu()
 	VayneMenu = scriptConfig("Shadow Vayne", "ShadowVayne")
-	VayneMenu:addSubMenu("Key Settings", "keysetting")
-	VayneMenu:addSubMenu("AntiGapCloser Settings", "anticapcloser")
-	VayneMenu:addSubMenu("AutoStunn Settings", "autostunn")
-	VayneMenu:addSubMenu("AutoStunn Targets", "targets")
-	VayneMenu:addSubMenu("Interrupt Settings", "interrupt")
-	VayneMenu:addSubMenu("Draw Settings", "draw")
-	VayneMenu:addSubMenu("AutoLevelSpells Settings", "autolevel")
-	VayneMenu:addSubMenu("Misc Settings", "misc")
-	VayneMenu:addSubMenu("AutoUpdate Settings", "autoup")
+	VayneMenu:addSubMenu("[Condemn]: AntiGapCloser Settings", "anticapcloser")
+	VayneMenu:addSubMenu("[Condemn]: AutoStunn Settings", "autostunn")
+	VayneMenu:addSubMenu("[Condemn]: AutoStunn Targets", "targets")
+	VayneMenu:addSubMenu("[Condemn]: Interrupt Settings", "interrupt")
+	VayneMenu:addSubMenu("[Misc]: Key Settings", "keysetting")
+	VayneMenu:addSubMenu("[Misc]: AutoLevelSpells Settings", "autolevel")
+	VayneMenu:addSubMenu("[Misc]: VIP Settings", "vip")
+	VayneMenu:addSubMenu("[Misc]: PermaShow Settings", "permashowsettings")
+	VayneMenu:addSubMenu("[Misc]: AutoUpdate Settings", "autoup")
+	VayneMenu:addSubMenu("[Misc]: Draw Settings", "draw")
+	VayneMenu:addSubMenu("[BotRK]: Settings", "botrksettings")
+	VayneMenu:addSubMenu("[QSS]: Settings", "qqs")
+
+	VayneMenu.qqs:addParam("nil","QSS/Cleanse is not Supported yet", SCRIPT_PARAM_INFO, "")
+
 	if SOWLoaded then
 		require "SOW"
-	  	VayneMenu:addSubMenu("Simple Orbwalker", "sow")
+	  	VayneMenu:addSubMenu("[Sow]: Orbwalker Settings", "sow")
 		if FileExist(SCRIPT_PATH.."/Common/SourceLib.lua") then
 			require "SourceLib"
-			VayneMenu:addSubMenu("Target selector", "STS")
+			VayneMenu:addSubMenu("[Sow]: Target selector", "STS")
 			STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
 			SOWi = SOW(VP, STS)
 			SOWi:LoadToMenu(VayneMenu.sow)
@@ -332,6 +350,7 @@ function _LoadMenu()
 	end
 
 	VayneMenu.keysetting:addParam("basiccondemn","Condemn on next BasicAttack:", SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte( "E" ))
+	VayneMenu.keysetting:addParam("threshlantern","Grab the Thresh lantern: ", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "T" ))
 	VayneMenu.keysetting.basiccondemn = false
 
 	if SACLoaded then
@@ -424,19 +443,20 @@ function _LoadMenu()
 		VayneMenu.autolevel:addParam("fap", "You can Click on the \"Q-W-E\"", SCRIPT_PARAM_INFO, "","" )
 		VayneMenu.autolevel:addParam("fap", "to change the Autospellorder", SCRIPT_PARAM_INFO, "","" )
 
---~ 	Misc Menu
-		VayneMenu.misc:addParam("EPackets", "Use Packets for E Cast (VIP Only)", SCRIPT_PARAM_ONOFF, true)
-		VayneMenu.misc:addParam("vpred", "Use VPrediction (VIP Only)", SCRIPT_PARAM_ONOFF, true)
-		VayneMenu.misc:addParam("epermashow", "PermaShow \"E on Next BasicAttack\"", SCRIPT_PARAM_ONOFF, true)
+--~ 	Vip Menu
+		VayneMenu.vip:addParam("EPackets", "Use Packets for E Cast (VIP Only)", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.vip:addParam("vpred", "Use VPrediction (VIP Only)", SCRIPT_PARAM_ONOFF, true)
 --~ 		VayneMenu.misc:addParam("debug", "Debug Print", SCRIPT_PARAM_ONOFF, false)
 --~ 		VayneMenu.misc:addParam("KS3rdW", "Use E for 3rd Ring Proc Kill", SCRIPT_PARAM_ONOFF, true)
-		if SOWLoaded then
-			VayneMenu.misc:addParam("carrypermashow", "PermaShow SOW: \"Carry Me!\"", SCRIPT_PARAM_ONOFF, true)
-			VayneMenu.misc:addParam("mixedpermashow", "PermaShow SOW: \"Mixed Mode!\"", SCRIPT_PARAM_ONOFF, true)
-			VayneMenu.misc:addParam("laneclearpermashow", "PermaShow SOW: \"Laneclear!\"", SCRIPT_PARAM_ONOFF, true)
-			VayneMenu.misc:addParam("lasthitpermashow", "PermaShow SOW: \"Last hit!\"", SCRIPT_PARAM_ONOFF, true)
-		end
 
+--~ 	PermaShow Menu
+		VayneMenu.permashowsettings:addParam("epermashow", "PermaShow \"E on Next BasicAttack\"", SCRIPT_PARAM_ONOFF, true)
+		if SOWLoaded then
+			VayneMenu.permashowsettings:addParam("carrypermashow", "PermaShow SOW: \"Carry Me!\"", SCRIPT_PARAM_ONOFF, true)
+			VayneMenu.permashowsettings:addParam("mixedpermashow", "PermaShow SOW: \"Mixed Mode!\"", SCRIPT_PARAM_ONOFF, true)
+			VayneMenu.permashowsettings:addParam("laneclearpermashow", "PermaShow SOW: \"Laneclear!\"", SCRIPT_PARAM_ONOFF, true)
+			VayneMenu.permashowsettings:addParam("lasthitpermashow", "PermaShow SOW: \"Last hit!\"", SCRIPT_PARAM_ONOFF, true)
+		end
 
 --~ 	AutoUpdate Menu
 		VayneMenu.autoup:addParam("autoupcheck", "Check for Updates", SCRIPT_PARAM_ONOFF, true)
@@ -446,13 +466,28 @@ function _LoadMenu()
 		VayneMenu.autoup:addParam("fap", "The second will download it", SCRIPT_PARAM_INFO, "","" )
 
 --~ 	Permashow
-		if VayneMenu.misc.epermashow then VayneMenu.keysetting:permaShow("basiccondemn") end
+		if VayneMenu.permashowsettings.epermashow then VayneMenu.keysetting:permaShow("basiccondemn") end
 		if SOWLoaded then
-			if VayneMenu.misc.carrypermashow then VayneMenu.sow:permaShow("Mode0") end
-			if VayneMenu.misc.mixedpermashow then VayneMenu.sow:permaShow("Mode1") end
-			if VayneMenu.misc.laneclearpermashow then VayneMenu.sow:permaShow("Mode2") end
-			if VayneMenu.misc.lasthitpermashow then VayneMenu.sow:permaShow("Mode3") end
+			if VayneMenu.permashowsettings.carrypermashow then VayneMenu.sow:permaShow("Mode0") end
+			if VayneMenu.permashowsettings.mixedpermashow then VayneMenu.sow:permaShow("Mode1") end
+			if VayneMenu.permashowsettings.laneclearpermashow then VayneMenu.sow:permaShow("Mode2") end
+			if VayneMenu.permashowsettings.lasthitpermashow then VayneMenu.sow:permaShow("Mode3") end
 		end
+
+--~ 	BotRK Settings Menu
+		VayneMenu.botrksettings:addParam("botrkautocarry", "Use BotRK in AutoCarry", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.botrksettings:addParam("botrkmixedmode", "Use BotRK in MixedMode", SCRIPT_PARAM_ONOFF, false)
+		VayneMenu.botrksettings:addParam("botrklaneclear", "Use BotRK in LaneClear", SCRIPT_PARAM_ONOFF, false)
+		VayneMenu.botrksettings:addParam("botrklasthit", "Use BotRK in LastHit", SCRIPT_PARAM_ONOFF, false)
+		VayneMenu.botrksettings:addParam("botrkalways", "Use BotRK always", SCRIPT_PARAM_ONOFF, false)
+		VayneMenu.botrksettings:addParam("botrkmaxheal", "Max Own Health Percent", SCRIPT_PARAM_SLICE, 50, 1, 100, 0)
+		VayneMenu.botrksettings:addParam("botrkminheal", "Min Enemy Health Percent", SCRIPT_PARAM_SLICE, 20, 1, 100, 0)
+--~ 		VayneMenu.botrksettings:addParam("fap", "", SCRIPT_PARAM_INFO, "","" )
+--~ 		VayneMenu.botrksettings:addParam("botrkautocarryks", "Use BotRK to KS in AutoCarry", SCRIPT_PARAM_ONOFF, true)
+--~ 		VayneMenu.botrksettings:addParam("botrkmixedmodeks", "Use BotRK to KS in MixedMode", SCRIPT_PARAM_ONOFF, true)
+--~ 		VayneMenu.botrksettings:addParam("botrklaneclearks", "Use BotRK to KS in LaneClear", SCRIPT_PARAM_ONOFF, true)
+--~ 		VayneMenu.botrksettings:addParam("botrklasthitks", "Use BotRK to KS in LastHit", SCRIPT_PARAM_ONOFF, true)
+--~ 		VayneMenu.botrksettings:addParam("botrkalwaysks", "Use BotRK to KS always", SCRIPT_PARAM_ONOFF, true)
 end
 
 function _CheckSACMMASOW()
@@ -519,7 +554,41 @@ function _GetUpdate()
 	end
 end
 
-function DownloadLib(FilePath, LibName)
+function _UseBotRK()
+	local BladeSlot = GetInventorySlotItem(3153)
+	if LastAttackedEnemy ~= nil and GetDistance(LastAttackedEnemy) < 450 and not LastAttackedEnemy.dead and LastAttackedEnemy.visible and BladeSlot ~= nil and myHero:CanUseSpell(BladeSlot) then
+		if (VayneMenu.botrksettings.botrkautocarry and ShadowVayneAutoCarry) or
+		 (VayneMenu.botrksettings.botrkmixedmode and ShadowVayneMixedMode) or
+		 (VayneMenu.botrksettings.botrklaneclear and ShadowVayneLaneClear) or
+		 (VayneMenu.botrksettings.botrklasthit and ShadowVayneLastHit) or
+		 (VayneMenu.botrksettings.botrkalways) then
+			if (math.floor(myHero.health / myHero.maxHealth * 100)) <= VayneMenu.botrksettings.botrkmaxheal then
+				if (math.floor(LastAttackedEnemy.health / LastAttackedEnemy.maxHealth * 100)) >= VayneMenu.botrksettings.botrkminheal then
+					CastSpell(BladeSlot, LastAttackedEnemy)
+				end
+			end
+		end
+	end
+end
+
+function _ThreshLanternObj(Obj)
+	if Obj.name == "ThreshLantern" then
+		LanternObj = Obj
+	end
+end
+
+function _ClickThreshLantern()
+	if VayneMenu.keysetting.threshlantern and LanternObj then
+		p = CLoLPacket(0x39)
+		p:EncodeF(myHero.networkID)
+		p:EncodeF(LanternObj.networkID)
+		p.dwArg1 = 1
+		p.dwArg2 = 0
+		SendPacket(p)
+	end
+end
+
+function _DownloadLib(FilePath, LibName)
 	if not FileExist(SCRIPT_PATH.."Common/"..LibName..".lua") then
 		if not DownloadStarted then
 			DownloadStarted = true
