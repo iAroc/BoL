@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.59
+	Version: 2.60
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -35,7 +35,7 @@ function OnTick()
 			AddTickCallback(_CheckEnemyStunnAble)
 			AddTickCallback(_GetUpdate)
 			AddTickCallback(_NonTargetGapCloserAfterCast)
-			AddTickCallback(_SetNewPrioOrder)
+			AddTickCallback(_SetNewTarget)
 			AddTickCallback(_UseBotRK)
 			AddTickCallback(_ClickThreshLantern)
 			AddCreateObjCallback(_ThreshLanternObj)
@@ -127,12 +127,34 @@ function OnProcessSpell(unit, spell)
 end
 
 function _AutoLevelSpell()
+	if GetGame().map.index == 8 and myHero.level < 4 then
+		LevelSpell(_Q)
+		LevelSpell(_W)
+		LevelSpell(_E)
+	end
+
 	if VayneMenu.autolevel.UseAutoLevelfirst and myHero.level < 4 then
 		return AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][VayneMenu.autolevel.first3level]][myHero.level]
 	end
 
 	if VayneMenu.autolevel.UseAutoLevelrest and myHero.level > 3 then
 		return AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][VayneMenu.autolevel.restlevel]][myHero.level]
+	end
+end
+
+function _SetNewTarget()
+	if not myHero.dead then
+		local PrioOrder = 1
+		local AATable = {}
+		for i, enemy in ipairs(GetEnemyHeroes()) do
+			if GetDistance(enemy) < 700 and not enemy.dead and enemy.visible then
+				AATable[(_GetNeededAutoHits(enemy))] = enemy
+			end
+		end
+		for NeedAA, Champ in _SortAATable(AATable) do
+			SOWi:ForceTarget(Champ)
+			break
+		end
 	end
 end
 
@@ -331,11 +353,11 @@ function _LoadMenu()
 	  	VayneMenu:addSubMenu("[Sow]: Orbwalker Settings", "sow")
 		if FileExist(SCRIPT_PATH.."/Common/SourceLib.lua") then
 			require "SourceLib"
-			VayneMenu:addSubMenu("[Sow]: Target selector", "STS")
+--~ 			VayneMenu:addSubMenu("[Sow]: Target selector", "STS")
 			STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
 			SOWi = SOW(VP, STS)
 			SOWi:LoadToMenu(VayneMenu.sow)
-			STS:AddToMenu(VayneMenu.STS)
+--~ 			STS:AddToMenu(VayneMenu.STS)
 		else
 			SOWi = SOW(VP)
 			SOWi:LoadToMenu(VayneMenu.sow)
