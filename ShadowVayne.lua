@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.61
+	Version: 2.62
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -102,7 +102,7 @@ function OnProcessSpell(unit, spell)
 			end
 
 
-			if spell.name:find("CondemnMissile") then -- E detected, cooldown for next E 500 ticks
+			if spell.name:find("VayneCondemn") then -- E detected, cooldown for next E 500 ticks
 				CastedLastE = GetTickCount() + 500
 			end
 		end
@@ -143,7 +143,8 @@ function _AutoLevelSpell()
 end
 
 function _SetNewTarget()
-	if not myHero.dead and SOWLoaded then
+	if not myHero.dead and SOWLoaded and LastPrioUpdate + 100 < GetTickCount() then
+		LastPrioUpdate = GetTickCount()
 		local PrioOrder = 1
 		local AATable = {}
 		for i, enemy in ipairs(GetEnemyHeroes()) do
@@ -240,7 +241,7 @@ function _CastESpell(Target, Reason, Delay)
 	else
 		DelayAction(function() CastSpell(_E, Target) end, Delay)
 	end
---~ 	print("Stunned: "..(Target.charName))
+	CastedLastE = GetTickCount() + 500
 end
 
 function _CheckEnemyStunnAble()
@@ -273,7 +274,7 @@ function _CheckEnemyStunnAble()
 									end
 								end
 							else
-								_CastESpell(enemy, "AutoStunn Not Undertower ("..(enemy.charName)..")")
+								if GetDistance(CheckWallPos, enemy) < VayneMenu.autostunn.pushDistance then	_CastESpell(enemy, "AutoStunn Not Undertower ("..(enemy.charName)..")") end
 								if BushFound and VayneMenu.autostunn.trinket then DelayAction(function() CastSpell(ITEM_7, BushPos.x, BushPos.z) end, 0.25)	else BushFound = false end
 								break
 							end
@@ -683,4 +684,7 @@ function _LoadTables()
                 ["EQW"]	= {3,1,2,3,3,4,3,1,3,1,4,1,1,2,2,4,2,2},
                 ["EWQ"]	= {3,2,1,3,3,4,3,2,3,2,4,2,2,1,1,4,1,1}
 	}
+
+	DrawCirclePos = {}
+
 end
