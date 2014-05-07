@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.60
+	Version: 2.61
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -143,7 +143,7 @@ function _AutoLevelSpell()
 end
 
 function _SetNewTarget()
-	if not myHero.dead then
+	if not myHero.dead and SOWLoaded then
 		local PrioOrder = 1
 		local AATable = {}
 		for i, enemy in ipairs(GetEnemyHeroes()) do
