@@ -365,7 +365,7 @@ function _CheckEnemyStunnAbleBeta()
 					else
 						StunnPos = Vector(enemy)
 					end
-					if GetDistance(Vector(StunnPos), myHero) <= 710 then
+					if GetDistance(Vector(StunnPos), myHero) <= 705 then
 						local BushFound, Bushpos = false, nil
 						for i = 1, VayneMenu.autostunn.pushDistance, 10  do
 							local CheckWallPos = Vector(StunnPos) + (Vector(StunnPos) - myHero):normalized()*(i)
