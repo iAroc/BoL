@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.73
+	Version: 2.74
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -42,6 +42,7 @@ function _ScriptConfigHookCheck()
 	if FileExist(SCRIPT_PATH.."/Common/ScriptConfigHook.lua") then
 		ScriptConfigHookVersionMain = 1
 		require "ScriptConfigHook"
+		if ScriptConfigHookVersion == nil then ScriptConfigHookVersion = 0 end
 		if tonumber(ScriptConfigHookVersionMain) > tonumber(ScriptConfigHookVersion) then
 			OverWriteScriptConfigFile = true
 		end
