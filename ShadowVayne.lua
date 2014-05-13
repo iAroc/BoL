@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.74
+	Version: 2.75
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -106,7 +106,7 @@ function OnTick()
 			autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 			_ResetRunningModes()
 			ScriptOnLoadDone = true
-			if #GetEnemyHeroes() > 1 then
+			if (SACLoaded or MMALoaded) and #GetEnemyHeroes() > 1 then
 				_arrangePrioritys(#GetEnemyHeroes())
 			end
 		end
@@ -1020,7 +1020,7 @@ function _LoadTables()
         "Rumble", "Ryze", "Sion", "Swain", "Syndra", "Teemo", "TwistedFate", "Veigar", "Viktor", "Vladimir", "Xerath", "Ziggs", "Zyra", "MasterYi", "Velkoz",
     },
     Support = {
-        "Blitzcrank", "Janna", "Karma", "Leona", "Lulu", "Nami", "Sona", "Soraka", "Thresh", "Zilean",
+        "Blitzcrank", "Janna", "Karma", "Leona", "Lulu", "Nami", "Sona", "Soraka", "Thresh", "Zilean", "Braum",
     },
 
     Tank = {
