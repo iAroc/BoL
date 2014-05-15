@@ -10,7 +10,6 @@
 
 	Thx to Jus & Hellsing for minor helping, Manciuszz for his Gapcloserlist and Klokje for his Interruptlist
 	]]
-
 if myHero.charName ~= "Vayne" then return end
 if not VIP_USER then
 	rawset(_G, "LoadVIPScript", function() return end)
@@ -19,15 +18,18 @@ local informationTable, AAInfoTable, CastedLastE, ScriptStartTick = {}, {}, 0, 0
 local TickCountScriptStart, OnLoadDone, spellExpired, Beta = GetTickCount(), nil, true, false
 local ScriptOnLoadDone, LastAttackedEnemy = false, nil
 local LastPrioUpdate = 0
+local DownloadStarted = false
 
 function OnTick()
 	if not ScriptOnLoadDone then
-		_DownloadLib("TheRealSource/public/raw/master/common/SourceLib.lua", "SourceLib")
-		_DownloadLib("honda7/BoL/raw/master/Common/VPrediction.lua", "VPrediction")
-		_DownloadLib("honda7/BoL/raw/master/Common/SOW.lua", "SOW")
-		if FileExist(SCRIPT_PATH.."/Common/SOW.lua") and FileExist(SCRIPT_PATH.."/Common/VPrediction.lua") and FileExist(SCRIPT_PATH.."/Common/SourceLib.lua") then
+		_DownloadLib("http://github.com/TheRealSource/public/raw/master/common/SourceLib.lua", "SourceLib", 'local version = 1.058', 6)
+		_DownloadLib("http://github.com/honda7/BoL/raw/master/Common/VPrediction.lua", "VPrediction", 'local version = "2.51"', 1)
+		_DownloadLib("http://github.com/honda7/BoL/raw/master/Common/SOW.lua", "SOW", 'local version = "1.129"', 1)
+		_DownloadLib("http://az605957.vo.msecnd.net/scripts/Selector.lua", "Selector")
+		if FileExist(SCRIPT_PATH.."/Common/SOW.lua") and FileExist(SCRIPT_PATH.."/Common/VPrediction.lua") and FileExist(SCRIPT_PATH.."/Common/SourceLib.lua") and FileExist(SCRIPT_PATH.."/Common/Selector.lua") and DownloadStarted == false then
 			if HadToDownload then _PrintScriptMsg("All Librarys are successfully downloaded") end
 			require "SourceLib"
+			require "Selector"
 			require "VPrediction"
 			require "SOW"
 			VP = VPrediction(true)
@@ -40,13 +42,19 @@ function OnTick()
 			AddTickCallback(_SetNewTarget)
 			AddTickCallback(_UseBotRK)
 			AddTickCallback(_ClickThreshLantern)
+			AddTickCallback(_UseSelector)
 			AddCreateObjCallback(_ThreshLanternObj)
 			autoLevelSetFunction(_AutoLevelSpell)
 			autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
-			ScriptOnLoadDone = true
 --~ 			if (SACLoaded or MMALoaded) and #GetEnemyHeroes() > 1 then
 --~ 				_arrangePrioritys(#GetEnemyHeroes())
 --~ 			end
+			_G.DrawCustomText = _G.DrawText
+			_G.DrawText = function(Arg1, Arg2, Arg3, Arg4, Arg5)
+			if Arg1 == "Selector" then Arg1 = "[SV] TargetSelector Settings" end
+				DrawCustomText(Arg1, Arg2, Arg3, Arg4, Arg5)
+			end
+			ScriptOnLoadDone = true
 		end
 	end
 end
@@ -123,6 +131,12 @@ function OnProcessSpell(unit, spell)
 					_CastESpell(spell.target, "E After Autohit ("..(spell.target.charName)..")", (spell.windUpTime - GetLatency() / 2000))
 					VayneMenu.keysetting.basiccondemn = false
 				end
+
+				if VayneMenu.tumble.Qautocarry and ShadowVayneAutoCarry then DelayAction(function() CastSpell(_Q, mousePos.x, mousePos.z) end, (spell.windUpTime - GetLatency() / 2000)) end
+				if VayneMenu.tumble.Qmixedmode and ShadowVayneMixedMode then DelayAction(function() CastSpell(_Q, mousePos.x, mousePos.z) end, (spell.windUpTime - GetLatency() / 2000)) end
+				if VayneMenu.tumble.Qlaneclear and ShadowVayneLaneClear then DelayAction(function() CastSpell(_Q, mousePos.x, mousePos.z) end, (spell.windUpTime - GetLatency() / 2000)) end
+				if VayneMenu.tumble.Qlasthit and ShadowVayneLastHit then DelayAction(function() CastSpell(_Q, mousePos.x, mousePos.z) end, (spell.windUpTime - GetLatency() / 2000)) end
+				if VayneMenu.tumble.Qalways then DelayAction(function() CastSpell(_Q, mousePos.x, mousePos.z) end, (spell.windUpTime - GetLatency() / 2000)) end
 			end
 
 
@@ -274,6 +288,15 @@ function _SetNewPrioOrder()
 					break
 				end
 			end
+		end
+	end
+end
+
+function _UseSelector()
+	if VIP_USER and _G.Selector_Enabled and not myHero.dead then
+		GetSelectorTarget = Selector.GetTarget(Selector.LESSCASTADVANCED, "AD", 1000)
+		if GetSelectorTarget ~= nil then
+			SOW:ForceTarget(target)
 		end
 	end
 end
@@ -448,13 +471,13 @@ function _GetRunningModes()
 end
 
 function _LoadMenu()
-	VayneMenu = scriptConfig("[SV] Shadow Vayne", "SV_MAIN")
-	SOWMenu = scriptConfig("[SV] Simple Orb Walker", "SV_SOW")
-	STSMenu = scriptConfig("[SV] Simple Target Selector", "STS")
+	VayneMenu = scriptConfig("[SV] ShadowVayne", "SV_MAIN")
+	SOWMenu = scriptConfig("[SV] SimpleOrbWalker Settings", "SV_SOW")
 	VayneMenu:addSubMenu("[Condemn]: AntiGapCloser Settings", "anticapcloser")
 	VayneMenu:addSubMenu("[Condemn]: AutoStunn Settings", "autostunn")
 	VayneMenu:addSubMenu("[Condemn]: AutoStunn Targets", "targets")
 	VayneMenu:addSubMenu("[Condemn]: Interrupt Settings", "interrupt")
+	VayneMenu:addSubMenu("[Tumble]: Settings", "tumble")
 	VayneMenu:addSubMenu("[Misc]: Key Settings", "keysetting")
 	VayneMenu:addSubMenu("[Misc]: AutoLevelSpells Settings", "autolevel")
 	VayneMenu:addSubMenu("[Misc]: VIP Settings", "vip")
@@ -464,13 +487,18 @@ function _LoadMenu()
 	VayneMenu:addSubMenu("[BotRK]: Settings", "botrksettings")
 	VayneMenu:addSubMenu("[QSS]: Settings", "qqs")
 	VayneMenu:addSubMenu("[Debug]: Settings", "debug")
-
 	VayneMenu.qqs:addParam("nil","QSS/Cleanse is not Supported yet", SCRIPT_PARAM_INFO, "")
-
-	STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
-	SOWi = SOW(VP, STS)
-	SOWi:LoadToMenu(SOWMenu)
-	STS:AddToMenu(STSMenu)
+	if not VIP_USER then
+		TSSMenu = scriptConfig("[SV] SimpleTargetSelector Settings", "SV_TSS")
+		STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
+		SOWi = SOW(VP, STS)
+		SOWi:LoadToMenu(SOWMenu)
+		STS:AddToMenu(TSSMenu)
+	else
+		SOWi = SOW(VP)
+		SOWi:LoadToMenu(SOWMenu)
+		Selector.Instance()
+	end
 
 	VayneMenu.keysetting:addParam("nil","Basic Key Settings", SCRIPT_PARAM_INFO, "")
 	VayneMenu.keysetting:addParam("basiccondemn","Condemn on next BasicAttack:", SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte( "E" ))
@@ -566,7 +594,8 @@ function _LoadMenu()
 
 --~ 	Vip Menu
 		VayneMenu.vip:addParam("EPackets", "Use Packets for E Cast (VIP Only)", SCRIPT_PARAM_ONOFF, true)
-		VayneMenu.vip:addParam("vpred", "Use VPrediction (VIP Only)", SCRIPT_PARAM_ONOFF, true)
+--~ 		VayneMenu.vip:addParam("vpred", "Use VPrediction (VIP Only)", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.vip:addParam("selector", "Use Selector (VIP Only)", SCRIPT_PARAM_ONOFF, true)
 
 --~ 	PermaShow Menu
 		VayneMenu.permashowsettings:addParam("epermashow", "PermaShow \"E on Next BasicAttack\"", SCRIPT_PARAM_ONOFF, true)
@@ -590,6 +619,13 @@ function _LoadMenu()
 		VayneMenu.botrksettings:addParam("botrkalways", "Use BotRK always", SCRIPT_PARAM_ONOFF, false)
 		VayneMenu.botrksettings:addParam("botrkmaxheal", "Max Own Health Percent", SCRIPT_PARAM_SLICE, 50, 1, 100, 0)
 		VayneMenu.botrksettings:addParam("botrkminheal", "Min Enemy Health Percent", SCRIPT_PARAM_SLICE, 20, 1, 100, 0)
+
+--~ 	Tumble Settings Menu
+		VayneMenu.tumble:addParam("Qautocarry", "Use Tumble in AutoCarry", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.tumble:addParam("Qmixedmode", "Use Tumble in MixedMode", SCRIPT_PARAM_ONOFF, false)
+		VayneMenu.tumble:addParam("Qlaneclear", "Use Tumble in LaneClear", SCRIPT_PARAM_ONOFF, false)
+		VayneMenu.tumble:addParam("Qlasthit", "Use Tumble in LastHit", SCRIPT_PARAM_ONOFF, false)
+		VayneMenu.tumble:addParam("Qalways", "Use Tumble always", SCRIPT_PARAM_ONOFF, false)
 
 --~ 	Debug Settings Menu
 		VayneMenu.debug:addParam("stunndebug", "Debug AutoStunn", SCRIPT_PARAM_ONOFF, false)
@@ -668,14 +704,25 @@ function _ClickThreshLantern()
 	end
 end
 
-function _DownloadLib(FilePath, LibName)
-	if not FileExist(SCRIPT_PATH.."Common/"..LibName..".lua") then
-		if not DownloadStarted then
-			DownloadStarted = true
-			_PrintScriptMsg("Downloading Library ("..LibName.."), please wait until its finished")
-			DownloadFile("http://github.com/"..FilePath.."?rand="..tostring(math.random(1,10000)), SCRIPT_PATH.."Common/"..LibName..".lua",  function() DownloadStarted, HadToDownload = false, true end)
+function _DownloadLib(FilePath, LibName, VersionString, VersionLine)
+	if FileExist(SCRIPT_PATH.."Common/"..LibName..".lua") then NeedDownLoad = false else NeedDownLoad = true end
+
+	if FileExist(SCRIPT_PATH.."Common/"..LibName..".lua") and VersionString ~= nil then
+		LibFile = io.open(SCRIPT_PATH.."/Common/"..LibName..".lua", "r")
+		if VersionLine ~= nil and VersionLine > 1 then
+			for i = 1, VersionLine-1 do DummyLine = LibFile:read() end
 		end
+		FirstLine = LibFile:read()
+		LibFile:close()
+		if FirstLine ~= VersionString then NeedDownLoad = true else NeedDownLoad = false end
 	end
+
+	if not DownloadStarted and NeedDownLoad == true then
+		DownloadStarted = true
+		_PrintScriptMsg("Downloading Library ("..LibName.."), please wait until its finished")
+		DownloadFile(FilePath.."?rand="..tostring(math.random(1,10000)), SCRIPT_PATH.."Common/"..LibName..".lua",  function() DownloadStarted, HadToDownload = false, true end)
+	end
+
 end
 
 function _SetPriority(table, hero, priority)
