@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.84
+	Version: 2.85
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -22,15 +22,15 @@ local ScriptOnLoadDone, LastAttackedEnemy = false, nil
 local LastPrioUpdate = 0
 local DownloadStarted = false
 local HookSOWMenu = {}
-local UseVIPSelector = false
+local UseVIPSelector = true
 
 function OnTick()
 	if not ScriptOnLoadDone then
 		_DownloadLib("http://github.com/TheRealSource/public/raw/master/common/SourceLib.lua", "SourceLib", 'local version = 1.058', 6)
 		_DownloadLib("http://github.com/honda7/BoL/raw/master/Common/VPrediction.lua", "VPrediction", 'local version = "2.51"', 1)
 		_DownloadLib("http://github.com/honda7/BoL/raw/master/Common/SOW.lua", "SOW", 'local version = "1.129"', 1)
-		if UseVIPSelector then _DownloadLib("http://portalvhds71h2h1bjq6jhh.blob.core.windows.net/scripts/Selector.lua", "Selector", '	@version 0.05', 7) end
-		if FileExist(SCRIPT_PATH.."/Common/SOW.lua") and FileExist(SCRIPT_PATH.."/Common/VPrediction.lua") and FileExist(SCRIPT_PATH.."/Common/SourceLib.lua") and DownloadStarted == false then
+		if UseVIPSelector then _DownloadLib("http://portalvhds71h2h1bjq6jhh.blob.core.windows.net/scripts/Selector.lua", "Selector", '	@version 0.06', 7) end
+		if FileExist(SCRIPT_PATH.."/Common/SOW.lua") and FileExist(SCRIPT_PATH.."/Common/VPrediction.lua") and FileExist(SCRIPT_PATH.."/Common/SourceLib.lua") and FileExist(SCRIPT_PATH.."/Common/Selector.lua") and DownloadStarted == false then
 			if HadToDownload then _PrintScriptMsg("All Librarys are successfully downloaded") end
 			require "SourceLib"
 			if UseVIPSelector then require "Selector" end
@@ -259,7 +259,6 @@ function _UseSelector()
 		else
 		GetSelectorTarget = Selector.GetTarget(_G.Selector.LESSCASTADVANCED, "AD")
 			if GetSelectorTarget ~= nil then
-
 				SOW:ForceTarget(target)
 			end
 		end
