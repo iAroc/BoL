@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.81
+	Version: 2.83
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -10,22 +10,25 @@
 
 	Thx to Jus & Hellsing for minor helping, Manciuszz for his Gapcloserlist and Klokje for his Interruptlist
 	]]
+--~ 	VIP_USER = false
 if myHero.charName ~= "Vayne" then return end
 if not VIP_USER then
 	rawset(_G, "LoadVIPScript", function() return end)
 end
+
 local informationTable, AAInfoTable, CastedLastE, ScriptStartTick = {}, {}, 0, 0
 local TickCountScriptStart, OnLoadDone, spellExpired, Beta = GetTickCount(), nil, true, false
 local ScriptOnLoadDone, LastAttackedEnemy = false, nil
 local LastPrioUpdate = 0
 local DownloadStarted = false
+local HookSOWMenu = {}
 
 function OnTick()
 	if not ScriptOnLoadDone then
 		_DownloadLib("http://github.com/TheRealSource/public/raw/master/common/SourceLib.lua", "SourceLib", 'local version = 1.058', 6)
 		_DownloadLib("http://github.com/honda7/BoL/raw/master/Common/VPrediction.lua", "VPrediction", 'local version = "2.51"', 1)
 		_DownloadLib("http://github.com/honda7/BoL/raw/master/Common/SOW.lua", "SOW", 'local version = "1.129"', 1)
-		_DownloadLib("http://az605957.vo.msecnd.net/scripts/Selector.lua", "Selector")
+		_DownloadLib("http://portalvhds71h2h1bjq6jhh.blob.core.windows.net/scripts/Selector.lua", "Selector", '	@version 0.05', 7)
 		if FileExist(SCRIPT_PATH.."/Common/SOW.lua") and FileExist(SCRIPT_PATH.."/Common/VPrediction.lua") and FileExist(SCRIPT_PATH.."/Common/SourceLib.lua") and FileExist(SCRIPT_PATH.."/Common/Selector.lua") and DownloadStarted == false then
 			if HadToDownload then _PrintScriptMsg("All Librarys are successfully downloaded") end
 			require "SourceLib"
@@ -34,28 +37,48 @@ function OnTick()
 			require "SOW"
 			VP = VPrediction(true)
 			_LoadTables()
+			_CheckSACMMASOW()
 			_LoadMenu()
 			AddTickCallback(_GetRunningModes)
 			AddTickCallback(_CheckEnemyStunnAble)
 			AddTickCallback(_GetUpdate)
 			AddTickCallback(_NonTargetGapCloserAfterCast)
-			AddTickCallback(_SetNewTarget)
 			AddTickCallback(_UseBotRK)
 			AddTickCallback(_ClickThreshLantern)
 			AddTickCallback(_UseSelector)
-			AddCreateObjCallback(_ThreshLanternObj)
+			AddTickCallback(_UsePermaShows)
 			autoLevelSetFunction(_AutoLevelSpell)
 			autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
---~ 			if (SACLoaded or MMALoaded) and #GetEnemyHeroes() > 1 then
---~ 				_arrangePrioritys(#GetEnemyHeroes())
---~ 			end
-			_G.DrawCustomText = _G.DrawText
-			_G.DrawText = function(Arg1, Arg2, Arg3, Arg4, Arg5)
-			if Arg1 == "Selector" then Arg1 = "[SV] TargetSelector Settings" end
-				DrawCustomText(Arg1, Arg2, Arg3, Arg4, Arg5)
-			end
 			ScriptOnLoadDone = true
+			HidePermaShow = {["LaneClear OnHold:"] = true,["Orbwalk OnHold:"] = true, ["LastHit OnHold:"] = true, ["HybridMode OnHold:"] = true,}
+			HidePermaShow["Condemn on next BasicAttack:"] = true
+			HidePermaShow["Auto Carry"] = true
+			HidePermaShow["Last Hit"] = true
+			HidePermaShow["Mixed Mode"] = true
+			HidePermaShow["Lane Clear"] = true
+			HidePermaShow["              Sida's Auto Carry: Reborn"] = true
+			HidePermaShow["Auto-Condemn"] = true
 		end
+	end
+end
+
+function _CheckSACMMASOW()
+	if AutoCarry ~= nil then
+		if AutoCarry.Helper ~= nil then
+			Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
+			SACLoaded = true
+		else
+			REVLoaded = true
+			REVMenu = _G.AutoCarry.AutoCarry.MainMenu
+		end
+	end
+
+	if _G.MMA_Loaded then
+		MMALoaded = true
+	end
+
+	if FileExist(SCRIPT_PATH.."/Common/SOW.lua") then
+		SOWLoaded = true
 	end
 end
 
@@ -185,52 +208,6 @@ function _AutoLevelSpell()
 	end
 end
 
-function _ResetRunningModes()
-	VayneMenu.keysetting.autocarry = false
-	VayneMenu.keysetting.mixedmode = false
-	VayneMenu.keysetting.laneclear = false
-	VayneMenu.keysetting.lasthit = false
-	ShadowVayneAutoCarry = false
-	ShadowVayneMixedMode = false
-	ShadowVayneLaneClear = false
-	ShadowVayneLastHit = false
-	if MMALoaded then
-		_G.MMA_Orbwalker = false
-		_G.MMA_HybridMode = false
-		_G.MMA_LaneClear = false
-		_G.MMA_LastHit = false
-	end
-	if SACLoaded then
-		Keys.AutoCarry = false
-		Keys.MixedMode = false
-		Keys.LaneClear = false
-		Keys.LastHit = false
-	end
-	if SOWLoaded then
-		VayneMenu.sow.Mode0 = false
-		VayneMenu.sow.Mode1 = false
-		VayneMenu.sow.Mode2 = false
-		VayneMenu.sow.Mode3 = false
-	end
-end
-
-function _SetNewTarget()
-	if not myHero.dead and SOWLoaded and LastPrioUpdate + 100 < GetTickCount() then
-		LastPrioUpdate = GetTickCount()
-		local PrioOrder = 1
-		local AATable = {}
-		for i, enemy in ipairs(GetEnemyHeroes()) do
-			if GetDistance(enemy) < 700 and not enemy.dead and enemy.visible then
-				AATable[(_GetNeededAutoHits(enemy))] = enemy
-			end
-		end
-		for NeedAA, Champ in _SortAATable(AATable) do
-			SOWi:ForceTarget(Champ)
-			break
-		end
-	end
-end
-
 function _GetNeededAutoHits(enemy)
 		local PredictHP = math.ceil(enemy.health)
 		local ThisAA = 0
@@ -268,53 +245,38 @@ function _GetNeededAutoHits(enemy)
 	return ThisAA
 end
 
-function _SetNewPrioOrder()
-	if LastPrioUpdate + 100 < GetTickCount() and SOWLoaded then
-		LastPrioUpdate = GetTickCount()
-		local PrioOrder = 1
-		local AATable = {}
-		for i, enemy in ipairs(GetEnemyHeroes()) do
-			AATable[(_GetNeededAutoHits(enemy))] = enemy.hash
-		end
-		for NeedAA, ChampHash in _SortAATable(AATable) do
-			for i, enemy in ipairs(GetEnemyHeroes()) do
-				if enemy.hash == ChampHash then
-					if enemy.dead then
-						VayneMenu.STS.STS[ChampHash] = 5
-					else
-						VayneMenu.STS.STS[ChampHash] = PrioOrder
-					end
-					PrioOrder = PrioOrder + 1
-					break
-				end
-			end
-		end
-	end
-end
-
 function _UseSelector()
 	if VIP_USER and _G.Selector_Enabled and not myHero.dead then
-		GetSelectorTarget = Selector.GetTarget(Selector.LESSCASTADVANCED, "AD", 1000)
-		if GetSelectorTarget ~= nil then
-			SOW:ForceTarget(target)
+		local currentTarget = GetTarget()
+		if currentTarget ~= nil and currentTarget.type == "obj_AI_Hero" and ValidTarget(currentTarget, 2000, true) then
+			selected = currentTarget
+		else
+			selected = nil
+		end
+		if selected ~= nil then
+			SOW:ForceTarget(selected)
+		else
+		GetSelectorTarget = Selector.GetTarget(_G.Selector.LESSCASTADVANCED, "AD")
+			if GetSelectorTarget ~= nil then
+
+				SOW:ForceTarget(target)
+			end
 		end
 	end
 end
 
-function _SortAATable(t, f)
-	local a = {}
-		for n in pairs(t) do table.insert(a, n) end
-			table.sort(a, f)
-			local i = 0
-			local iter = function ()
-			i = i + 1
-			if a[i] == nil then
-				return nil
-			else
-				return a[i], t[a[i]]
-			end
-		end
-    return iter
+function _UsePermaShows()
+	CustomPermaShow("AutoCarry", VayneMenu.keysetting.autocarry, VayneMenu.permashowsettings.carrypermashow)
+	CustomPermaShow("MixedMode", VayneMenu.keysetting.mixedmode, VayneMenu.permashowsettings.mixedpermashow)
+	CustomPermaShow("LaneClear", VayneMenu.keysetting.laneclear, VayneMenu.permashowsettings.laneclearpermashow)
+	CustomPermaShow("LastHit", VayneMenu.keysetting.lasthit, VayneMenu.permashowsettings.lasthitpermashow)
+	CustomPermaShow("Auto-E after next BasicAttack", VayneMenu.keysetting.basiccondemn, VayneMenu.permashowsettings.epermashow)
+end
+
+function OnCreateObj(Obj)
+	if Obj.name == "ThreshLantern" then
+		LanternObj = Obj
+	end
 end
 
 function _CastESpell(Target, Reason, Delay)
@@ -468,6 +430,42 @@ function _GetRunningModes()
 	ShadowVayneMixedMode = VayneMenu.keysetting.mixedmode
 	ShadowVayneLaneClear = VayneMenu.keysetting.laneclear
 	ShadowVayneLastHit = VayneMenu.keysetting.lasthit
+	_G.MMA_Orbwalker = false
+	_G.MMA_Loaded = false
+	_G.MMA_AbleToMove = false
+	if SACLoaded then Keys.AutoCarry,Keys.MixedMode,Keys.LaneClear,Keys.LastHit = false,false,false,false end
+	if RevampedLoaded then REVMenu.AutoCarry,REVMenu.MixedMode,REVMenu.LaneClear,REVMenu.LastHit = false,false,false,false end
+	if SOWLoaded then SOWMenu._param[7].key,SOWMenu._param[8].key,SOWMenu._param[9].key,SOWMenu._param[10].key = 5,5,5,5 end
+	if SOWLoaded then SOWMenu.Mode0,SOWMenu.Mode1,SOWMenu.Mode2,SOWMenu.Mode3 = false,false,false,false end
+	if MMALoaded then _G.MMA_Orbwalker,_G.MMA_HybridMode,_G.MMA_LaneClear,_G.MMA_LastHit = false,false,false,false end
+		if VayneMenu.keysetting._param[StartParam].listTable[VayneMenu.keysetting.AutoCarryOrb] == nil then VayneMenu.keysetting.AutoCarryOrb = 1 end
+		if VayneMenu.keysetting._param[StartParam+1].listTable[VayneMenu.keysetting.MixedModeOrb] == nil then VayneMenu.keysetting.MixedModeOrb = 1 end
+		if VayneMenu.keysetting._param[StartParam+2].listTable[VayneMenu.keysetting.LaneClearOrb] == nil then VayneMenu.keysetting.LaneClearOrb = 1 end
+		if VayneMenu.keysetting._param[StartParam+3].listTable[VayneMenu.keysetting.LastHitOrb] == nil then VayneMenu.keysetting.LastHitOrb = 1 end
+			AutoCarryOrbText = VayneMenu.keysetting._param[StartParam].listTable[VayneMenu.keysetting.AutoCarryOrb]
+ 			MixedModeOrbText = VayneMenu.keysetting._param[StartParam+1].listTable[VayneMenu.keysetting.MixedModeOrb]
+			LaneClearOrbText = VayneMenu.keysetting._param[StartParam+2].listTable[VayneMenu.keysetting.LaneClearOrb]
+			LastHitOrbText = VayneMenu.keysetting._param[StartParam+3].listTable[VayneMenu.keysetting.LastHitOrb]
+--~ print(LaneClearOrbText)
+	if AutoCarryOrbText == "MMA" then _G.MMA_Orbwalker = ShadowVayneAutoCarry end
+	if AutoCarryOrbText == "Reborn" then Keys.AutoCarry = ShadowVayneAutoCarry end
+	if AutoCarryOrbText == "SOW" then SOWMenu.Mode0 = ShadowVayneAutoCarry end
+	if AutoCarrycOrbText == "Revamped" then REVMenu.AutoCarry = ShadowVayneAutoCarry end
+
+	if MixedModeOrbText == "MMA" then _G.MMA_HybridMode = ShadowVayneMixedMode end
+	if MixedModeOrbText == "Reborn" then Keys.MixedMode = ShadowVayneMixedMode end
+	if MixedModeOrbText == "SOW" then SOWMenu.Mode1 = ShadowVayneMixedMode end
+	if MixedModeOrbText == "Revamped" then REVMenu.MixedMode = ShadowVayneMixedMode end
+
+	if LaneClearOrbText == "MMA" then _G.MMA_LaneClear = ShadowVayneLaneClear end
+	if LaneClearOrbText == "Reborn" then Keys.LaneClear = ShadowVayneLaneClear end
+	if LaneClearOrbText == "SOW" then SOWMenu.Mode2 = ShadowVayneLaneClear end
+	if LaneClearOrbText == "Revamped" then REVMenu.LaneClear = ShadowVayneLaneClear end
+
+	if LastHitOrbText == "MMA" then _G.MMA_LastHit = ShadowVayneLastHit end
+	if LastHitOrbText == "Reborn" then Keys.LastHit = ShadowVayneLastHit end
+	if LastHitOrbText == "SOW" then SOWMenu.Mode3 = ShadowVayneLastHit end
+	if LastHitOrbText == "Revamped" then REVMenu.LastHit = ShadowVayneLastHit end
 end
 
 function _LoadMenu()
@@ -505,13 +503,50 @@ function _LoadMenu()
 	VayneMenu.keysetting:addParam("threshlantern","Grab the Thresh lantern: ", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "T" ))
 	VayneMenu.keysetting.basiccondemn = false
 	VayneMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
-	VayneMenu.keysetting:addParam("nil","Key Settings", SCRIPT_PARAM_INFO, "")
+	VayneMenu.keysetting:addParam("nil","General Key Settings", SCRIPT_PARAM_INFO, "")
 	VayneMenu.keysetting:addParam("autocarry","Auto Carry Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "V" ))
 	VayneMenu.keysetting:addParam("mixedmode","Mixed Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "C" ))
 	VayneMenu.keysetting:addParam("laneclear","Lane Clear Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "M" ))
 	VayneMenu.keysetting:addParam("lasthit","Last Hit Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "N" ))
 	VayneMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
-	VayneMenu.keysetting:addParam("nil","Set these Keys to the same you use in your Orbwalker", SCRIPT_PARAM_INFO, "")
+
+	if SOWLoaded then VayneMenu.keysetting:addParam("nil","SimpleOrbWalker found", SCRIPT_PARAM_INFO, "") end
+	if SACLoaded then VayneMenu.keysetting:addParam("nil","Sida's Auto Carry: Reborn found", SCRIPT_PARAM_INFO, "") end
+	if REVLoaded then VayneMenu.keysetting:addParam("nil","Sida's Auto Carry: Revamped found", SCRIPT_PARAM_INFO, "") end
+	if MMALoaded then VayneMenu.keysetting:addParam("nil","Marksmen Mighty Assistant found", SCRIPT_PARAM_INFO, "") end
+	VayneMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
+	VayneMenu.keysetting:addParam("nil","Choose...", SCRIPT_PARAM_INFO, "")
+	if SOWLoaded then
+		if MMALoaded then
+			if SACLoaded then
+				OrbWalkerTable = { "SOW", "MMA", "Reborn"}
+				StartParam, OrbWalkers = 16,3
+			elseif REVLoaded then
+				OrbWalkerTable = { "SOW", "MMA", "Revamped"}
+				StartParam, OrbWalkers = 16,3
+			else
+				OrbWalkerTable = { "SOW", "MMA"}
+				StartParam, OrbWalkers = 15,2
+			end
+		else
+			if SACLoaded then
+				OrbWalkerTable = { "SOW", "Reborn"}
+				StartParam, OrbWalkers = 15,2
+			elseif REVLoaded then
+				OrbWalkerTable = { "SOW", "Revamped"}
+				StartParam, OrbWalkers = 15,2
+			else
+				OrbWalkerTable = { "SOW"}
+				StartParam, OrbWalkers = 14,1
+			end
+		end
+	end
+
+
+	VayneMenu.keysetting:addParam("AutoCarryOrb", "Orbwalker in AutoCarry: ", SCRIPT_PARAM_LIST, 1, OrbWalkerTable)
+	VayneMenu.keysetting:addParam("MixedModeOrb", "Orbwalker in MixedMode: ", SCRIPT_PARAM_LIST, 1, OrbWalkerTable)
+	VayneMenu.keysetting:addParam("LaneClearOrb", "Orbwalker in LaneClear: ", SCRIPT_PARAM_LIST, 1, OrbWalkerTable)
+	VayneMenu.keysetting:addParam("LastHitOrb", "Orbwalker in LastHit: ", SCRIPT_PARAM_LIST, 1, OrbWalkerTable)
 
 	for i, enemy in ipairs(GetEnemyHeroes()) do
 --~ 	Gapcloser Menu Targeted Skills
@@ -599,10 +634,11 @@ function _LoadMenu()
 
 --~ 	PermaShow Menu
 		VayneMenu.permashowsettings:addParam("epermashow", "PermaShow \"E on Next BasicAttack\"", SCRIPT_PARAM_ONOFF, true)
---~ 		VayneMenu.permashowsettings:addParam("carrypermashow", "PermaShow: AutoCarry", SCRIPT_PARAM_ONOFF, true)
---~ 		VayneMenu.permashowsettings:addParam("mixedpermashow", "PermaShow: Mixed Mode", SCRIPT_PARAM_ONOFF, true)
---~ 		VayneMenu.permashowsettings:addParam("laneclearpermashow", "PermaShow: Laneclear", SCRIPT_PARAM_ONOFF, true)
---~ 		VayneMenu.permashowsettings:addParam("lasthitpermashow", "PermaShow: Last hit", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.permashowsettings:addParam("carrypermashow", "PermaShow: AutoCarry", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.permashowsettings:addParam("mixedpermashow", "PermaShow: Mixed Mode", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.permashowsettings:addParam("laneclearpermashow", "PermaShow: Laneclear", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.permashowsettings:addParam("lasthitpermashow", "PermaShow: Last hit", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.keysetting:permaShow("basiccondemn")
 
 --~ 	AutoUpdate Menu
 		VayneMenu.autoup:addParam("autoupcheck", "Check for Updates", SCRIPT_PARAM_ONOFF, true)
@@ -687,20 +723,211 @@ function _UseBotRK()
 	end
 end
 
-function _ThreshLanternObj(Obj)
-	if Obj.name == "ThreshLantern" then
-		LanternObj = Obj
-	end
-end
-
 function _ClickThreshLantern()
-	if VayneMenu.keysetting.threshlantern and LanternObj then
+	if VIP_USER and VayneMenu.keysetting.threshlantern and LanternObj then
 		LanternPacket = CLoLPacket(0x39)
 		LanternPacket:EncodeF(myHero.networkID)
 		LanternPacket:EncodeF(LanternObj.networkID)
 		LanternPacket.dwArg1 = 1
 		LanternPacket.dwArg2 = 0
 		SendPacket(LanternPacket)
+	end
+end
+
+function CustomPermaShow(TextVar, ValueVar, VisibleVar, PermaColorVar, OnColorVar, OffColorVar)
+	if not _CPS_Added then
+		_G.DrawCustomText = _G.DrawText
+		_G.DrawText = function(Arg1, Arg2, Arg3, Arg4, Arg5) _DrawText(Arg1, Arg2, Arg3, Arg4, Arg5) end
+		_G.DrawCustomLine = _G.DrawLine
+		_G.DrawLine = function(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6) _DrawLine(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6) end
+		OldPermaShowTable, OldPermaShowCount, IsPermaShowStatusOn, PermaShowTable = {}, 0, {}, {}
+		AddDrawCallback(_DrawCustomPermaShow)
+		_CPS_Added = true
+	end
+
+	local _CPS_Updated = false
+	for i=1, #PermaShowTable do
+		if PermaShowTable[i]["TextVar"] == TextVar then
+			PermaShowTable[i]["ValueVar"], PermaShowTable[i]["VisibleVar"],_CPS_Updated = ValueVar,VisibleVar,true
+			PermaShowTable[i]["PermaColorVar"],PermaShowTable[i]["OnColorVar"],PermaShowTable[i]["OffColorVar"] = PermaColorVar, OnColorVar, OffColorVar
+		end
+	end
+
+	if not _CPS_Updated then
+		PermaShowTable[#PermaShowTable+1] = {["TextVar"] = TextVar, ["ValueVar"] = ValueVar, ["VisibleVar"] = VisibleVar, ["PermaColorVar"] = PermaColorVar, ["OnColorVar"] = OnColorVar, ["OffColorVar"] = OffColorVar}
+	end
+end
+
+function _DrawCustomPermaShow()
+	_CPS_Master = GetSave("scriptConfig")["Master"]
+	_CPS_Master.py1 = _CPS_Master.py
+	_CPS_Master.py2 = _CPS_Master.py
+	_CPS_Master.color = { lgrey = 1413167931, grey = 4290427578, green = 1409321728}
+	_CPS_Master.fontSize = WINDOW_H and math.round(WINDOW_H / 72) or 10
+	_CPS_Master.midSize = _CPS_Master.fontSize / 2
+	_CPS_Master.cellSize = _CPS_Master.fontSize + 1
+	_CPS_Master.width = WINDOW_W and math.round(WINDOW_W / 6.4) or 160
+	_CPS_Master.row = _CPS_Master.width * 0.7
+
+	for i = 1, #PermaShowTable do
+		if PermaShowTable[i].ValueVar == true then
+			if PermaShowTable[i].OnColorVar == nil then
+				if PermaShowTable[i].PermaColorVar == nil then
+					ColorVar = _CPS_Master.color.green
+				else
+					ColorVar = PermaShowTable[i].PermaColorVar
+				end
+			else
+				ColorVar = PermaShowTable[i].OnColorVar
+			end
+			TextVar = "      ON"
+		elseif PermaShowTable[i].ValueVar == false then
+			if PermaShowTable[i].OffColorVar == nil then
+				if PermaShowTable[i].PermaColorVar == nil then
+					ColorVar = _CPS_Master.color.lgrey
+				else
+					ColorVar = PermaShowTable[i].PermaColorVar
+				end
+			else
+				ColorVar = PermaShowTable[i].OffColorVar
+			end
+			TextVar = "      OFF"
+		else
+			if PermaShowTable[i].PermaColorVar == nil then
+				ColorVar = _CPS_Master.color.lgrey
+			else
+				ColorVar = PermaShowTable[i].PermaColorVar
+			end
+			TextVar = PermaShowTable[i].ValueVar
+		end
+		if PermaShowTable[i]["VisibleVar"] then
+			DrawCustomLine(_CPS_Master.px - 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.px + _CPS_Master.row - 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.cellSize, _CPS_Master.color.lgrey)
+			DrawCustomText(PermaShowTable[i].TextVar, _CPS_Master.fontSize, _CPS_Master.px, _CPS_Master.py1, _CPS_Master.color.grey)
+			DrawCustomLine(_CPS_Master.px + _CPS_Master.row, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.px + _CPS_Master.width + 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.cellSize, ColorVar)
+			DrawCustomText(TextVar, _CPS_Master.fontSize, _CPS_Master.px + _CPS_Master.row + 1, _CPS_Master.py1, _CPS_Master.color.grey)
+			_CPS_Master.py1 = _CPS_Master.py1 + _CPS_Master.cellSize
+		end
+	end
+	for i=1,OldPermaShowCount do
+		if IsPermaShowStatusOn[_CPS_Master.py2] == true then
+			ColorVar = _CPS_Master.color.green
+			TextVar = "      ON"
+		elseif IsPermaShowStatusOn[_CPS_Master.py2] == false then
+			ColorVar = _CPS_Master.color.lgrey
+			TextVar = "      OFF"
+		else
+			ColorVar = _CPS_Master.color.lgrey
+			TextVar = IsPermaShowStatusOn[_CPS_Master.py2]
+		end
+		DrawCustomLine(_CPS_Master.px - 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.px + _CPS_Master.row - 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.cellSize, _CPS_Master.color.lgrey)
+		DrawCustomText(OldPermaShowTable[i].Arg1, _CPS_Master.fontSize, _CPS_Master.px, _CPS_Master.py1, _CPS_Master.color.grey)
+		DrawCustomLine(_CPS_Master.px + _CPS_Master.row, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.px + _CPS_Master.width + 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.cellSize, (ColorVar))
+		DrawCustomText(TextVar, _CPS_Master.fontSize, _CPS_Master.px + _CPS_Master.row + 1, _CPS_Master.py1, _CPS_Master.color.grey)
+		_CPS_Master.py1 = _CPS_Master.py1 + _CPS_Master.cellSize
+		_CPS_Master.py2 = _CPS_Master.py2 + _CPS_Master.cellSize
+	end
+end
+
+function scriptConfig:_DrawParam(varIndex)
+	_CPS_Master = GetSave("scriptConfig")["Master"]
+	_CPS_Master.py1 = 0
+	_CPS_Master.py2 = _CPS_Master.py
+	_CPS_Master.color = { lgrey = 1413167931, grey = 4290427578, green = 1409321728}
+	_CPS_Master.fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14
+	_CPS_Master.midSize = _CPS_Master.fontSize / 2
+	_CPS_Master.cellSize = _CPS_Master.fontSize + 2
+	_CPS_Master.width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213
+	_CPS_Master.row = _CPS_Master.width * 0.7
+	_CPS_Master.row4 = _CPS_Master.width * 0.9
+	_CPS_Master.row3 = _CPS_Master.width * 0.8
+	_CPS_Master.row2 = _CPS_Master.width * 0.7
+	_CPS_Master.row1 = _CPS_Master.width * 0.6
+
+    local pVar = self._param[varIndex].var
+	local pText = self._param[varIndex].text
+
+	if not ((self.name == "SV_SOW" and pVar == "Mode1" and pText == "Mixed Mode!") -- SOW MixedMode
+	or (self.name == "SV_SOW" and pVar == "Mode3" and pText == "Last hit!") -- SOW LastHit
+	or (self.name == "SV_SOW" and pVar == "Mode2" and pText == "Laneclear!") -- SOW LaneClear
+	or (self.name == "SV_SOW" and pVar == "Mode0" and pText == "Carry me!") -- SOW AutoCarry
+	or (self.name == "SV_SOW" and pVar == "Hotkeys" and pText == "")
+
+	)
+	then
+		DrawLine(self._x - 2, self._y + _CPS_Master.midSize, self._x + _CPS_Master.row3 - 2, self._y + _CPS_Master.midSize, _CPS_Master.cellSize, _CPS_Master.color.lgrey)
+		DrawText(self._param[varIndex].text, _CPS_Master.fontSize, self._x, self._y, _CPS_Master.color.grey)
+		if self._param[varIndex].pType == SCRIPT_PARAM_SLICE then
+			DrawText(tostring(self[pVar]), _CPS_Master.fontSize, self._x + _CPS_Master.row2, self._y, _CPS_Master.color.grey)
+			DrawLine(self._x + _CPS_Master.row3, self._y + _CPS_Master.midSize, self._x + _CPS_Master.width + 2, self._y + _CPS_Master.midSize, _CPS_Master.cellSize, _CPS_Master.color.lgrey)
+			-- cursor
+			self._param[varIndex].cursor = (self[pVar] - self._param[varIndex].min) / (self._param[varIndex].max - self._param[varIndex].min) * (_CPS_Master.width - _CPS_Master.row3)
+			DrawLine(self._x + _CPS_Master.row3 + self._param[varIndex].cursor - 2, self._y + _CPS_Master.midSize, self._x + _CPS_Master.row3 + self._param[varIndex].cursor + 2, self._y + _CPS_Master.midSize, _CPS_Master.cellSize, 4292598640)
+		elseif self._param[varIndex].pType == SCRIPT_PARAM_LIST then
+			local text = tostring(self._param[varIndex].listTable[self[pVar]])
+			local maxWidth = (_CPS_Master.width - _CPS_Master.row3) * 0.8
+			local textWidth = GetTextArea(text, _CPS_Master.fontSize).x
+			if textWidth > maxWidth then
+				text = text:sub(1, math.floor(text:len() * maxWidth / textWidth)) .. ".."
+			end
+			DrawText(text, _CPS_Master.fontSize, self._x + _CPS_Master.row3, self._y, _CPS_Master.color.grey)
+			if self._list then self._listY = self._y + _CPS_Master.cellSize end
+		elseif self._param[varIndex].pType == SCRIPT_PARAM_INFO then
+			DrawText(tostring(self[pVar]), _CPS_Master.fontSize, self._x + _CPS_Master.row3 + 2, self._y, _CPS_Master.color.grey)
+		elseif self._param[varIndex].pType == SCRIPT_PARAM_COLOR then
+			DrawRectangle(self._x + _CPS_Master.row3 + 2, self._y, 80, _CPS_Master.cellSize, ARGB(self[pVar][1], self[pVar][2], self[pVar][3], self[pVar][4]))
+		else
+
+
+			if (self._param[varIndex].pType == SCRIPT_PARAM_ONKEYDOWN or self._param[varIndex].pType == SCRIPT_PARAM_ONKEYTOGGLE) then
+				DrawText(self:_txtKey(self._param[varIndex].key), _CPS_Master.fontSize, self._x + _CPS_Master.row2, self._y, _CPS_Master.color.grey)
+			end
+			DrawLine(self._x + _CPS_Master.row3, self._y + _CPS_Master.midSize, self._x + _CPS_Master.width + 2, self._y + _CPS_Master.midSize, _CPS_Master.cellSize, (self[pVar] and _CPS_Master.color.green or _CPS_Master.color.lgrey))
+			DrawText((self[pVar] and "        ON" or "        OFF"), _CPS_Master.fontSize, self._x + _CPS_Master.row3 + 2, self._y, _CPS_Master.color.grey)
+			end
+		self._y = self._y + _CPS_Master.cellSize
+	else
+		self._param[varIndex].pType = 5
+	end
+end
+
+function _DrawText(Arg1, Arg2, Arg3, Arg4, Arg5)
+	_CPS_Master = GetSave("scriptConfig")["Master"]
+	_CPS_Master.row = (WINDOW_W and math.round(WINDOW_W / 6.4) or 160) * 0.7
+	if Arg1 == "Selector" then
+		Arg1 = "[SV] TargetSelector Settings"
+	end
+	if Arg3 == _CPS_Master.px then
+		if not (HidePermaShow[Arg1] ~= nil and HidePermaShow[Arg1] == true) then
+			if not OldPermaShowTable[Arg1] then
+				OldPermaShowTable[Arg1] = true
+				OldPermaShowCount = OldPermaShowCount + 1
+				OldPermaShowTable[OldPermaShowCount] = {}
+				OldPermaShowTable[OldPermaShowCount]["Status"] = true
+				OldPermaShowTable[OldPermaShowCount]["Arg1"] = Arg1
+				OldPermaShowTable[OldPermaShowCount]["Arg2"] = Arg2
+				OldPermaShowTable[OldPermaShowCount]["Arg3"] = Arg3
+				OldPermaShowTable[OldPermaShowCount]["Arg4"] = Arg4
+				OldPermaShowTable[OldPermaShowCount]["Arg5"] = Arg5
+			end
+		end
+	elseif Arg3 == (_CPS_Master.px + _CPS_Master.row + 1) then
+		if Arg1 == "      ON" then
+			IsPermaShowStatusOn[Arg4] = true
+		elseif Arg1 == "      OFF" then
+			IsPermaShowStatusOn[Arg4] = false
+		else
+			IsPermaShowStatusOn[Arg4] = Arg1
+		end
+	else
+		DrawCustomText(Arg1, Arg2, Arg3, Arg4, Arg5)
+	end
+end
+
+function _DrawLine(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6)
+	_CPS_Master = GetSave("scriptConfig")["Master"]
+	_CPS_Master.row = (WINDOW_W and math.round(WINDOW_W / 6.4) or 160) * 0.7
+	if not (Arg1 == (_CPS_Master.px - 1) or Arg1 == (_CPS_Master.px + _CPS_Master.row)) then
+		DrawCustomLine(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6)
 	end
 end
 
@@ -723,30 +950,6 @@ function _DownloadLib(FilePath, LibName, VersionString, VersionLine)
 		DownloadFile(FilePath.."?rand="..tostring(math.random(1,10000)), SCRIPT_PATH.."Common/"..LibName..".lua",  function() DownloadStarted, HadToDownload = false, true end)
 	end
 
-end
-
-function _SetPriority(table, hero, priority)
-    for i=1, #table, 1 do
-        if hero.charName:find(table[i]) ~= nil then
-            TS_SetHeroPriority(priority, hero.charName)
-        end
-    end
-end
-
-function _arrangePrioritys(enemies)
-    local priorityOrder = {
-        [2] = {1,1,2,2,2},
-        [3] = {1,1,2,3,3},
-        [4] = {1,2,3,4,4},
-        [5] = {1,2,3,4,5},
-    }
-    for i, enemy in ipairs(GetEnemyHeroes()) do
-        _SetPriority(priorityTable.AD_Carry, enemy, priorityOrder[enemies][1])
-        _SetPriority(priorityTable.AP,       enemy, priorityOrder[enemies][2])
-        _SetPriority(priorityTable.Support,  enemy, priorityOrder[enemies][3])
-        _SetPriority(priorityTable.Bruiser,  enemy, priorityOrder[enemies][4])
-        _SetPriority(priorityTable.Tank,     enemy, priorityOrder[enemies][5])
-    end
 end
 
 function _LoadTables()
