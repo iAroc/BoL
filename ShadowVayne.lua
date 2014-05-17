@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.83
+	Version: 2.84
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -22,17 +22,18 @@ local ScriptOnLoadDone, LastAttackedEnemy = false, nil
 local LastPrioUpdate = 0
 local DownloadStarted = false
 local HookSOWMenu = {}
+local UseVIPSelector = false
 
 function OnTick()
 	if not ScriptOnLoadDone then
 		_DownloadLib("http://github.com/TheRealSource/public/raw/master/common/SourceLib.lua", "SourceLib", 'local version = 1.058', 6)
 		_DownloadLib("http://github.com/honda7/BoL/raw/master/Common/VPrediction.lua", "VPrediction", 'local version = "2.51"', 1)
 		_DownloadLib("http://github.com/honda7/BoL/raw/master/Common/SOW.lua", "SOW", 'local version = "1.129"', 1)
-		_DownloadLib("http://portalvhds71h2h1bjq6jhh.blob.core.windows.net/scripts/Selector.lua", "Selector", '	@version 0.05', 7)
-		if FileExist(SCRIPT_PATH.."/Common/SOW.lua") and FileExist(SCRIPT_PATH.."/Common/VPrediction.lua") and FileExist(SCRIPT_PATH.."/Common/SourceLib.lua") and FileExist(SCRIPT_PATH.."/Common/Selector.lua") and DownloadStarted == false then
+		if UseVIPSelector then _DownloadLib("http://portalvhds71h2h1bjq6jhh.blob.core.windows.net/scripts/Selector.lua", "Selector", '	@version 0.05', 7) end
+		if FileExist(SCRIPT_PATH.."/Common/SOW.lua") and FileExist(SCRIPT_PATH.."/Common/VPrediction.lua") and FileExist(SCRIPT_PATH.."/Common/SourceLib.lua") and DownloadStarted == false then
 			if HadToDownload then _PrintScriptMsg("All Librarys are successfully downloaded") end
 			require "SourceLib"
-			require "Selector"
+			if UseVIPSelector then require "Selector" end
 			require "VPrediction"
 			require "SOW"
 			VP = VPrediction(true)
@@ -45,7 +46,7 @@ function OnTick()
 			AddTickCallback(_NonTargetGapCloserAfterCast)
 			AddTickCallback(_UseBotRK)
 			AddTickCallback(_ClickThreshLantern)
-			AddTickCallback(_UseSelector)
+			if UseVIPSelector then AddTickCallback(_UseSelector) end
 			AddTickCallback(_UsePermaShows)
 			autoLevelSetFunction(_AutoLevelSpell)
 			autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
@@ -246,7 +247,7 @@ function _GetNeededAutoHits(enemy)
 end
 
 function _UseSelector()
-	if VIP_USER and _G.Selector_Enabled and not myHero.dead then
+	if VIP_USER and _G.Selector_Enabled and not myHero.dead and UseVIPSelector then
 		local currentTarget = GetTarget()
 		if currentTarget ~= nil and currentTarget.type == "obj_AI_Hero" and ValidTarget(currentTarget, 2000, true) then
 			selected = currentTarget
@@ -486,7 +487,7 @@ function _LoadMenu()
 	VayneMenu:addSubMenu("[QSS]: Settings", "qqs")
 	VayneMenu:addSubMenu("[Debug]: Settings", "debug")
 	VayneMenu.qqs:addParam("nil","QSS/Cleanse is not Supported yet", SCRIPT_PARAM_INFO, "")
-	if not VIP_USER then
+	if not VIP_USER or UseVIPSelector == false then
 		TSSMenu = scriptConfig("[SV] SimpleTargetSelector Settings", "SV_TSS")
 		STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
 		SOWi = SOW(VP, STS)
