@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.88
+	Version: 2.89
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -716,12 +716,16 @@ function _CheckUpdate_ShadowVayne()
 			LocalVersion_ShadowVayne = string.sub(LocalVersionFile:read("*a"), 51, 54)
 		end
 		if SV_AutoUpdate then
-
 			--~ Get Server Version
 			if ServerVersion_ShadowVayne == nil then
 				if not Downloading and not Downloaded_ShadowVayne then
-					DownloadFile("http://raw.github.com/Superx321/BoL/master/ShadowVayne.Version?rand="..tostring(math.random(1,10000)), LIB_PATH.."/ShadowVayne.Version", function () DelayAction(function() Downloading = false end, 1) end)
-
+					SHADOWVAYNE_SCRIPT_URL = "http://raw.github.com/Superx321/BoL/master/ShadowVayne.lua?rand="..tostring(math.random(1,10000))
+					SHADOWVAYNE_PATH = LIB_PATH.."/ShadowVayne.Version"
+					DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function ()
+						_PrintScriptMsg("Updated to Version "..(ServerVersion_ShadowVayne)..". Please reload with F9")
+						UpdateDone_ShadowVayne = true
+						Downloading = false
+							end)
 					Downloading = true
 					Downloaded_ShadowVayne = true
 				end
@@ -732,21 +736,18 @@ function _CheckUpdate_ShadowVayne()
 				end
 			end
 
-			--~ Check for Updates and Download
-			if ServerVersion_ShadowVayne ~= nil and LocalVersion_ShadowVayne ~= nil and not Downloading then
+
+			--~ Check for Updates
+			if ServerVersion_ShadowVayne ~= nil and LocalVersion_ShadowVayne ~= nil then
 				if ServerVersion_ShadowVayne > LocalVersion_ShadowVayne then
 					_PrintScriptMsg("New Version ("..ServerVersion_ShadowVayne..") available, downloading...")
-					SHADOWVAYNE_SCRIPT_URL = "http://raw.github.com/Superx321/BoL/master/ShadowVayne.lua?rand="..tostring(math.random(1,10000))
-					SHADOWVAYNE_PATH = SCRIPT_PATH..(GetCurrentEnv().FILE_NAME)
-					if not Downloading then
-						DownloadFile(SHADOWVAYNE_SCRIPT_URL, SHADOWVAYNE_PATH, function ()
-						_PrintScriptMsg("Updated to Version "..(ServerVersion_ShadowVayne)..". Please reload with F9")
-						UpdateDone_ShadowVayne = true
-						Downloading = false
-							end)
-						Downloading = true
+					infile = io.open(LIB_PATH.."/ShadowVayne.Version", "r")
+					instr = infile:read("*a")
+					infile:close()
 
-					end
+					outfile = io.open(SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), "w")
+					outfile:write(instr)
+					outfile:close()
 				else
 					_PrintScriptMsg("No Updates available. Loaded Version "..LocalVersion_ShadowVayne)
 					UpdateDone_ShadowVayne = true
