@@ -709,7 +709,7 @@ end
 
 function _CheckUpdate_ShadowVayne()
 	if not UpdateDone_ShadowVayne then
-		os.remove(LIB_PATH.."/ShadowVayne.Version")
+		if not Downloaded_ShadowVayne then os.remove(LIB_PATH.."/ShadowVayne.Version") end
 		--~ Get Local Version
 		if LocalVersion_ShadowVayne == nil then
 			LocalVersionFile = io.open(SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), "r")
@@ -732,7 +732,7 @@ function _CheckUpdate_ShadowVayne()
 			end
 
 			--~ Check for Updates and Download
-			if ServerVersion_ShadowVayne ~= nil and LocalVersion_ShadowVayne ~= nil then
+			if ServerVersion_ShadowVayne ~= nil and LocalVersion_ShadowVayne ~= nil and not Downloading then
 				if ServerVersion_ShadowVayne > LocalVersion_ShadowVayne then
 					_PrintScriptMsg("New Version ("..ServerVersion_ShadowVayne..") available, downloading...")
 					SHADOWVAYNE_SCRIPT_URL = "http://raw.github.com/Superx321/BoL/master/ShadowVayne.lua?rand="..tostring(math.random(1,10000))
@@ -744,6 +744,7 @@ function _CheckUpdate_ShadowVayne()
 						Downloading = false
 							end)
 						Downloading = true
+
 					end
 				else
 					_PrintScriptMsg("No Updates available. Loaded Version "..LocalVersion_ShadowVayne)
