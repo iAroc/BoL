@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.86
+	Version: 2.87
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -92,12 +92,13 @@ function OnTick()
 						HidePermaShow["Lane Clear"] = true
 						HidePermaShow["              Sida's Auto Carry: Reborn"] = true
 						HidePermaShow["Auto-Condemn"] = true
+						HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
 					end
 				end
 			end
 		end
 	else
-		GetSave("ShadowVayne").autoupcheck = VayneMenu.autoup.autoupcheck
+		if GetSave("ShadowVayne") ~= nil then GetSave("ShadowVayne").autoupcheck = VayneMenu.autoup.autoupcheck end
 	end
 end
 
@@ -1089,6 +1090,35 @@ function _DrawCustomPermaShow()
 	end
 end
 
+function scriptConfig:_DrawSubInstance(index)
+ 	_CPS_Master = GetSave("scriptConfig")["Master"]
+	_CPS_Master.py1 = 0
+	_CPS_Master.py2 = _CPS_Master.py
+	_CPS_Master.color = { lgrey = 1413167931, grey = 4290427578, red = 1422721024, green = 1409321728, ivory = 4294967280 }
+	_CPS_Master.fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14
+	_CPS_Master.midSize = _CPS_Master.fontSize / 2
+	_CPS_Master.cellSize = _CPS_Master.fontSize + 2
+	_CPS_Master.width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213
+	_CPS_Master.row = _CPS_Master.width * 0.7
+	_CPS_Master.row4 = _CPS_Master.width * 0.9
+	_CPS_Master.row3 = _CPS_Master.width * 0.8
+	_CPS_Master.row2 = _CPS_Master.width * 0.7
+	_CPS_Master.row1 = _CPS_Master.width * 0.6
+	if (self._subInstances[index].name == "sidasacvayne_sidasacvaynesub") then
+		self._subInstances[index].header = ""
+		self._subMenuIndex = 0
+	end
+	if not ((self._subInstances[index].name == "sidasacvayne_sidasacvaynesub") or (self._subInstances[index].name == "sidasacvayne_sidasacvayneallowed")) then
+		local pVar = self._subInstances[index].name
+		local selected = self._subMenuIndex == index
+		DrawLine(self._x - 2, self._y + _CPS_Master.midSize, self._x + _CPS_Master.width + 2, self._y + _CPS_Master.midSize, _CPS_Master.cellSize, (selected and _CPS_Master.color.red or _CPS_Master.color.lgrey))
+		DrawText(self._subInstances[index].header, _CPS_Master.fontSize, self._x, self._y, (selected and _CPS_Master.color.ivory or _CPS_Master.color.grey))
+		DrawText("        >>", _CPS_Master.fontSize, self._x + _CPS_Master.row3 + 2, self._y, (selected and _CPS_Master.color.ivory or _CPS_Master.color.grey))
+		--_SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
+		self._y = self._y + _CPS_Master.cellSize
+	end
+end
+
 function scriptConfig:_DrawParam(varIndex)
 	_CPS_Master = GetSave("scriptConfig")["Master"]
 	_CPS_Master.py1 = 0
@@ -1106,15 +1136,31 @@ function scriptConfig:_DrawParam(varIndex)
 
     local pVar = self._param[varIndex].var
 	local pText = self._param[varIndex].text
+	if self.name == "sidasacvayne" or self.name == "sidasacvayne_sidasacvaynesub" then
+		self._param[varIndex].pType = 5
+		self._param[varIndex].text = "ShadowVayne found. Set the Keysettings there!"
+	end
+	if (self.name == "sidasacsetup_sidasacautocarrysub" and pText == "Auto Carry")
+	or (self.name == "sidasacsetup_sidasacmixedmodesub" and pText == "Mixed Mode")
+	or (self.name == "sidasacsetup_sidasaclaneclearsub" and pText == "Lane Clear")
+	or (self.name == "sidasacsetup_sidasaclasthitsub" and pText == "Last Hit")
+	then
+		self._param[varIndex].pType = 5
+		self._param[varIndex].text = "ShadowVayne found. Set the Keysettings there!"
+	end
 
 	if not ((self.name == "SV_SOW" and pVar == "Mode1" and pText == "Mixed Mode!") -- SOW MixedMode
 	or (self.name == "SV_SOW" and pVar == "Mode3" and pText == "Last hit!") -- SOW LastHit
 	or (self.name == "SV_SOW" and pVar == "Mode2" and pText == "Laneclear!") -- SOW LaneClear
 	or (self.name == "SV_SOW" and pVar == "Mode0" and pText == "Carry me!") -- SOW AutoCarry
 	or (self.name == "SV_SOW" and pVar == "Hotkeys" and pText == "")
-
+	or (self.name == "sidasacvayne" and pVar ~= "toggleMode")
+	or (self.name == "sidasacvayne_sidasacvaynesub")
 	)
 	then
+--~ 		if string.find(pText, "Auto Carry") and self.name == "sidasacsetup_sidasacautocarrysub" then
+--~ 			print(pVar)
+--~ 		end
 		DrawLine(self._x - 2, self._y + _CPS_Master.midSize, self._x + _CPS_Master.row3 - 2, self._y + _CPS_Master.midSize, _CPS_Master.cellSize, _CPS_Master.color.lgrey)
 		DrawText(self._param[varIndex].text, _CPS_Master.fontSize, self._x, self._y, _CPS_Master.color.grey)
 		if self._param[varIndex].pType == SCRIPT_PARAM_SLICE then
@@ -1133,7 +1179,15 @@ function scriptConfig:_DrawParam(varIndex)
 			DrawText(text, _CPS_Master.fontSize, self._x + _CPS_Master.row3, self._y, _CPS_Master.color.grey)
 			if self._list then self._listY = self._y + _CPS_Master.cellSize end
 		elseif self._param[varIndex].pType == SCRIPT_PARAM_INFO then
-			DrawText(tostring(self[pVar]), _CPS_Master.fontSize, self._x + _CPS_Master.row3 + 2, self._y, _CPS_Master.color.grey)
+			if not (
+			(self.name == "sidasacvayne")
+			or (self.name == "sidasacsetup_sidasacautocarrysub" and pVar == "Active")
+			or (self.name == "sidasacsetup_sidasacmixedmodesub" and pVar == "Active")
+			or (self.name == "sidasacsetup_sidasaclaneclearsub" and pVar == "Active")
+			or (self.name == "sidasacsetup_sidasaclasthitsub" and pVar == "Active")
+			) then
+				DrawText(tostring(self[pVar]), _CPS_Master.fontSize, self._x + _CPS_Master.row3 + 2, self._y, _CPS_Master.color.grey)
+			end
 		elseif self._param[varIndex].pType == SCRIPT_PARAM_COLOR then
 			DrawRectangle(self._x + _CPS_Master.row3 + 2, self._y, 80, _CPS_Master.cellSize, ARGB(self[pVar][1], self[pVar][2], self[pVar][3], self[pVar][4]))
 		else
