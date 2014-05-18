@@ -710,12 +710,12 @@ end
 function _CheckUpdate_ShadowVayne()
 	if not UpdateDone_ShadowVayne then
 		os.remove(LIB_PATH.."/ShadowVayne.Version")
+		--~ Get Local Version
+		if LocalVersion_ShadowVayne == nil then
+			LocalVersionFile = io.open(SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), "r")
+			LocalVersion_ShadowVayne = string.sub(LocalVersionFile:read("*a"), 51, 54)
+		end
 		if SV_AutoUpdate then
-			--~ Get Local Version
-			if LocalVersion_ShadowVayne == nil then
-				LocalVersionFile = io.open(SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), "r")
-				LocalVersion_ShadowVayne = string.sub(LocalVersionFile:read("*a"), 51, 54)
-			end
 
 			--~ Get Server Version
 			if ServerVersion_ShadowVayne == nil then
