@@ -720,7 +720,8 @@ function _CheckUpdate_ShadowVayne()
 			--~ Get Server Version
 			if ServerVersion_ShadowVayne == nil then
 				if not Downloading and not Downloaded_ShadowVayne then
-					DownloadFile("http://raw.github.com/Superx321/BoL/master/ShadowVayne.Version?rand="..tostring(math.random(1,10000)), LIB_PATH.."/ShadowVayne.Version", function () Downloading = false end)
+					DownloadFile("http://raw.github.com/Superx321/BoL/master/ShadowVayne.Version?rand="..tostring(math.random(1,10000)), LIB_PATH.."/ShadowVayne.Version", function () DelayAction(function() Downloading = false end, 1) end)
+
 					Downloading = true
 					Downloaded_ShadowVayne = true
 				end
