@@ -874,6 +874,7 @@ function _UpdateShadowVayne()
 
 	SV_VERSION_URL = "/Superx321/BoL/master/ShadowVayne.Version"
 	SV_SCRIPT_URL = "https://raw.githubusercontent.com/Superx321/BoL/master/ShadowVayne.lua"
+	SV_SAVE_PATH = SCRIPT_PATH..(GetCurrentEnv().FILE_NAME)
 
 	GetAsyncWebResult("raw.github.com", SV_VERSION_URL, function(x) UpdateSV(tonumber(x)) end)
 
@@ -882,7 +883,7 @@ function _UpdateShadowVayne()
 			_PrintScriptMsg("New version available "..SVServerVersion)
 			if VayneMenu.autoup.autoupcheck then
 				_PrintScriptMsg("Updating, please don't press F9")
-				DelayAction(function() DownloadFile(SV_SCRIPT_URL, SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), function() _PrintScriptMsg("Successfully updated. ("..SVLocalVersion.." => "..SVServerVersion.."), press F9 to reload.") end) end, 1)
+				DelayAction(function() DownloadFile(SV_SCRIPT_URL, SV_SAVE_PATH, function() _PrintScriptMsg("Successfully updated. ("..SVLocalVersion.." => "..SVServerVersion.."), press F9 to reload.") end) end, 1)
 			else
 				_PrintScriptMsg("AutoUpdate is off. Loaded Version "..SVLocalVersion)
 			end
