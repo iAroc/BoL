@@ -65,7 +65,6 @@ function OnTick()
 				if not UpdateDone_SOW then
 					_CheckUpdate_SOW()
 				else
-<<<<<<< HEAD
 					ScriptStartOver = true
 					VP = VPrediction(true)
 					_LoadTables()
@@ -92,37 +91,6 @@ function OnTick()
 					HidePermaShow["              Sida's Auto Carry: Reborn"] = true
 					HidePermaShow["Auto-Condemn"] = true
 					HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
-=======
-					if not UpdateDone_ShadowVayne then
-						_CheckUpdate_ShadowVayne()
-					end
-						ScriptStartOver = true
-						VP = VPrediction(true)
-						_LoadTables()
-						_CheckSACMMASOW()
-						_LoadMenu()
-						AddTickCallback(_GetRunningModes)
-						AddTickCallback(_CheckEnemyStunnAble)
-						AddTickCallback(_NonTargetGapCloserAfterCast)
-						AddTickCallback(_UseBotRK)
-						AddTickCallback(_ClickThreshLantern)
-						AddTickCallback(_UsePermaShows)
-						if UseVIPSelector then require "Selector" end
-						if UseVIPSelector then AddTickCallback(_UseSelector) end
-						autoLevelSetFunction(_AutoLevelSpell)
-						autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
-						ScriptOnLoadDone = true
-						HidePermaShow = {["LaneClear OnHold:"] = true,["Orbwalk OnHold:"] = true, ["LastHit OnHold:"] = true, ["HybridMode OnHold:"] = true,}
-						HidePermaShow["Condemn on next BasicAttack:"] = true
-						HidePermaShow["Auto Carry"] = true
-						HidePermaShow["Last Hit"] = true
-						HidePermaShow["Mixed Mode"] = true
-						HidePermaShow["Lane Clear"] = true
-						HidePermaShow["              Sida's Auto Carry: Reborn"] = true
-						HidePermaShow["Auto-Condemn"] = true
-						HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
---~ 					end
->>>>>>> 675f6afc1c94addcc21d401353ef48dba7ec3d06
 				end
 			end
 		end
