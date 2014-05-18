@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.90
+	Version: 2.91
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -738,7 +738,6 @@ function _CheckUpdate_ShadowVayne()
 
 			--~ Check for Updates
 			if ServerVersion_ShadowVayne ~= nil and LocalVersion_ShadowVayne ~= nil then
-				print(ServerVersion_ShadowVayne)
 				if ServerVersion_ShadowVayne > LocalVersion_ShadowVayne then
 					_PrintScriptMsg("New Version ("..ServerVersion_ShadowVayne..") available, downloading...")
 					infile = io.open(LIB_PATH.."/ShadowVayne.Version", "r")
@@ -749,6 +748,7 @@ function _CheckUpdate_ShadowVayne()
 					outfile:write(instr)
 					outfile:close()
 					_PrintScriptMsg("Updated to Version "..(ServerVersion_ShadowVayne)..". Please reload with F9")
+					UpdateDone_ShadowVayne = true
 				else
 					_PrintScriptMsg("No Updates available. Loaded Version "..LocalVersion_ShadowVayne)
 					UpdateDone_ShadowVayne = true
