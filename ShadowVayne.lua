@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.92
+	Version: 2.93
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -24,10 +24,9 @@ local DownloadStarted = false
 local HookSOWMenu = {}
 if FileExist(SCRIPT_PATH.."/Common/Selector.lua") then UseVIPSelector = true end
 local UseVIPSelector = false
-if GetSave("scriptConfig").SV_MAIN_autoup.autoupcheck == nil then GetSave("scriptConfig").SV_MAIN_autoup.autoupcheck = true end
-local SV_AutoUpdate = GetSave("scriptConfig").SV_MAIN_autoup.autoupcheck
 
 function OnLoad()
+	UpdateLibs()
 --~ 	os.remove(LIB_PATH.."ShadowVayne.Version")
 --~ 	os.remove(LIB_PATH.."SourceLib.Version")
 
@@ -56,43 +55,36 @@ end
 
 function OnTick()
 	if not ScriptStartOver then
-		if not UpdateDone_SourceLib then
-			_CheckUpdate_SourceLib()
-		else
-			if not UpdateDone_VPrediction then
-				_CheckUpdate_VPrediction()
-			else
-				if not UpdateDone_SOW then
-					_CheckUpdate_SOW()
-				else
-					ScriptStartOver = true
-					VP = VPrediction(true)
-					_LoadTables()
-					_CheckSACMMASOW()
-					_LoadMenu()
-					AddTickCallback(_GetRunningModes)
-					AddTickCallback(_CheckEnemyStunnAble)
-					AddTickCallback(_NonTargetGapCloserAfterCast)
-					AddTickCallback(_UseBotRK)
-					AddTickCallback(_ClickThreshLantern)
-					AddTickCallback(_UsePermaShows)
-					AddTickCallback(_CheckUpdate_ShadowVayne)
-					if UseVIPSelector then require "Selector" end
-					if UseVIPSelector then AddTickCallback(_UseSelector) end
-					autoLevelSetFunction(_AutoLevelSpell)
-					autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
-					ScriptOnLoadDone = true
-					HidePermaShow = {["LaneClear OnHold:"] = true,["Orbwalk OnHold:"] = true, ["LastHit OnHold:"] = true, ["HybridMode OnHold:"] = true,}
-					HidePermaShow["Condemn on next BasicAttack:"] = true
-					HidePermaShow["Auto Carry"] = true
-					HidePermaShow["Last Hit"] = true
-					HidePermaShow["Mixed Mode"] = true
-					HidePermaShow["Lane Clear"] = true
-					HidePermaShow["              Sida's Auto Carry: Reborn"] = true
-					HidePermaShow["Auto-Condemn"] = true
-					HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
-				end
-			end
+		if SOWUpdated and VPredictionUpdated and SourceLibUpdated then
+			require "SOW"
+			require "VPrediction"
+			require "SourceLib"
+			ScriptStartOver = true
+			VP = VPrediction(true)
+			_LoadTables()
+			_CheckSACMMASOW()
+			_LoadMenu()
+			_UpdateShadowVayne()
+			AddTickCallback(_GetRunningModes)
+			AddTickCallback(_CheckEnemyStunnAble)
+			AddTickCallback(_NonTargetGapCloserAfterCast)
+			AddTickCallback(_UseBotRK)
+			AddTickCallback(_ClickThreshLantern)
+			AddTickCallback(_UsePermaShows)
+			if UseVIPSelector then require "Selector" end
+			if UseVIPSelector then AddTickCallback(_UseSelector) end
+			autoLevelSetFunction(_AutoLevelSpell)
+			autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+			ScriptOnLoadDone = true
+			HidePermaShow = {["LaneClear OnHold:"] = true,["Orbwalk OnHold:"] = true, ["LastHit OnHold:"] = true, ["HybridMode OnHold:"] = true,}
+			HidePermaShow["Condemn on next BasicAttack:"] = true
+			HidePermaShow["Auto Carry"] = true
+			HidePermaShow["Last Hit"] = true
+			HidePermaShow["Mixed Mode"] = true
+			HidePermaShow["Lane Clear"] = true
+			HidePermaShow["              Sida's Auto Carry: Reborn"] = true
+			HidePermaShow["Auto-Condemn"] = true
+			HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
 		end
 	end
 end
@@ -684,8 +676,8 @@ function _LoadMenu()
 		VayneMenu.autoup:addParam("autoupcheck", "AutoUpdate", SCRIPT_PARAM_ONOFF, true)
 --~ 		VayneMenu.autoup:addParam("autoupdown", "Download Available Updates", SCRIPT_PARAM_ONOFF, true)
 		VayneMenu.autoup:addParam("fap", "", SCRIPT_PARAM_INFO, "","" )
-		VayneMenu.autoup:addParam("fap", "Set this to Off for Superfast load", SCRIPT_PARAM_INFO, "","" )
---~ 		VayneMenu.autoup:addParam("fap", "The second will download it", SCRIPT_PARAM_INFO, "","" )
+		VayneMenu.autoup:addParam("fap", "Set this to off", SCRIPT_PARAM_INFO, "","" )
+		VayneMenu.autoup:addParam("fap", "for not download Updates automaticly", SCRIPT_PARAM_INFO, "","" )
 
 --~ 	BotRK Settings Menu
 		VayneMenu.botrksettings:addParam("botrkautocarry", "Use BotRK in AutoCarry", SCRIPT_PARAM_ONOFF, true)
@@ -872,6 +864,123 @@ function _CheckUpdate_SOW()
 				UpdateDone_SOW = true
 			end
 		end
+	end
+end
+
+function _UpdateShadowVayne()
+	SVLocalVersionFile = io.open(SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), "r")
+	SVLocalVersion = tonumber(string.sub(SVLocalVersionFile:read("*a"), 51, 54))
+	SVLocalVersionFile:close()
+
+	SV_VERSION_URL = "/Superx321/BoL/master/ShadowVayne.Version"
+	SV_SCRIPT_URL = "https://raw.githubusercontent.com/Superx321/BoL/master/ShadowVayne.lua"
+
+	GetAsyncWebResult("raw.github.com", SV_VERSION_URL, function(x) UpdateSV(tonumber(x)) end)
+
+	function UpdateSV(SVServerVersion)
+		if SVServerVersion > SVLocalVersion then
+			_PrintScriptMsg("New version available "..SVServerVersion)
+			if VayneMenu.autoup.autoupcheck then
+				_PrintScriptMsg("Updating, please don't press F9")
+				DelayAction(function() DownloadFile(SV_SCRIPT_URL, SCRIPT_PATH..(GetCurrentEnv().FILE_NAME), function() _PrintScriptMsg("Successfully updated. ("..SVLocalVersion.." => "..SVServerVersion.."), press F9 to reload.") end) end, 1)
+			else
+				_PrintScriptMsg("AutoUpdate is off. Loaded Version "..SVLocalVersion)
+			end
+		else
+			_PrintScriptMsg("No Updates available. Loaded Version "..SVLocalVersion)
+		end
+	end
+end
+
+function UpdateLibs()
+	SOW_VERSION_URL = "/honda7/BoL/master/VersionFiles/SOW.version"
+	SOW_SCRIPT_URL = "http://raw.github.com/honda7/BoL/master/Common/SOW.lua"
+	VPRED_VERSION_URL = "/honda7/BoL/master/VersionFiles/vPrediction.version"
+	VPRED_SCRIPT_URL = "http://raw.github.com/honda7/BoL/master/Common/VPrediction.lua"
+	SOURCELIB_VERSION_URL = "/TheRealSource/public/master/common/SourceLib.version"
+	SOURCELIB_SCRIPT_URL = "http://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
+
+	GetAsyncWebResult("raw.github.com", SOW_VERSION_URL, function(x) UpdateSOW(tonumber(x)) end)
+	GetAsyncWebResult("raw.github.com", VPRED_VERSION_URL, function(x) UpdateVPrediction(tonumber(x)) end)
+	GetAsyncWebResult("raw.github.com", SOURCELIB_VERSION_URL, function(x) UpdateSourceLib(tonumber(x)) end)
+
+	function UpdateSOW(SOWServerVersion)
+		if FileExist(LIB_PATH.."/SOW.lua") then
+			SOWFile = io.open(LIB_PATH.."/SOW.lua", "r")
+			SOWFileString = SOWFile:read("*a")
+			SOWFileVersionPos, Dummy = string.find(SOWFileString, "local version =")
+			SOWLocalVersion = tonumber(string.sub(SOWFileString, SOWFileVersionPos+17, SOWFileVersionPos+21))
+			SOWFile:close()
+		else
+			SOWLocalVersion = 0
+		end
+		if SOWServerVersion > SOWLocalVersion then
+			print("<font color=\"#6699ff\"><b>SOW:</b></font> <font color=\"#FFFFFF\">New version available "..SOWServerVersion.."")
+			print("<font color=\"#6699ff\"><b>SOW:</b></font> <font color=\"#FFFFFF\">Updating, please don't press F9")
+			DelayAction(function() DownloadFile(SOW_SCRIPT_URL, LIB_PATH.."/SOW.lua", function() PrintUpdatedMsg("SOW", SOWLocalVersion, SOWServerVersion) end) end, 1)
+		else
+			print("<font color=\"#6699ff\"><b>SOW:</b></font> <font color=\"#FFFFFF\">You have got the latest version ("..SOWServerVersion..")")
+			_ReplaceAutoUpdate("SOW")
+		end
+	end
+
+	function UpdateVPrediction(VPredictionServerVersion)
+		if FileExist(LIB_PATH.."/VPrediction.lua") then
+			VPredictionFile = io.open(LIB_PATH.."/VPrediction.lua", "r")
+			VPredictionFileString = VPredictionFile:read("*a")
+			VPredictionFileVersionPos, Dummy = string.find(VPredictionFileString, "local version = ")
+			VPredictionLocalVersion = tonumber(string.sub(VPredictionFileString, VPredictionFileVersionPos+17, VPredictionFileVersionPos+20))
+			VPredictionFile:close()
+		else
+			VPredictionLocalVersion = 0
+		end
+		if VPredictionServerVersion > VPredictionLocalVersion then
+			print("<font color=\"#6699ff\"><b>VPrediction:</b></font> <font color=\"#FFFFFF\">New version available "..VPredictionServerVersion.."")
+			print("<font color=\"#6699ff\"><b>VPrediction:</b></font> <font color=\"#FFFFFF\">Updating, please don't press F9")
+			DelayAction(function() DownloadFile(VPRED_SCRIPT_URL, LIB_PATH.."/VPrediction.lua", function() PrintUpdatedMsg("VPrediction", VPredictionLocalVersion, VPredictionServerVersion) end) end, 1)
+		else
+			print("<font color=\"#6699ff\"><b>VPrediction:</b></font> <font color=\"#FFFFFF\">You have got the latest version ("..VPredictionServerVersion..")")
+			_ReplaceAutoUpdate("VPrediction")
+		end
+	end
+
+	function UpdateSourceLib(SourceLibServerVersion)
+		if FileExist(LIB_PATH.."/SourceLib.lua") then
+			SourceLibFile = io.open(LIB_PATH.."/SourceLib.lua", "r")
+			SourceLibFileString = SourceLibFile:read("*a")
+			SourceLibFileVersionPos, Dummy = string.find(SourceLibFileString, "local version = ")
+			SourceLibLocalVersion = tonumber(string.sub(SourceLibFileString, SourceLibFileVersionPos+16, SourceLibFileVersionPos+20))
+			SourceLibFile:close()
+		else
+			SourceLibLocalVersion = 0
+		end
+		if SourceLibServerVersion > SourceLibLocalVersion then
+			print("<font color=\"#6699ff\"><b>SourceLib:</b></font> <font color=\"#FFFFFF\">New version available "..SourceLibServerVersion.."")
+			print("<font color=\"#6699ff\"><b>SourceLib:</b></font> <font color=\"#FFFFFF\">Updating, please don't press F9")
+			DelayAction(function() DownloadFile(SOURCELIB_SCRIPT_URL, LIB_PATH.."/SourceLib.lua", function() PrintUpdatedMsg("SourceLib", SourceLibLocalVersion, SourceLibServerVersion) end) end, 1)
+		else
+			print("<font color=\"#6699ff\"><b>SourceLib:</b></font> <font color=\"#FFFFFF\">You have got the latest version ("..SourceLibServerVersion..")")
+			_ReplaceAutoUpdate("SourceLib")
+		end
+	end
+
+	function _ReplaceAutoUpdate(LibName)
+		AutoUpdateOverWriteFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
+		AutoUpdateOverWriteString = AutoUpdateOverWriteFile:read("*a")
+		AutoUpdateOverWriteFile:close()
+		AutoUpdateOverWriteString = string.gsub(AutoUpdateOverWriteString, "local AUTOUPDATE = true", "local AUTOUPDATE = false")
+		AutoUpdateOverWriteString = string.gsub(AutoUpdateOverWriteString, "local autoUpdate   = true", "local autoUpdate   = false")
+		AutoUpdateOverWriteFile = io.open(LIB_PATH.."/"..LibName..".lua", "w+")
+		AutoUpdateOverWriteFile:write(AutoUpdateOverWriteString)
+		AutoUpdateOverWriteFile:close()
+		if LibName == "SOW" then SOWUpdated = true end
+		if LibName == "VPrediction" then VPredictionUpdated = true end
+		if LibName == "SourceLib" then SourceLibUpdated = true end
+	end
+
+	function PrintUpdatedMsg(LibName, OldVersion, NewVersion)
+		_ReplaceAutoUpdate(LibName)
+		print("<font color=\"#6699ff\"><b>"..LibName..":</b></font> <font color=\"#FFFFFF\">Successfully updated. ("..OldVersion.." => "..NewVersion.."), loaded the newest Version.")
 	end
 end
 
