@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.96
+	Version: 2.97
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -48,14 +48,14 @@ UseVIPSelector = false
 	end
 
 	_LibUpdateTable = { ["SOW"] = {}, ["VPREDICTION"] = {}, ["SOURCELIB"] = {}, ["SHADOWVAYNE"] = {} }
-	_LibUpdateTable["SOW"]["VERSION"] = "/honda7/BoL/master/VersionFiles/SOW.version"
-	_LibUpdateTable["SOW"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/SOW.lua"
-	_LibUpdateTable["VPREDICTION"]["VERSION"] = "/honda7/BoL/master/VersionFiles/vPrediction.version"
-	_LibUpdateTable["VPREDICTION"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/VPrediction.lua"
-	_LibUpdateTable["SOURCELIB"]["VERSION"] = "/TheRealSource/public/master/common/SourceLib.version"
-	_LibUpdateTable["SOURCELIB"]["SCRIPT"] = "http://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
-	_LibUpdateTable["SHADOWVAYNE"]["VERSION"] = "/Superx321/BoL/master/ShadowVayne.Version"
-	_LibUpdateTable["SHADOWVAYNE"]["SCRIPT"] = "http://raw.github.com/Superx321/BoL/master/ShadowVayne.lua"
+	_LibUpdateTable["SOW"]["VERSION"] = "/honda7/BoL/master/VersionFiles/SOW.version".."?rand=".. tonumber(math.random(1000))
+	_LibUpdateTable["SOW"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/SOW.lua".."?rand=".. tonumber(math.random(1000))
+	_LibUpdateTable["VPREDICTION"]["VERSION"] = "/honda7/BoL/master/VersionFiles/vPrediction.version".."?rand=".. tonumber(math.random(1000))
+	_LibUpdateTable["VPREDICTION"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/VPrediction.lua".."?rand=".. tonumber(math.random(1000))
+	_LibUpdateTable["SOURCELIB"]["VERSION"] = "/TheRealSource/public/master/common/SourceLib.version".."?rand=".. tonumber(math.random(1000))
+	_LibUpdateTable["SOURCELIB"]["SCRIPT"] = "http://raw.github.com/TheRealSource/public/master/common/SourceLib.lua".."?rand="..tonumber(math.random(1000))
+	_LibUpdateTable["SHADOWVAYNE"]["VERSION"] = "/Superx321/BoL/master/ShadowVayne.Version".."?rand=".. tonumber(math.random(1000))
+	_LibUpdateTable["SHADOWVAYNE"]["SCRIPT"] = "http://raw.github.com/Superx321/BoL/master/ShadowVayne.lua".."?rand=".. tonumber(math.random(1000))
 
 	if FileExist(LIB_PATH.."/SOW.lua") then
 		_ReplaceAutoUpdate("SOW")
