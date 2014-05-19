@@ -1,7 +1,11 @@
 --[[
 
 	Shadow Vayne Script by Superx321
+<<<<<<< HEAD
 	Version: 2.95
+=======
+	Version: 2.94
+>>>>>>> a0a3ae113af0bec80a82ec761a30e66b63f8acca
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
