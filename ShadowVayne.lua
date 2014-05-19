@@ -462,7 +462,7 @@ function _GetRunningModes()
 --~ Reset All Modes to false
 	if SACLoaded then Keys.AutoCarry,Keys.MixedMode,Keys.LaneClear,Keys.LastHit = false,false,false,false end
 	if RevampedLoaded then REVMenu.AutoCarry,REVMenu.MixedMode,REVMenu.LaneClear,REVMenu.LastHit = false,false,false,false end
-	if SOWLoaded then SOWMenu._param[7].key,SOWMenu._param[8].key,SOWMenu._param[9].key,SOWMenu._param[10].key = 5,5,5,5 end
+	--if SOWLoaded then SOWMenu._param[7].key,SOWMenu._param[8].key,SOWMenu._param[9].key,SOWMenu._param[10].key = 5,5,5,5 end
 	if SOWLoaded then SOWMenu.Mode0,SOWMenu.Mode1,SOWMenu.Mode2,SOWMenu.Mode3 = false,false,false,false end
 	if MMALoaded then _G.MMA_Orbwalker,_G.MMA_HybridMode,_G.MMA_LaneClear,_G.MMA_LastHit = false,false,false,false end
 
