@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.95
+	Version: 2.96
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -75,7 +75,7 @@ UseVIPSelector = false
 	GetAsyncWebResult("raw.github.com", _LibUpdateTable["SOW"]["VERSION"], function(x) _DoUpdateLib("SOW", tonumber(x), 17, 21) end)
 	GetAsyncWebResult("raw.github.com",  _LibUpdateTable["VPREDICTION"]["VERSION"], function(x) _DoUpdateLib("VPREDICTION", tonumber(x), 17, 20) end)
 	GetAsyncWebResult("raw.github.com", _LibUpdateTable["SOURCELIB"]["VERSION"], function(x)_DoUpdateLib("SOURCELIB", tonumber(x), 16, 20) end)
-	GetAsyncWebResult("raw.github.com", _LibUpdateTable["SHADOWVAYNE"]["VERSION"], function(x) _DoUpdateMain(tonumber(x)) end)
+	GetAsyncWebResult("raw.github.com", _LibUpdateTable["SHADOWVAYNE"]["VERSION"], function(x) DelayAction(function() _DoUpdateMain(tonumber(x)) end, 1) end)
 
 	function _DoUpdateLib(LibName, ServerVersion, VersionPosStart, VersionPosEnd)
 		if FileExist(LIB_PATH.."/"..LibName..".lua") then
@@ -90,7 +90,7 @@ UseVIPSelector = false
 
 		if ServerVersion > _LibUpdateTable[LibName]["LocaleVersion"] then
 			print("<font color=\"#F0Ff8d\"><b>ShadowVayne ("..LibName.."):</b></font> <font color=\"#FF0F0F\">Update found ("..ServerVersion.."). Downloading...</font>")
-			DelayAction(function()	DownloadFile(_LibUpdateTable[LibName]["SCRIPT"], LIB_PATH.."/"..LibName..".lua", function() print("<font color=\"#F0Ff8d\"><b>ShadowVayne ("..LibName.."):</b></font> <font color=\"#FF0F0F\">Successfully updated. (".._LibUpdateTable[LibName]["LocaleVersion"].." => "..ServerVersion.."). Press F9 to load with the newest Version</font>") end) end, 1)
+			DelayAction(function()	DownloadFile(_LibUpdateTable[LibName]["SCRIPT"], LIB_PATH.."/"..LibName..".lua", function() print("<font color=\"#F0Ff8d\"><b>ShadowVayne ("..LibName.."):</b></font> <font color=\"#FF0F0F\">Successfully updated. (".._LibUpdateTable[LibName]["LocaleVersion"].." => "..ServerVersion.."). Press F9 to load with the newest Version</font>") end) end, 2)
 		else
 			print("<font color=\"#F0Ff8d\"><b>ShadowVayne ("..LibName.."):</b></font> <font color=\"#FF0F0F\">Version "..ServerVersion.." Loaded</font>")
 		end
@@ -103,7 +103,7 @@ UseVIPSelector = false
 			MainFile:close()
 		if ServerVersion > _LibUpdateTable["SHADOWVAYNE"]["LocaleVersion"] then
 			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Update found ("..ServerVersion.."). Downloading...</font>")
-			DelayAction(function()	DownloadFile(_LibUpdateTable["SHADOWVAYNE"]["SCRIPT"], SCRIPT_PATH..MainScriptName, function() print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Successfully updated. (".._LibUpdateTable["SHADOWVAYNE"]["LocaleVersion"].." => "..ServerVersion.."). Press F9 to load with the newest Version</font>") end) end, 1)
+			DelayAction(function()	DownloadFile(_LibUpdateTable["SHADOWVAYNE"]["SCRIPT"], SCRIPT_PATH..MainScriptName, function() print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Successfully updated. (".._LibUpdateTable["SHADOWVAYNE"]["LocaleVersion"].." => "..ServerVersion.."). Press F9 to load with the newest Version</font>") end) end, 2)
 		else
 			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Version "..ServerVersion.." Loaded</font>")
 		end
@@ -123,9 +123,8 @@ function enc(data)
     end)..({ '', '==', '=' })[#data%3+1])
 end
 
-function OnTick2()
+function OnTick()
 	if not ScriptStartOver then
-		if SOWUpdated and VPredictionUpdated and SourceLibUpdated then
 			require "SOW"
 			require "VPrediction"
 			require "SourceLib"
@@ -134,7 +133,6 @@ function OnTick2()
 			_LoadTables()
 			_CheckSACMMASOW()
 			_LoadMenu()
-			_UpdateShadowVayne()
 			AddTickCallback(_GetRunningModes)
 			AddTickCallback(_CheckEnemyStunnAble)
 			AddTickCallback(_NonTargetGapCloserAfterCast)
@@ -155,7 +153,6 @@ function OnTick2()
 			HidePermaShow["              Sida's Auto Carry: Reborn"] = true
 			HidePermaShow["Auto-Condemn"] = true
 			HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
-		end
 	end
 end
 
