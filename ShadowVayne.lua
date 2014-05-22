@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.97
+	Version: 2.98
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -10,11 +10,11 @@
 
 	Thx to Jus & Hellsing for minor helping, Manciuszz for his Gapcloserlist and Klokje for his Interruptlist
 	]]
---~ 	VIP_USER = false
 if myHero.charName ~= "Vayne" then return end
 if not VIP_USER then
 	rawset(_G, "LoadVIPScript", function() return end)
 end
+MainScriptName = GetCurrentEnv().FILE_NAME
 
 local informationTable, AAInfoTable, CastedLastE, ScriptStartTick = {}, {}, 0, 0
 local TickCountScriptStart, OnLoadDone, spellExpired, Beta = GetTickCount(), nil, true, false
@@ -22,125 +22,163 @@ local ScriptOnLoadDone, LastAttackedEnemy = false, nil
 local LastPrioUpdate = 0
 local DownloadStarted = false
 local HookSOWMenu = {}
-if FileExist(SCRIPT_PATH.."/Common/Selector.lua") then UseVIPSelector = true end
-UseVIPSelector = false
---~ function OnLoad()
---~ 	os.remove(LIB_PATH.."ShadowVayne.Version")
---~ 	os.remove(LIB_PATH.."SourceLib.Version")
 
+_SC = { init = true, initDraw = true, menuKey = 16, useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _changeKeyInstance = false, _sliceInstance = false, _listInstance = false }
+if not GetSave("scriptConfig")["Master"] then GetSave("scriptConfig")["Master"] = {} end
+_SC.master = GetSave("scriptConfig")["Master"]
+_SC.masterIndex = 0
+
+if FileExist(LIB_PATH.."/Selector.lua")	and VIP_USER then
+	require "Selector"
+	UserVIPSelector = true
+end
 --~ 			NewSourceLibFile = io.open(LIB_PATH.."/SOW.lua", "r")
 --~ 			CryptedString = NewSourceLibFile:read("*a")
 --~ 			NewSourceLibFile = io.open(LIB_PATH.."/SOWCrypted.lua", "w+")
 --~ 			NewSourceLibFile:write(enc(CryptedString))
 --~ 			NewSourceLibFile:close()
 
+function _ReplaceAutoUpdate(LibName)
+	AutoUpdateOverWriteFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
+	AutoUpdateOverWriteString = AutoUpdateOverWriteFile:read("*a")
+	AutoUpdateOverWriteFile:close()
+	AutoUpdateOverWriteString = string.gsub(AutoUpdateOverWriteString, "local AUTOUPDATE = true", "local AUTOUPDATE = false")
+	AutoUpdateOverWriteString = string.gsub(AutoUpdateOverWriteString, "local autoUpdate   = true", "local autoUpdate   = false")
+	AutoUpdateOverWriteFile = io.open(LIB_PATH.."/"..LibName..".lua", "w+")
+	AutoUpdateOverWriteFile:write(AutoUpdateOverWriteString)
+	AutoUpdateOverWriteFile:close()
+end
 
---~ end
-	function _ReplaceAutoUpdate(LibName)
-		AutoUpdateOverWriteFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
-		AutoUpdateOverWriteString = AutoUpdateOverWriteFile:read("*a")
-		AutoUpdateOverWriteFile:close()
-		AutoUpdateOverWriteString = string.gsub(AutoUpdateOverWriteString, "local AUTOUPDATE = true", "local AUTOUPDATE = false")
-		AutoUpdateOverWriteString = string.gsub(AutoUpdateOverWriteString, "local autoUpdate   = true", "local autoUpdate   = false")
-		AutoUpdateOverWriteFile = io.open(LIB_PATH.."/"..LibName..".lua", "w+")
-		AutoUpdateOverWriteFile:write(AutoUpdateOverWriteString)
-		AutoUpdateOverWriteFile:close()
+function _GetLocalVersion(LibName, StartPos, EndPos)
+	if LibName == "SHADOWVAYNE" then
+		LibNameFile = io.open(SCRIPT_PATH.."/"..MainScriptName, "r")
+		LibNameString = LibNameFile:read("*a")
+		LibNameFile:close()
+		return tonumber(string.sub(LibNameString, 51, 54))
+	else
+		LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
+		LibNameString = LibNameFile:read("*a")
+		LibNamePos, Dummy = string.find(LibNameString, "local version =")
+		if LibNamePos == nil then LibNamePos, Dummy = string.find(LibNameString, "@version") end
+		LibNameFile:close()
+		return tonumber(string.sub(LibNameString, LibNamePos+StartPos, LibNamePos+EndPos))
+	end
+end
+
+function _DoUpdateLib(LibName, ServerVersion, VersionPosStart, VersionPosEnd)
+	if FileExist(LIB_PATH.."/"..LibName..".lua") then
+		_LibUpdateTable[LibName]["LocaleVersion"] = _GetLocalVersion(LibName, VersionPosStart, VersionPosEnd)
+	else
+		_LibUpdateTable[LibName]["LocaleVersion"] = 0
 	end
 
-	_LibUpdateTable = { ["SOW"] = {}, ["VPREDICTION"] = {}, ["SOURCELIB"] = {}, ["SHADOWVAYNE"] = {} }
-	_LibUpdateTable["SOW"]["VERSION"] = "/honda7/BoL/master/VersionFiles/SOW.version".."?rand=".. tonumber(math.random(1000))
-	_LibUpdateTable["SOW"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/SOW.lua".."?rand=".. tonumber(math.random(1000))
-	_LibUpdateTable["VPREDICTION"]["VERSION"] = "/honda7/BoL/master/VersionFiles/vPrediction.version".."?rand=".. tonumber(math.random(1000))
-	_LibUpdateTable["VPREDICTION"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/VPrediction.lua".."?rand=".. tonumber(math.random(1000))
-	_LibUpdateTable["SOURCELIB"]["VERSION"] = "/TheRealSource/public/master/common/SourceLib.version".."?rand=".. tonumber(math.random(1000))
-	_LibUpdateTable["SOURCELIB"]["SCRIPT"] = "http://raw.github.com/TheRealSource/public/master/common/SourceLib.lua".."?rand="..tonumber(math.random(1000))
-	_LibUpdateTable["SHADOWVAYNE"]["VERSION"] = "/Superx321/BoL/master/ShadowVayne.Version".."?rand=".. tonumber(math.random(1000))
-	_LibUpdateTable["SHADOWVAYNE"]["SCRIPT"] = "http://raw.github.com/Superx321/BoL/master/ShadowVayne.lua".."?rand=".. tonumber(math.random(1000))
+	if ServerVersion > _LibUpdateTable[LibName]["LocaleVersion"] then
+		print("<font color=\"#F0Ff8d\"><b>ShadowVayne ("..LibName.."):</b></font> <font color=\"#FF0F0F\">Update found ("..ServerVersion.."). Downloading...</font>")
+		DelayAction(function()	DownloadFile(_LibUpdateTable[LibName]["SCRIPT"], LIB_PATH.."/"..LibName..".lua", function() _LibUpdateTable[LibName]["UPDATED"] = true;DelayAction(function() DownloadingLib = false end, 0.5);print("<font color=\"#F0Ff8d\"><b>ShadowVayne ("..LibName.."):</b></font> <font color=\"#FF0F0F\">Successfully updated to Version "..ServerVersion..". </font>") end) end, 2)
+	else
+		DelayAction(function() DownloadingLib = false end, 0.5)
+		_LibUpdateTable[LibName]["UPDATED"] = true
+	end
+end
 
-	if FileExist(LIB_PATH.."/SOW.lua") then
+function _CheckScriptUpdate()
+	if not UpdateFinished then
+		if not DownloadingLib and _LibUpdateTable["SHADOWVAYNE"]["SERVERVERSION"] == nil then
+			DownloadingLib = true
+			GetAsyncWebResult("raw.github.com", _LibUpdateTable["SHADOWVAYNE"]["VERSION"], tostring(math.random(1000)), function(x) _LibUpdateTable["SHADOWVAYNE"]["SERVERVERSION"] = tonumber(x);DelayAction(function() DownloadingLib = false end, 0.5) end)
+		end
+
+		if not DownloadingLib and _LibUpdateTable["SHADOWVAYNE"]["SERVERVERSION"] ~= nil then
+			if _LibUpdateTable["SHADOWVAYNE"]["SERVERVERSION"] > _GetLocalVersion("SHADOWVAYNE") then
+				_PrintScriptMsg("New Update available: Version ".._LibUpdateTable["SHADOWVAYNE"]["SERVERVERSION"])
+				if VayneMenu.autoup.autoupcheck then
+					_PrintScriptMsg("Downloading, please wait...")
+					DelayAction(function() DownloadFile(_LibUpdateTable["SHADOWVAYNE"]["SCRIPT"], SCRIPT_PATH.."/"..MainScriptName, function() DelayAction(function() DownloadingLib = false end, 0.5);_PrintScriptMsg("Successfully updated to Version ".._LibUpdateTable["SHADOWVAYNE"]["SERVERVERSION"]);_PrintScriptMsg("Please Reload with F9") end) end, 1)
+					UpdateFinished = true
+					DownloadingLib = true
+				else
+					UpdateFinished = true
+					_PrintScriptMsg("AutoUpdate is off. Turn it on for Auto-Download")
+				end
+			else
+				_PrintScriptMsg("No Updates available.")
+				UpdateFinished = true
+			end
+		end
+	end
+end
+
+function _LibsUpdate()
+	if _LibUpdateTable == nil then
+		_LibUpdateTable = { ["SOW"] = {}, ["VPREDICTION"] = {}, ["SOURCELIB"] = {}, ["SHADOWVAYNE"] = {} }
+		_LibUpdateTable["SOW"]["VERSION"] = "/honda7/BoL/master/VersionFiles/SOW.version"
+		_LibUpdateTable["SOW"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/SOW.lua"
+		_LibUpdateTable["VPREDICTION"]["VERSION"] = "/honda7/BoL/master/VersionFiles/vPrediction.version"
+		_LibUpdateTable["VPREDICTION"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/VPrediction.lua"
+		_LibUpdateTable["SOURCELIB"]["VERSION"] = "/TheRealSource/public/master/common/SourceLib.version"
+		_LibUpdateTable["SOURCELIB"]["SCRIPT"] = "http://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
+		_LibUpdateTable["SHADOWVAYNE"]["VERSION"] = "/Superx321/BoL/master/ShadowVayne.Version"
+		_LibUpdateTable["SHADOWVAYNE"]["SCRIPT"] = "http://raw.github.com/Superx321/BoL/master/ShadowVayne.lua"
+	end
+
+	if not DeletedOldLibs then
+		DeletedOldLibs = true
+		if FileExist(LIB_PATH.."/SOW.lua") and _GetLocalVersion("SOW", 17, 21) < 1.129 then os.remove(LIB_PATH.."/SOW.lua")	end
+		if FileExist(LIB_PATH.."/VPREDICTION.lua") and _GetLocalVersion("VPREDICTION", 17, 20) < 2.51 then os.remove(LIB_PATH.."/VPREDICTION.lua")	end
+		if FileExist(LIB_PATH.."/SOURCELIB.lua") and _GetLocalVersion("SOURCELIB", 16, 20) < 1.058 then os.remove(LIB_PATH.."/SOURCELIB.lua")	end
+	end
+
+	if FileExist(LIB_PATH.."/SOW.lua") and FileExist(LIB_PATH.."/VPrediction.lua") and FileExist(LIB_PATH.."/SourceLib.lua") and not DownloadingLib then
 		_ReplaceAutoUpdate("SOW")
-		DelayAction(function() require "SOW" end, 0.5)
-	end
-
-	if FileExist(LIB_PATH.."/VPrediction.lua") then
 		_ReplaceAutoUpdate("VPrediction")
-		DelayAction(function() require "VPrediction" end, 0.5)
-	end
-
-	if FileExist(LIB_PATH.."/SourceLib.lua") then
 		_ReplaceAutoUpdate("SourceLib")
-		DelayAction(function() require "SourceLib" end, 0.5)
-	end
-
-	GetAsyncWebResult("raw.github.com", _LibUpdateTable["SOW"]["VERSION"], function(x) _DoUpdateLib("SOW", tonumber(x), 17, 21) end)
-	GetAsyncWebResult("raw.github.com",  _LibUpdateTable["VPREDICTION"]["VERSION"], function(x) _DoUpdateLib("VPREDICTION", tonumber(x), 17, 20) end)
-	GetAsyncWebResult("raw.github.com", _LibUpdateTable["SOURCELIB"]["VERSION"], function(x)_DoUpdateLib("SOURCELIB", tonumber(x), 16, 20) end)
-	GetAsyncWebResult("raw.github.com", _LibUpdateTable["SHADOWVAYNE"]["VERSION"], function(x) DelayAction(function() _DoUpdateMain(tonumber(x)) end, 1) end)
-
-	function _DoUpdateLib(LibName, ServerVersion, VersionPosStart, VersionPosEnd)
-		if FileExist(LIB_PATH.."/"..LibName..".lua") then
-			LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
-			LibNameString = LibNameFile:read("*a")
-			LibNamePos, Dummy = string.find(LibNameString, "local version =")
-			_LibUpdateTable[LibName]["LocaleVersion"] = tonumber(string.sub(LibNameString, LibNamePos+VersionPosStart, LibNamePos+VersionPosEnd))
-			LibNameFile:close()
-		else
-			_LibUpdateTable[LibName]["LocaleVersion"] = 0
+		require "SOW"
+		require "VPrediction"
+		require "SourceLib"
+		LibsDone = true
+		print("<font color=\"#F0Ff8d\"><b>ShadowVayne (SOW):</b></font> <font color=\"#FF0F0F\">Version ".._GetLocalVersion("SOW", 17, 21).." loaded</font>")
+		print("<font color=\"#F0Ff8d\"><b>ShadowVayne (VPREDICTION):</b></font> <font color=\"#FF0F0F\">Version ".._GetLocalVersion("VPREDICTION", 17, 20).." loaded</font>")
+		print("<font color=\"#F0Ff8d\"><b>ShadowVayne (SOURCELIB):</b></font> <font color=\"#FF0F0F\">Version ".._GetLocalVersion("SOURCELIB", 16, 20).." loaded</font>")
+	else
+		if not DownloadingLib and not _LibUpdateTable["SOW"]["UPDATED"] and not FileExist(LIB_PATH.."/SOW.lua") then
+			if not StartUpdatePrint then StartUpdatePrint=true;print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating Libs. Please wait...</font>") end
+			DownloadingLib = true
+			GetAsyncWebResult("raw.github.com", _LibUpdateTable["SOW"]["VERSION"], tostring(math.random(1000)), function(x) _DoUpdateLib("SOW", tonumber(x), 17, 21) end)
 		end
 
-		if ServerVersion > _LibUpdateTable[LibName]["LocaleVersion"] then
-			print("<font color=\"#F0Ff8d\"><b>ShadowVayne ("..LibName.."):</b></font> <font color=\"#FF0F0F\">Update found ("..ServerVersion.."). Downloading...</font>")
-			DelayAction(function()	DownloadFile(_LibUpdateTable[LibName]["SCRIPT"], LIB_PATH.."/"..LibName..".lua", function() print("<font color=\"#F0Ff8d\"><b>ShadowVayne ("..LibName.."):</b></font> <font color=\"#FF0F0F\">Successfully updated. (".._LibUpdateTable[LibName]["LocaleVersion"].." => "..ServerVersion.."). Press F9 to load with the newest Version</font>") end) end, 2)
-		else
-			print("<font color=\"#F0Ff8d\"><b>ShadowVayne ("..LibName.."):</b></font> <font color=\"#FF0F0F\">Version "..ServerVersion.." Loaded</font>")
+		if not DownloadingLib and not _LibUpdateTable["VPREDICTION"]["UPDATED"] and not FileExist(LIB_PATH.."/VPREDICTION.lua") then
+			if not StartUpdatePrint then StartUpdatePrint=true;print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating Libs. Please wait...</font>") end
+			DownloadingLib = true
+			GetAsyncWebResult("raw.github.com", _LibUpdateTable["VPREDICTION"]["VERSION"], tostring(math.random(1000)), function(x) _DoUpdateLib("VPREDICTION", tonumber(x), 17, 20) end)
+		end
+
+		if not DownloadingLib and not _LibUpdateTable["SOURCELIB"]["UPDATED"] and not FileExist(LIB_PATH.."/SOURCELIB.lua") then
+			if not StartUpdatePrint then StartUpdatePrint=true;print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating Libs. Please wait...</font>") end
+			DownloadingLib = true
+			GetAsyncWebResult("raw.github.com", _LibUpdateTable["SOURCELIB"]["VERSION"], tostring(math.random(1000)), function(x)_DoUpdateLib("SOURCELIB", tonumber(x), 16, 20) end)
 		end
 	end
-
-	function _DoUpdateMain(ServerVersion)
-			MainScriptName = "ShadowVayne.lua"
-			MainFile = io.open(SCRIPT_PATH.."/"..MainScriptName, "r")
-			_LibUpdateTable["SHADOWVAYNE"]["LocaleVersion"] = tonumber(string.sub(MainFile:read("*a"), 51, 54))
-			MainFile:close()
-		if ServerVersion > _LibUpdateTable["SHADOWVAYNE"]["LocaleVersion"] then
-			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Update found ("..ServerVersion.."). Downloading...</font>")
-			DelayAction(function()	DownloadFile(_LibUpdateTable["SHADOWVAYNE"]["SCRIPT"], SCRIPT_PATH..MainScriptName, function() print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Successfully updated. (".._LibUpdateTable["SHADOWVAYNE"]["LocaleVersion"].." => "..ServerVersion.."). Press F9 to load with the newest Version</font>") end) end, 2)
-		else
-			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Version "..ServerVersion.." Loaded</font>")
-		end
-	end
-
-function enc(data)
-	local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-    return ((data:gsub('.', function(x)
-        local r,b='',x:byte()
-        for i=8,1,-1 do r=r..(b%2^i-b%2^(i-1)>0 and '1' or '0') end
-        return r;
-    end)..'0000'):gsub('%d%d%d?%d?%d?%d?', function(x)
-        if (#x < 6) then return '' end
-        local c=0
-        for i=1,6 do c=c+(x:sub(i,i)=='1' and 2^(6-i) or 0) end
-        return b:sub(c+1,c+1)
-    end)..({ '', '==', '=' })[#data%3+1])
 end
 
 function OnTick()
-	if not ScriptStartOver then
-			require "SOW"
-			require "VPrediction"
-			require "SourceLib"
+	if not LibsDone then
+		_LibsUpdate()
+	else
+		if not ScriptStartOver then
 			ScriptStartOver = true
 			VP = VPrediction(true)
 			_LoadTables()
 			_CheckSACMMASOW()
+			_HijackPrintChat()
 			_LoadMenu()
+			AddTickCallback(_CheckScriptUpdate)
 			AddTickCallback(_GetRunningModes)
 			AddTickCallback(_CheckEnemyStunnAble)
 			AddTickCallback(_NonTargetGapCloserAfterCast)
 			AddTickCallback(_UseBotRK)
 			AddTickCallback(_ClickThreshLantern)
 			AddTickCallback(_UsePermaShows)
-			if UseVIPSelector then require "Selector" end
-			if UseVIPSelector then AddTickCallback(_UseSelector) end
+			AddTickCallback(_UseSelector)
 			autoLevelSetFunction(_AutoLevelSpell)
 			autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 			ScriptOnLoadDone = true
@@ -153,6 +191,7 @@ function OnTick()
 			HidePermaShow["              Sida's Auto Carry: Reborn"] = true
 			HidePermaShow["Auto-Condemn"] = true
 			HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
+		end
 	end
 end
 
@@ -168,12 +207,26 @@ function _CheckSACMMASOW()
 	end
 
 	if _G.MMA_Loaded then
-		MMALoaded = false
+		MMALoaded = true
 	end
 
 	if FileExist(SCRIPT_PATH.."/Common/SOW.lua") then
 		SOWLoaded = true
 	end
+end
+
+function enc(data)
+	local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    return ((data:gsub('.', function(x)
+        local r,b='',x:byte()
+        for i=8,1,-1 do r=r..(b%2^i-b%2^(i-1)>0 and '1' or '0') end
+        return r;
+    end)..'0000'):gsub('%d%d%d?%d?%d?%d?', function(x)
+        if (#x < 6) then return '' end
+        local c=0
+        for i=1,6 do c=c+(x:sub(i,i)=='1' and 2^(6-i) or 0) end
+        return b:sub(c+1,c+1)
+    end)..({ '', '==', '=' })[#data%3+1])
 end
 
 function OnDraw()
@@ -340,9 +393,9 @@ function _GetNeededAutoHits(enemy)
 end
 
 function _UseSelector()
-	if VIP_USER and _G.Selector_Enabled and not myHero.dead and UseVIPSelector then
+	if VIP_USER and UseVIPSelector then
 		local currentTarget = GetTarget()
-		if currentTarget ~= nil and currentTarget.type == "obj_AI_Hero" and ValidTarget(currentTarget, 2000, true) then
+		if currentTarget ~= nil and currentTarget.type == "obj_AI_Hero" and ValidTarget(currentTarget, 550, true) then
 			selected = currentTarget
 		else
 			selected = nil
@@ -350,21 +403,20 @@ function _UseSelector()
 		if selected ~= nil then
 			SOW:ForceTarget(selected)
 		else
---~ 		GetSelectorTarget = Selector.GetTarget(Selector.LESSCASTADVANCED, "AD", {distance = 650})
-		GetSelectorTarget = Selector.GetTarget()
-			if GetSelectorTarget ~= nil then
-				SOW:ForceTarget(target)
+			GetSelectorTarget = Selector.GetTarget(Selector.LESSCASTADVANCED)
+			if GetSelectorTarget ~= nil and ValidTarget(GetSelectorTarget) then
+				SOW:ForceTarget(GetSelectorTarget)
 			end
 		end
 	end
 end
 
 function _UsePermaShows()
-	CustomPermaShow("AutoCarry", VayneMenu.keysetting.autocarry, VayneMenu.permashowsettings.carrypermashow)
-	CustomPermaShow("MixedMode", VayneMenu.keysetting.mixedmode, VayneMenu.permashowsettings.mixedpermashow)
-	CustomPermaShow("LaneClear", VayneMenu.keysetting.laneclear, VayneMenu.permashowsettings.laneclearpermashow)
-	CustomPermaShow("LastHit", VayneMenu.keysetting.lasthit, VayneMenu.permashowsettings.lasthitpermashow)
-	CustomPermaShow("Auto-E after next BasicAttack", VayneMenu.keysetting.basiccondemn, VayneMenu.permashowsettings.epermashow)
+	CustomPermaShow("AutoCarry (Using "..AutoCarryOrbText..")", VayneMenu.keysetting.autocarry, VayneMenu.permashowsettings.carrypermashow, nil, nil, nil, 1)
+	CustomPermaShow("MixedMode (Using "..MixedModeOrbText..")", VayneMenu.keysetting.mixedmode, VayneMenu.permashowsettings.mixedpermashow, nil, nil, nil, 2)
+	CustomPermaShow("LaneClear (Using "..LaneClearOrbText..")", VayneMenu.keysetting.laneclear, VayneMenu.permashowsettings.laneclearpermashow, nil, nil, nil, 3)
+	CustomPermaShow("LastHit (Using "..LastHitOrbText..")", VayneMenu.keysetting.lasthit, VayneMenu.permashowsettings.lasthitpermashow, nil, nil, nil, 4)
+	CustomPermaShow("Auto-E after next BasicAttack", VayneMenu.keysetting.basiccondemn, VayneMenu.permashowsettings.epermashow, nil, nil, nil,  5)
 end
 
 function OnCreateObj(Obj)
@@ -520,20 +572,20 @@ function _ScriptDebugMsg(Msg, DebugMode)
 end
 
 function _GetRunningModes()
---~ Get the Keysettings from SV
+	--~ Get the Keysettings from SV
 	ShadowVayneAutoCarry = VayneMenu.keysetting.autocarry
 	ShadowVayneMixedMode = VayneMenu.keysetting.mixedmode
 	ShadowVayneLaneClear = VayneMenu.keysetting.laneclear
 	ShadowVayneLastHit = VayneMenu.keysetting.lasthit
 
---~ Reset All Modes to false
+	--~ Reset All Modes to false
 	if SACLoaded then Keys.AutoCarry,Keys.MixedMode,Keys.LaneClear,Keys.LastHit = false,false,false,false end
 	if RevampedLoaded then REVMenu.AutoCarry,REVMenu.MixedMode,REVMenu.LaneClear,REVMenu.LastHit = false,false,false,false end
 	--if SOWLoaded then SOWMenu._param[7].key,SOWMenu._param[8].key,SOWMenu._param[9].key,SOWMenu._param[10].key = 5,5,5,5 end
 	if SOWLoaded then SOWMenu.Mode0,SOWMenu.Mode1,SOWMenu.Mode2,SOWMenu.Mode3 = false,false,false,false end
 	if MMALoaded then _G.MMA_Orbwalker,_G.MMA_HybridMode,_G.MMA_LaneClear,_G.MMA_LastHit = false,false,false,false end
 
---~ Check if one List is Empty
+	--~ Check if one List is Empty
 	if VayneMenu.keysetting._param[StartParam].listTable[VayneMenu.keysetting.AutoCarryOrb] == nil then VayneMenu.keysetting.AutoCarryOrb = 1 end
 	if VayneMenu.keysetting._param[StartParam+1].listTable[VayneMenu.keysetting.MixedModeOrb] == nil then VayneMenu.keysetting.MixedModeOrb = 1 end
 	if VayneMenu.keysetting._param[StartParam+2].listTable[VayneMenu.keysetting.LaneClearOrb] == nil then VayneMenu.keysetting.LaneClearOrb = 1 end
@@ -567,6 +619,16 @@ function _GetRunningModes()
 	if LastHitOrbText == "Revamped" then REVMenu.LastHit = ShadowVayneLastHit end
 end
 
+function _HijackPrintChat()
+	_G.CustomPrintChat = _G.PrintChat
+	_G.PrintChat =
+	function(Arg1)
+		if not string.find(Arg1, "Selector") then
+			CustomPrintChat(Arg1)
+		end
+	end
+end
+
 function _LoadMenu()
 	VayneMenu = scriptConfig("[SV] ShadowVayne", "SV_MAIN")
 	SOWMenu = scriptConfig("[SV] SimpleOrbWalker Settings", "SV_SOW")
@@ -582,20 +644,23 @@ function _LoadMenu()
 	VayneMenu:addSubMenu("[Misc]: AutoUpdate Settings", "autoup")
 	VayneMenu:addSubMenu("[Misc]: Draw Settings", "draw")
 	VayneMenu:addSubMenu("[BotRK]: Settings", "botrksettings")
+--~ 	VayneMenu:addSubMenu("[Bilgewater]: Settings", "bilgewatersettings")
 	VayneMenu:addSubMenu("[QSS]: Settings", "qqs")
 	VayneMenu:addSubMenu("[Debug]: Settings", "debug")
 	VayneMenu.qqs:addParam("nil","QSS/Cleanse is not Supported yet", SCRIPT_PARAM_INFO, "")
-	if not VIP_USER or not UseVIPSelector then
-		TSSMenu = scriptConfig("[SV] SimpleTargetSelector Settings", "SV_TSS")
-		STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
-		SOWi = SOW(VP, STS)
-		SOWi:LoadToMenu(SOWMenu)
-		STS:AddToMenu(TSSMenu)
+
+	STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
+	SOWi = SOW(VP, STS)
+	SOWi:LoadToMenu(SOWMenu)
+	if UserVIPSelector then
+		Selector.Instance()
+		print("<font color=\"#F0Ff8d\"><b>ShadowVayne (SELECTOR):</b></font> <font color=\"#FF0F0F\">Version ".._GetLocalVersion("SELECTOR", 9, 14).." loaded</font>")
 	else
-		SOWi = SOW(VP)
-		SOWi:LoadToMenu(SOWMenu)
-		if UseVIPSelector then Selector.Instance() end
+		TSSMenu = scriptConfig("[SV] SimpleTargetSelector Settings", "SV_TSS")
+		STS:AddToMenu(TSSMenu)
 	end
+		_PrintScriptMsg("Version ".._GetLocalVersion("SHADOWVAYNE").." loaded")
+
 
 	VayneMenu.keysetting:addParam("nil","Basic Key Settings", SCRIPT_PARAM_INFO, "")
 	VayneMenu.keysetting:addParam("basiccondemn","Condemn on next BasicAttack:", SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte( "E" ))
@@ -729,7 +794,7 @@ function _LoadMenu()
 --~ 	Vip Menu
 		VayneMenu.vip:addParam("EPackets", "Use Packets for E Cast (VIP Only)", SCRIPT_PARAM_ONOFF, true)
 --~ 		VayneMenu.vip:addParam("vpred", "Use VPrediction (VIP Only)", SCRIPT_PARAM_ONOFF, true)
-		VayneMenu.vip:addParam("selector", "Use Selector (VIP Only)", SCRIPT_PARAM_ONOFF, true)
+--~ 		VayneMenu.vip:addParam("selector", "Use Selector (VIP Only)", SCRIPT_PARAM_ONOFF, true)
 
 --~ 	PermaShow Menu
 		VayneMenu.permashowsettings:addParam("epermashow", "PermaShow \"E on Next BasicAttack\"", SCRIPT_PARAM_ONOFF, true)
@@ -739,7 +804,7 @@ function _LoadMenu()
 		VayneMenu.permashowsettings:addParam("lasthitpermashow", "PermaShow: Last hit", SCRIPT_PARAM_ONOFF, true)
 		VayneMenu.keysetting:permaShow("basiccondemn")
 
---~ 	AutoUpdate Menu
+--~ 	AutoUpdate
 		VayneMenu.autoup:addParam("autoupcheck", "AutoUpdate", SCRIPT_PARAM_ONOFF, true)
 --~ 		VayneMenu.autoup:addParam("autoupdown", "Download Available Updates", SCRIPT_PARAM_ONOFF, true)
 		VayneMenu.autoup:addParam("fap", "", SCRIPT_PARAM_INFO, "","" )
@@ -862,7 +927,7 @@ function _ClickThreshLantern()
 	end
 end
 
-function CustomPermaShow(TextVar, ValueVar, VisibleVar, PermaColorVar, OnColorVar, OffColorVar)
+function CustomPermaShow(TextVar, ValueVar, VisibleVar, PermaColorVar, OnColorVar, OffColorVar, IndexVar)
 	if not _CPS_Added then
 		_G.DrawCustomText = _G.DrawText
 		_G.DrawText = function(Arg1, Arg2, Arg3, Arg4, Arg5) _DrawText(Arg1, Arg2, Arg3, Arg4, Arg5) end
@@ -875,14 +940,15 @@ function CustomPermaShow(TextVar, ValueVar, VisibleVar, PermaColorVar, OnColorVa
 
 	local _CPS_Updated = false
 	for i=1, #PermaShowTable do
-		if PermaShowTable[i]["TextVar"] == TextVar then
+		if PermaShowTable[i]["IndexVar"] == IndexVar then
 			PermaShowTable[i]["ValueVar"], PermaShowTable[i]["VisibleVar"],_CPS_Updated = ValueVar,VisibleVar,true
 			PermaShowTable[i]["PermaColorVar"],PermaShowTable[i]["OnColorVar"],PermaShowTable[i]["OffColorVar"] = PermaColorVar, OnColorVar, OffColorVar
+			PermaShowTable[i]["TextVar"] = TextVar
 		end
 	end
 
 	if not _CPS_Updated then
-		PermaShowTable[#PermaShowTable+1] = {["TextVar"] = TextVar, ["ValueVar"] = ValueVar, ["VisibleVar"] = VisibleVar, ["PermaColorVar"] = PermaColorVar, ["OnColorVar"] = OnColorVar, ["OffColorVar"] = OffColorVar}
+		PermaShowTable[#PermaShowTable+1] = {["TextVar"] = TextVar, ["ValueVar"] = ValueVar, ["VisibleVar"] = VisibleVar, ["PermaColorVar"] = PermaColorVar, ["OnColorVar"] = OnColorVar, ["OffColorVar"] = OffColorVar, ["IndexVar"] = IndexVar}
 	end
 end
 
@@ -1010,6 +1076,7 @@ function scriptConfig:_DrawParam(varIndex)
 	or (self.name == "sidasacsetup_sidasacmixedmodesub" and pText == "Mixed Mode")
 	or (self.name == "sidasacsetup_sidasaclaneclearsub" and pText == "Lane Clear")
 	or (self.name == "sidasacsetup_sidasaclasthitsub" and pText == "Last Hit")
+	or (self.name == "MMA2013" and pVar == "ShadowHijacked")
 	then
 		self._param[varIndex].pType = 5
 		self._param[varIndex].text = "ShadowVayne found. Set the Keysettings there!"
@@ -1024,6 +1091,7 @@ function scriptConfig:_DrawParam(varIndex)
 	or (self.name == "sidasacvayne_sidasacvaynesub")
 	)
 	then
+
 --~ 		if string.find(pText, "Auto Carry") and self.name == "sidasacsetup_sidasacautocarrysub" then
 --~ 			print(pVar)
 --~ 		end
@@ -1051,6 +1119,7 @@ function scriptConfig:_DrawParam(varIndex)
 			or (self.name == "sidasacsetup_sidasacmixedmodesub" and pVar == "Active")
 			or (self.name == "sidasacsetup_sidasaclaneclearsub" and pVar == "Active")
 			or (self.name == "sidasacsetup_sidasaclasthitsub" and pVar == "Active")
+			or (self.name == "MMA2013" and pVar == "ShadowHijacked")
 			) then
 				DrawText(tostring(self[pVar]), _CPS_Master.fontSize, self._x + _CPS_Master.row3 + 2, self._y, _CPS_Master.color.grey)
 			end
@@ -1071,11 +1140,76 @@ function scriptConfig:_DrawParam(varIndex)
 	end
 end
 
+function __SC__remove(name)
+    if not GetSave("scriptConfig")[name] then GetSave("scriptConfig")[name] = {} end
+    table.clear(GetSave("scriptConfig")[name])
+end
+
+function __SC__save(name, content)
+    if not GetSave("scriptConfig")[name] then GetSave("scriptConfig")[name] = {} end
+    table.clear(GetSave("scriptConfig")[name])
+    table.merge(GetSave("scriptConfig")[name], content, true)
+end
+
+function scriptConfig:addParam(pVar, pText, pType, defaultValue, a, b, c)
+if (self.name == "MMA2013") and (pType == 2) then
+    newParam = { var = "ShadowHijacked", text = pText, pType = pType }
+else
+    newParam = { var = pVar, text = pText, pType = pType }
+end
+    assert(type(pVar) == "string" and type(pText) == "string" and type(pType) == "number", "addParam: wrong argument types (<string>, <string>, <pType> expected)")
+    assert(string.find(pVar, "[^%a%d]") == nil, "addParam: pVar should contain only char and number")
+    --assert(self[pVar] == nil, "addParam: pVar should be unique, already existing " .. pVar)
+    if pType == SCRIPT_PARAM_ONOFF then
+        assert(type(defaultValue) == "boolean", "addParam: wrong argument types (<boolean> expected)")
+    elseif pType == SCRIPT_PARAM_COLOR then
+        assert(type(defaultValue) == "table", "addParam: wrong argument types (<table> expected)")
+        assert(#defaultValue == 4, "addParam: wrong argument ({a,r,g,b} expected)")
+    elseif pType == SCRIPT_PARAM_ONKEYDOWN or pType == SCRIPT_PARAM_ONKEYTOGGLE then
+	   assert(type(defaultValue) == "boolean" and type(a) == "number", "addParam: wrong argument types (<boolean> <number> expected)")
+        newParam.key = a
+    elseif pType == SCRIPT_PARAM_SLICE then
+        assert(type(defaultValue) == "number" and type(a) == "number" and type(b) == "number" and (type(c) == "number" or c == nil), "addParam: wrong argument types (pVar, pText, pType, defaultValue, valMin, valMax, decimal) expected")
+        newParam.min = a
+        newParam.max = b
+        newParam.idc = c or 0
+        newParam.cursor = 0
+    elseif pType == SCRIPT_PARAM_LIST then
+        assert(type(defaultValue) == "number" and type(a) == "table", "addParam: wrong argument types (pVar, pText, pType, defaultValue, listTable) expected")
+        newParam.listTable = a
+        newParam.min = 1
+        newParam.max = #a
+        newParam.cursor = 0
+    end
+    self[pVar] = defaultValue
+    table.insert(self._param, newParam)
+    __SC__saveMaster()
+    self:load()
+end
+
+function __SC__saveMaster()
+    local config = {}
+    local P, PS, I = 0, 0, 0
+    for _, instance in pairs(_SC.instances) do
+        I = I + 1
+        P = P + #instance._param
+        PS = PS + #instance._permaShow
+    end
+    _SC.master["I" .. _SC.masterIndex] = I
+    _SC.master["P" .. _SC.masterIndex] = P
+    _SC.master["PS" .. _SC.masterIndex] = PS
+    if not _SC.master.useTS and _SC.useTS then _SC.master.useTS = true end
+    for var, value in pairs(_SC.master) do
+        config[var] = value
+    end
+    __SC__save("Master", config)
+end
+
 function _DrawText(Arg1, Arg2, Arg3, Arg4, Arg5)
 	_CPS_Master = GetSave("scriptConfig")["Master"]
 	_CPS_Master.row = (WINDOW_W and math.round(WINDOW_W / 6.4) or 160) * 0.7
 	if Arg1 == "Selector" then
-		Arg1 = "[SV] TargetSelector Settings"
+		Arg1 = "[SV] VIPTargetSelector Settings"
 	end
 	if Arg3 == _CPS_Master.px then
 		if not (HidePermaShow[Arg1] ~= nil and HidePermaShow[Arg1] == true) then
