@@ -1,1 +1,122 @@
-LoadProtectedScript('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')
+if myHero.charName ~= "Vayne" then return end
+if not VIP_USER then return end
+
+local TumbleSpots = {
+		["VisionPos_1"] = { ["x"] = 11589, ["y"] = 52, ["z"] = 4657 },
+		["VisionPos_2"] = { ["x"] = 6623, ["y"] = 56, ["z"] = 8649 },
+		["StandPos_1"] = { ["x"] = 11590.95, ["y"] = 4656.26 },
+		["StandPos_2"] = { ["x"] = 6623.00, ["y"] = 8649.00 },
+		["CastPos_1"] = { ["x"] = 11334.74, ["y"] = 4517.47 },
+		["CastPos_2"] = { ["x"] = 6010.5869140625, ["y"] = 8508.8740234375 }
+	}
+
+
+function OnLoad()
+AddDrawCallback(_WallTumbleDraw)
+AddTickCallback(_WallTumble)
+end
+
+function RoundNumber(num, idp)
+  return tonumber(string.format("%." .. (idp or 0) .. "f", num))
+end
+
+function _WallTumble()
+	if VIP_USER then
+		if myHero:CanUseSpell(_Q) ~= READY then TumbleOverWall_1, TumbleOverWall_2 = false,false end
+		if TumbleOverWall_1 then
+			if GetDistance(TumbleSpots.VisionPos_1) <= 50 then
+				TumbleOverWall_1 = false
+				CastSpell(_Q, TumbleSpots.CastPos_1.x,  TumbleSpots.CastPos_1.y)
+				myHero:HoldPosition()
+			else
+				if GetDistance(TumbleSpots.VisionPos_1) > 50 then myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y) end
+			end
+		end
+		if TumbleOverWall_2 then
+			if GetDistance(TumbleSpots.VisionPos_2) <= 50 then
+				TumbleOverWall_2 = false
+				CastSpell(_Q, TumbleSpots.CastPos_2.x,  TumbleSpots.CastPos_2.y)
+				myHero:HoldPosition()
+			else
+				if GetDistance(TumbleSpots.VisionPos_2) > 50 then myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y) end
+			end
+		end
+	end
+end
+
+function _WallTumbleDraw()
+	if VIP_USER then
+		if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
+			DrawCircle(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x107458)
+		else
+			DrawCircle(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x80FFFF)
+		end
+		if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
+			DrawCircle(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x107458)
+		else
+			DrawCircle(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x80FFFF)
+		end
+	end
+end
+
+function OnSendPacket(p)
+	if VIP_USER then
+		if p.header == 153 and p.size == 26 then
+			if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
+				p.pos = 1
+				P_NetworkID = p:DecodeF()
+				P_SpellID = p:Decode1()
+				if P_NetworkID == myHero.networkID and P_SpellID == _Q then
+					if DontBlockNext then
+						DontBlockNext = false
+					else
+						p:Block()
+						DontBlockNext = true
+						TumbleOverWall_1 = true
+					end
+				end
+			end
+
+			if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
+				p.pos = 1
+				P_NetworkID = p:DecodeF()
+				P_SpellID = p:Decode1()
+				if P_NetworkID == myHero.networkID and P_SpellID == _Q then
+					if DontBlockNext then
+						DontBlockNext = false
+					else
+						p:Block()
+						DontBlockNext = true
+						TumbleOverWall_2 = true
+					end
+				end
+			end
+		end
+
+		if p.header == 113 then
+			p.pos = 1
+			P_NetworkID = p:DecodeF()
+			p:Decode1()
+			P_X = p:DecodeF()
+			P_X2 = RoundNumber(P_X, 2)
+			P_Y = p:DecodeF()
+			P_Y2 = RoundNumber(P_Y, 2)
+			if TumbleOverWall_1 == true then
+				RunToX, RunToY = TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y
+				if not (P_X2 == RunToX and P_Y2 == RunToY) then
+					p:Block()
+					myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y)
+				end
+			end
+			if TumbleOverWall_2 == true then
+				RunToX, RunToY = TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y
+				if not (P_X2 == RunToX and P_Y2 == RunToY) then
+					print(P_X2)
+					print(RunToX)
+					p:Block()
+					myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y)
+				end
+			end
+		end
+	end
+end
