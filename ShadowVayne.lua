@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 2.98
+	Version: 2.99
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -29,7 +29,6 @@ _SC.master = GetSave("scriptConfig")["Master"]
 _SC.masterIndex = 0
 
 if FileExist(LIB_PATH.."/Selector.lua")	and VIP_USER then
-	require "Selector"
 	UserVIPSelector = true
 end
 --~ 			NewSourceLibFile = io.open(LIB_PATH.."/SOW.lua", "r")
@@ -110,13 +109,15 @@ end
 
 function _LibsUpdate()
 	if _LibUpdateTable == nil then
-		_LibUpdateTable = { ["SOW"] = {}, ["VPREDICTION"] = {}, ["SOURCELIB"] = {}, ["SHADOWVAYNE"] = {} }
+		_LibUpdateTable = { ["SOW"] = {}, ["VPREDICTION"] = {}, ["SOURCELIB"] = {}, ["SELECTOR"] = {}, ["SHADOWVAYNE"] = {} }
 		_LibUpdateTable["SOW"]["VERSION"] = "/honda7/BoL/master/VersionFiles/SOW.version"
 		_LibUpdateTable["SOW"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/SOW.lua"
 		_LibUpdateTable["VPREDICTION"]["VERSION"] = "/honda7/BoL/master/VersionFiles/vPrediction.version"
 		_LibUpdateTable["VPREDICTION"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/VPrediction.lua"
 		_LibUpdateTable["SOURCELIB"]["VERSION"] = "/TheRealSource/public/master/common/SourceLib.version"
 		_LibUpdateTable["SOURCELIB"]["SCRIPT"] = "http://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
+		_LibUpdateTable["SELECTOR"]["VERSION"] = "/scripts/Selector.lua"
+		_LibUpdateTable["SELECTOR"]["SCRIPT"] = "http://portalvhds71h2h1bjq6jhh.blob.core.windows.net/scripts/Selector.lua"
 		_LibUpdateTable["SHADOWVAYNE"]["VERSION"] = "/Superx321/BoL/master/ShadowVayne.Version"
 		_LibUpdateTable["SHADOWVAYNE"]["SCRIPT"] = "http://raw.github.com/Superx321/BoL/master/ShadowVayne.lua"
 	end
@@ -126,15 +127,17 @@ function _LibsUpdate()
 		if FileExist(LIB_PATH.."/SOW.lua") and _GetLocalVersion("SOW", 17, 21) < 1.129 then os.remove(LIB_PATH.."/SOW.lua")	end
 		if FileExist(LIB_PATH.."/VPREDICTION.lua") and _GetLocalVersion("VPREDICTION", 17, 20) < 2.51 then os.remove(LIB_PATH.."/VPREDICTION.lua")	end
 		if FileExist(LIB_PATH.."/SOURCELIB.lua") and _GetLocalVersion("SOURCELIB", 16, 20) < 1.058 then os.remove(LIB_PATH.."/SOURCELIB.lua")	end
+		if FileExist(LIB_PATH.."/SELECTOR.lua") and _GetLocalVersion("SELECTOR", 9, 14) < 0.11 then os.remove(LIB_PATH.."/SELECTOR.lua")	end
 	end
 
-	if FileExist(LIB_PATH.."/SOW.lua") and FileExist(LIB_PATH.."/VPrediction.lua") and FileExist(LIB_PATH.."/SourceLib.lua") and not DownloadingLib then
+	if FileExist(LIB_PATH.."/SOW.lua") and FileExist(LIB_PATH.."/VPrediction.lua") and FileExist(LIB_PATH.."/SourceLib.lua") and FileExist(LIB_PATH.."/Selector.lua") and not DownloadingLib then
 		_ReplaceAutoUpdate("SOW")
 		_ReplaceAutoUpdate("VPrediction")
 		_ReplaceAutoUpdate("SourceLib")
 		require "SOW"
 		require "VPrediction"
 		require "SourceLib"
+		require "Selector"
 		LibsDone = true
 		print("<font color=\"#F0Ff8d\"><b>ShadowVayne (SOW):</b></font> <font color=\"#FF0F0F\">Version ".._GetLocalVersion("SOW", 17, 21).." loaded</font>")
 		print("<font color=\"#F0Ff8d\"><b>ShadowVayne (VPREDICTION):</b></font> <font color=\"#FF0F0F\">Version ".._GetLocalVersion("VPREDICTION", 17, 20).." loaded</font>")
@@ -157,6 +160,12 @@ function _LibsUpdate()
 			DownloadingLib = true
 			GetAsyncWebResult("raw.github.com", _LibUpdateTable["SOURCELIB"]["VERSION"], tostring(math.random(1000)), function(x)_DoUpdateLib("SOURCELIB", tonumber(x), 16, 20) end)
 		end
+
+		if not DownloadingLib and not _LibUpdateTable["SELECTOR"]["UPDATED"] and not FileExist(LIB_PATH.."/SELECTOR.lua") then
+			if not StartUpdatePrint then StartUpdatePrint=true;print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating Libs. Please wait...</font>") end
+			DownloadingLib = true
+			_DoUpdateLib("SELECTOR", 0.11, 9, 14)
+		end
 	end
 end
 
@@ -175,10 +184,15 @@ function OnTick()
 			AddTickCallback(_GetRunningModes)
 			AddTickCallback(_CheckEnemyStunnAble)
 			AddTickCallback(_NonTargetGapCloserAfterCast)
-			AddTickCallback(_UseBotRK)
 			AddTickCallback(_ClickThreshLantern)
 			AddTickCallback(_UsePermaShows)
 			AddTickCallback(_UseSelector)
+			AddTickCallback(_UseTumble)
+			AddTickCallback(_UseBotRK)
+			AddTickCallback(_UseBilgeWater)
+			AddTickCallback(_SetToggleMode)
+			AddTickCallback(_WallTumble)
+			AddDrawCallback(_WallTumbleDraw)
 			autoLevelSetFunction(_AutoLevelSpell)
 			autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 			ScriptOnLoadDone = true
@@ -191,6 +205,165 @@ function OnTick()
 			HidePermaShow["              Sida's Auto Carry: Reborn"] = true
 			HidePermaShow["Auto-Condemn"] = true
 			HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
+		end
+	end
+end
+
+function OnRecall(hero, channelTimeInMs)
+  if hero.isMe then
+    Recalling = true
+  end
+end
+
+function OnAbortRecall(hero)
+  if hero.isMe then
+    Recalling = false
+  end
+end
+
+function OnFinishRecall(hero)
+  if hero.isMe then
+    Recalling = false
+  end
+end
+
+function _SetToggleMode()
+	if VayneMenu.keysetting.togglemode then
+		VayneMenu.keysetting._param[7].pType = SCRIPT_PARAM_ONKEYTOGGLE
+		VayneMenu.keysetting._param[8].pType = SCRIPT_PARAM_ONKEYTOGGLE
+		VayneMenu.keysetting._param[9].pType = SCRIPT_PARAM_ONKEYTOGGLE
+		VayneMenu.keysetting._param[10].pType = SCRIPT_PARAM_ONKEYTOGGLE
+	else
+		VayneMenu.keysetting._param[7].pType = SCRIPT_PARAM_ONKEYDOWN
+		VayneMenu.keysetting._param[8].pType = SCRIPT_PARAM_ONKEYDOWN
+		VayneMenu.keysetting._param[9].pType = SCRIPT_PARAM_ONKEYDOWN
+		VayneMenu.keysetting._param[10].pType = SCRIPT_PARAM_ONKEYDOWN
+	end
+end
+
+function RoundNumber(num, idp)
+  return tonumber(string.format("%." .. (idp or 0) .. "f", num))
+end
+
+function _WallTumble()
+	if VIP_USER then
+		if myHero:CanUseSpell(_Q) ~= READY then TumbleOverWall_1, TumbleOverWall_2 = false,false end
+		if TumbleOverWall_1 then
+			if GetDistance(TumbleSpots.VisionPos_1) <= 50 then
+				TumbleOverWall_1 = false
+				CastSpell(_Q, TumbleSpots.CastPos_1.x,  TumbleSpots.CastPos_1.y)
+				myHero:HoldPosition()
+			else
+				if GetDistance(TumbleSpots.VisionPos_1) > 50 then myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y) end
+			end
+		end
+		if TumbleOverWall_2 then
+			if GetDistance(TumbleSpots.VisionPos_2) <= 50 then
+				TumbleOverWall_2 = false
+				CastSpell(_Q, TumbleSpots.CastPos_2.x,  TumbleSpots.CastPos_2.y)
+				myHero:HoldPosition()
+			else
+				if GetDistance(TumbleSpots.VisionPos_2) > 50 then myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y) end
+			end
+		end
+	end
+end
+
+function _WallTumbleDraw()
+	if VIP_USER then
+		if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
+			DrawCircle(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x107458)
+		else
+			DrawCircle(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x80FFFF)
+		end
+		if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
+			DrawCircle(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x107458)
+		else
+			DrawCircle(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x80FFFF)
+		end
+	end
+end
+
+function OnSendPacket(p)
+	if VIP_USER then
+		if p.header == 153 and p.size == 26 then
+			if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
+				p.pos = 1
+				P_NetworkID = p:DecodeF()
+				P_SpellID = p:Decode1()
+				if P_NetworkID == myHero.networkID and P_SpellID == _Q then
+					if DontBlockNext then
+						DontBlockNext = false
+					else
+						p:Block()
+						DontBlockNext = true
+						TumbleOverWall_1 = true
+					end
+				end
+			end
+
+			if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
+				p.pos = 1
+				P_NetworkID = p:DecodeF()
+				P_SpellID = p:Decode1()
+				if P_NetworkID == myHero.networkID and P_SpellID == _Q then
+					if DontBlockNext then
+						DontBlockNext = false
+					else
+						p:Block()
+						DontBlockNext = true
+						TumbleOverWall_2 = true
+					end
+				end
+			end
+		end
+
+		if p.header == 113 then
+			p.pos = 1
+			P_NetworkID = p:DecodeF()
+			p:Decode1()
+			P_X = p:DecodeF()
+			P_X2 = RoundNumber(P_X, 2)
+			P_Y = p:DecodeF()
+			P_Y2 = RoundNumber(P_Y, 2)
+			if TumbleOverWall_1 == true then
+				RunToX, RunToY = TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y
+				if not (P_X2 == RunToX and P_Y2 == RunToY) then
+					p:Block()
+					myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y)
+				end
+			end
+			if TumbleOverWall_2 == true then
+				RunToX, RunToY = TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y
+				if not (P_X2 == RunToX and P_Y2 == RunToY) then
+					print(P_X2)
+					print(RunToX)
+					p:Block()
+					myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y)
+				end
+			end
+		end
+	end
+end
+
+function _CallBackAfterAA()
+	if VayneMenu.keysetting.basiccondemn and LastAttackedEnemy.type == myHero.type then -- Auto-E after AA
+		CastSpell(_E, LastAttackedEnemy)
+		VayneMenu.keysetting.basiccondemn = false
+	end
+end
+
+function _UseTumble()
+	if IsAttacking == false and not myHero.dead and myHero:CanUseSpell(_Q) == READY and LastAttackedEnemy ~= nil then
+		if  (VayneMenu.tumble.Qautocarry and ShadowVayneAutoCarry and (100/myHero.maxMana*myHero.mana > VayneMenu.tumble.QManaAutoCarry)) or
+			(VayneMenu.tumble.Qmixedmode and ShadowVayneMixedMode and (100/myHero.maxMana*myHero.mana > VayneMenu.tumble.QManaMixedMode)) or
+			(VayneMenu.tumble.Qlaneclear and ShadowVayneLaneClear and (100/myHero.maxMana*myHero.mana > VayneMenu.tumble.QManaLaneClear)) or
+			(VayneMenu.tumble.Qlasthit and  ShadowVayneLastHit and (100/myHero.maxMana*myHero.mana > VayneMenu.tumble.QManaLastHit)) or
+			(VayneMenu.tumble.Qalways) then
+			local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 295
+			if GetDistance(AfterTumblePos, LastAttackedEnemy) < 650 then
+				CastSpell(_Q, mousePos.x, mousePos.z)
+			end
 		end
 	end
 end
@@ -297,23 +470,20 @@ function OnProcessSpell(unit, spell)
 		if unit.isMe then
 			if spell.name:find("Attack") then
 				LastAttackedEnemy = spell.target
-				if VayneMenu.keysetting.basiccondemn and spell.target.type == myHero.type then -- Auto-E after AA
-					_CastESpell(spell.target, "E After Autohit ("..(spell.target.charName)..")", (spell.windUpTime - GetLatency() / 2000))
-					VayneMenu.keysetting.basiccondemn = false
-				end
-
-				if VayneMenu.tumble.Qautocarry and ShadowVayneAutoCarry then DelayAction(function() CastSpell(_Q, mousePos.x, mousePos.z) end, (spell.windUpTime - GetLatency() / 2000)) end
-				if VayneMenu.tumble.Qmixedmode and ShadowVayneMixedMode then DelayAction(function() CastSpell(_Q, mousePos.x, mousePos.z) end, (spell.windUpTime - GetLatency() / 2000)) end
-				if VayneMenu.tumble.Qlaneclear and ShadowVayneLaneClear then DelayAction(function() CastSpell(_Q, mousePos.x, mousePos.z) end, (spell.windUpTime - GetLatency() / 2000)) end
-				if VayneMenu.tumble.Qlasthit and ShadowVayneLastHit then DelayAction(function() CastSpell(_Q, mousePos.x, mousePos.z) end, (spell.windUpTime - GetLatency() / 2000)) end
-				if VayneMenu.tumble.Qalways then DelayAction(function() CastSpell(_Q, mousePos.x, mousePos.z) end, (spell.windUpTime - GetLatency() / 2000)) end
+				IsAttacking = true
+				DelayAction(function() IsAttacking = false;_CallBackAfterAA() end, spell.windUpTime - GetLatency() / 2000)
 			end
 
-
-			if spell.name:find("VayneCondemn") then -- E detected, cooldown for next E 500 ticks
-				CastedLastE = GetTickCount() + 500
+			if spell.name == "Recall" then
+				RecallCast = true
+				DelayAction(function() RecallCast = false end, 0.75)
 			end
 		end
+
+		--~ 			if spell.name:find("VayneCondemn") then -- E detected, cooldown for next E 500 ticks
+--~ 				CastedLastE = GetTickCount() + 500
+--~ 			end
+--~ 		end
 
 		if isAGapcloserUnitNoTarget[spell.name] and GetDistance(unit) <= 2000 and (spell.target == nil or spell.target.isMe) and unit.team ~= myHero.team then
 			if VayneMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then spellExpired = false end
@@ -572,11 +742,42 @@ function _ScriptDebugMsg(Msg, DebugMode)
 end
 
 function _GetRunningModes()
+	if VayneMenu.keysetting.autocarry and not ShadowVayneAutoCarry then
+		VayneMenu.keysetting.mixedmode = false
+		VayneMenu.keysetting.laneclear = false
+		VayneMenu.keysetting.lasthit = false
+	end
+
+	if VayneMenu.keysetting.mixedmode and not ShadowVayneMixedMode then
+		VayneMenu.keysetting.autocarry = false
+		VayneMenu.keysetting.laneclear = false
+		VayneMenu.keysetting.lasthit = false
+	end
+
+	if VayneMenu.keysetting.laneclear then
+		VayneMenu.keysetting.autocarry = false
+		VayneMenu.keysetting.mixedmode = false
+		VayneMenu.keysetting.lasthit = false
+	end
+
+	if VayneMenu.keysetting.lasthit then
+		VayneMenu.keysetting.mixedmode = false
+		VayneMenu.keysetting.laneclear = false
+		VayneMenu.keysetting.autocarry = false
+	end
+
 	--~ Get the Keysettings from SV
 	ShadowVayneAutoCarry = VayneMenu.keysetting.autocarry
 	ShadowVayneMixedMode = VayneMenu.keysetting.mixedmode
 	ShadowVayneLaneClear = VayneMenu.keysetting.laneclear
 	ShadowVayneLastHit = VayneMenu.keysetting.lasthit
+
+	if Recalling or RecallCast then
+		ShadowVayneAutoCarry = false
+		ShadowVayneMixedMode = false
+		ShadowVayneLaneClear = false
+		ShadowVayneLastHit = false
+	end
 
 	--~ Reset All Modes to false
 	if SACLoaded then Keys.AutoCarry,Keys.MixedMode,Keys.LaneClear,Keys.LastHit = false,false,false,false end
@@ -591,13 +792,13 @@ function _GetRunningModes()
 	if VayneMenu.keysetting._param[StartParam+2].listTable[VayneMenu.keysetting.LaneClearOrb] == nil then VayneMenu.keysetting.LaneClearOrb = 1 end
 	if VayneMenu.keysetting._param[StartParam+3].listTable[VayneMenu.keysetting.LastHitOrb] == nil then VayneMenu.keysetting.LastHitOrb = 1 end
 
---~ Get what is Selected
+	--~ Get what is Selected
 	AutoCarryOrbText = VayneMenu.keysetting._param[StartParam].listTable[VayneMenu.keysetting.AutoCarryOrb]
 	MixedModeOrbText = VayneMenu.keysetting._param[StartParam+1].listTable[VayneMenu.keysetting.MixedModeOrb]
 	LaneClearOrbText = VayneMenu.keysetting._param[StartParam+2].listTable[VayneMenu.keysetting.LaneClearOrb]
 	LastHitOrbText = VayneMenu.keysetting._param[StartParam+3].listTable[VayneMenu.keysetting.LastHitOrb]
 
---~ Set the Modes
+	--~ Set the Modes
 	if AutoCarryOrbText == "MMA" then _G.MMA_Orbwalker = ShadowVayneAutoCarry end
 	if AutoCarryOrbText == "Reborn" then Keys.AutoCarry = ShadowVayneAutoCarry end
 	if AutoCarryOrbText == "SOW" then SOWMenu.Mode0 = ShadowVayneAutoCarry end
@@ -644,7 +845,7 @@ function _LoadMenu()
 	VayneMenu:addSubMenu("[Misc]: AutoUpdate Settings", "autoup")
 	VayneMenu:addSubMenu("[Misc]: Draw Settings", "draw")
 	VayneMenu:addSubMenu("[BotRK]: Settings", "botrksettings")
---~ 	VayneMenu:addSubMenu("[Bilgewater]: Settings", "bilgewatersettings")
+	VayneMenu:addSubMenu("[Bilgewater]: Settings", "bilgesettings")
 	VayneMenu:addSubMenu("[QSS]: Settings", "qqs")
 	VayneMenu:addSubMenu("[Debug]: Settings", "debug")
 	VayneMenu.qqs:addParam("nil","QSS/Cleanse is not Supported yet", SCRIPT_PARAM_INFO, "")
@@ -668,6 +869,7 @@ function _LoadMenu()
 	VayneMenu.keysetting.basiccondemn = false
 	VayneMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
 	VayneMenu.keysetting:addParam("nil","General Key Settings", SCRIPT_PARAM_INFO, "")
+	VayneMenu.keysetting:addParam("togglemode","ToggleMode:", SCRIPT_PARAM_ONOFF, false)
 	VayneMenu.keysetting:addParam("autocarry","Auto Carry Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "V" ))
 	VayneMenu.keysetting:addParam("mixedmode","Mixed Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "C" ))
 	VayneMenu.keysetting:addParam("laneclear","Lane Clear Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "M" ))
@@ -684,24 +886,24 @@ function _LoadMenu()
 		if MMALoaded then
 			if SACLoaded then
 				OrbWalkerTable = { "SOW", "MMA", "Reborn"}
-				StartParam, OrbWalkers = 16,3
+				StartParam = 17
 			elseif REVLoaded then
 				OrbWalkerTable = { "SOW", "MMA", "Revamped"}
-				StartParam, OrbWalkers = 16,3
+				StartParam = 17
 			else
 				OrbWalkerTable = { "SOW", "MMA"}
-				StartParam, OrbWalkers = 15,2
+				StartParam = 16
 			end
 		else
 			if SACLoaded then
 				OrbWalkerTable = { "SOW", "Reborn"}
-				StartParam, OrbWalkers = 15,2
+				StartParam = 16
 			elseif REVLoaded then
 				OrbWalkerTable = { "SOW", "Revamped"}
-				StartParam, OrbWalkers = 15,2
+				StartParam = 16
 			else
 				OrbWalkerTable = { "SOW"}
-				StartParam, OrbWalkers = 14,1
+				StartParam = 15
 			end
 		end
 	end
@@ -820,12 +1022,27 @@ function _LoadMenu()
 		VayneMenu.botrksettings:addParam("botrkmaxheal", "Max Own Health Percent", SCRIPT_PARAM_SLICE, 50, 1, 100, 0)
 		VayneMenu.botrksettings:addParam("botrkminheal", "Min Enemy Health Percent", SCRIPT_PARAM_SLICE, 20, 1, 100, 0)
 
+--~ 	BilgeWater Settings Menu
+		VayneMenu.bilgesettings:addParam("bilgeautocarry", "Use BilgeWater in AutoCarry", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.bilgesettings:addParam("bilgemixedmode", "Use BilgeWater in MixedMode", SCRIPT_PARAM_ONOFF, false)
+		VayneMenu.bilgesettings:addParam("bilgelaneclear", "Use BilgeWater in LaneClear", SCRIPT_PARAM_ONOFF, false)
+		VayneMenu.bilgesettings:addParam("bilgelasthit", "Use BilgeWater in LastHit", SCRIPT_PARAM_ONOFF, false)
+		VayneMenu.bilgesettings:addParam("bilgealways", "Use BilgeWater always", SCRIPT_PARAM_ONOFF, false)
+		VayneMenu.bilgesettings:addParam("bilgemaxheal", "Max Own Health Percent", SCRIPT_PARAM_SLICE, 50, 1, 100, 0)
+		VayneMenu.bilgesettings:addParam("bilgeminheal", "Min Enemy Health Percent", SCRIPT_PARAM_SLICE, 20, 1, 100, 0)
+
 --~ 	Tumble Settings Menu
 		VayneMenu.tumble:addParam("Qautocarry", "Use Tumble in AutoCarry", SCRIPT_PARAM_ONOFF, true)
 		VayneMenu.tumble:addParam("Qmixedmode", "Use Tumble in MixedMode", SCRIPT_PARAM_ONOFF, false)
 		VayneMenu.tumble:addParam("Qlaneclear", "Use Tumble in LaneClear", SCRIPT_PARAM_ONOFF, false)
 		VayneMenu.tumble:addParam("Qlasthit", "Use Tumble in LastHit", SCRIPT_PARAM_ONOFF, false)
 		VayneMenu.tumble:addParam("Qalways", "Use Tumble always", SCRIPT_PARAM_ONOFF, false)
+		VayneMenu.tumble:addParam("fap", "", SCRIPT_PARAM_INFO, "","" )
+		VayneMenu.tumble:addParam("QManaAutoCarry", "Min Mana to use Q in AutoCarry", SCRIPT_PARAM_SLICE, 0, 0, 100, 0)
+		VayneMenu.tumble:addParam("QManaMixedMode", "Min Mana to use Q in MixedMode", SCRIPT_PARAM_SLICE, 50, 0, 100, 0)
+		VayneMenu.tumble:addParam("QManaLaneClear", "Min Mana to use Q in LaneClear", SCRIPT_PARAM_SLICE, 50, 0, 100, 0)
+		VayneMenu.tumble:addParam("QManaLastHit", "Min Mana to use Q in LastHit", SCRIPT_PARAM_SLICE, 50, 0, 100, 0)
+
 
 --~ 	Debug Settings Menu
 		VayneMenu.debug:addParam("stunndebug", "Debug AutoStunn", SCRIPT_PARAM_ONOFF, false)
@@ -910,6 +1127,23 @@ function _UseBotRK()
 			if (math.floor(myHero.health / myHero.maxHealth * 100)) <= VayneMenu.botrksettings.botrkmaxheal then
 				if (math.floor(LastAttackedEnemy.health / LastAttackedEnemy.maxHealth * 100)) >= VayneMenu.botrksettings.botrkminheal then
 					CastSpell(BladeSlot, LastAttackedEnemy)
+				end
+			end
+		end
+	end
+end
+
+function _UseBilgeWater()
+	local BilgeSlot = GetInventorySlotItem(3144)
+	if LastAttackedEnemy ~= nil and GetDistance(LastAttackedEnemy) < 500 and not LastAttackedEnemy.dead and LastAttackedEnemy.visible and BilgeSlot ~= nil and myHero:CanUseSpell(BilgeSlot) == 0 then
+		if (VayneMenu.bilgesettings.bilgeautocarry and ShadowVayneAutoCarry) or
+		 (VayneMenu.bilgesettings.bilgemixedmode and ShadowVayneMixedMode) or
+		 (VayneMenu.bilgesettings.bilgelaneclear and ShadowVayneLaneClear) or
+		 (VayneMenu.bilgesettings.bilgelasthit and ShadowVayneLastHit) or
+		 (VayneMenu.bilgesettings.bilgealways) then
+			if (math.floor(myHero.health / myHero.maxHealth * 100)) <= VayneMenu.bilgesettings.bilgemaxheal then
+				if (math.floor(LastAttackedEnemy.health / LastAttackedEnemy.maxHealth * 100)) >= VayneMenu.bilgesettings.bilgeminheal then
+					CastSpell(BilgeSlot, LastAttackedEnemy)
 				end
 			end
 		end
@@ -1367,5 +1601,12 @@ function _LoadTables()
 		ChampInfoTable[enemy.charName] = {CurrentVector = Vector(0,0,0), CurrentDirection = Vector(0,0,0), CurrentAngle = 0, CurrentHitBox = ChampHitBoxes[enemy.charName]}
 	end
 
-
+	TumbleSpots = {
+		["VisionPos_1"] = { ["x"] = 11589, ["y"] = 52, ["z"] = 4657 },
+		["VisionPos_2"] = { ["x"] = 6623, ["y"] = 56, ["z"] = 8649 },
+		["StandPos_1"] = { ["x"] = 11590.95, ["y"] = 4656.26 },
+		["StandPos_2"] = { ["x"] = 6623.00, ["y"] = 8649.00 },
+		["CastPos_1"] = { ["x"] = 11334.74, ["y"] = 4517.47 },
+		["CastPos_2"] = { ["x"] = 6010.5869140625, ["y"] = 8508.8740234375 }
+	}
 end
