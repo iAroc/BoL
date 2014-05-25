@@ -171,7 +171,12 @@ end
 
 function OnTick()
 	if not LibsDone then
-	LibsDone = true
+		LibsDone = true
+		require "SOW"
+		require "VPrediction"
+		require "SourceLib"
+		require "Selector"
+
 --~ 		_LibsUpdate()
 	else
 		if not ScriptStartOver then
