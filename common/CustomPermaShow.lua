@@ -123,9 +123,6 @@ function _DrawText(Arg1, Arg2, Arg3, Arg4, Arg5)
 	_CPS_Master = GetSave("scriptConfig")["Master"]
 	_CPS_Master.row = (WINDOW_W and math.round(WINDOW_W / 6.4) or 160) * 0.7
 	if Arg3 == _CPS_Master.px then
-		if not string.find(Arg1, "Condemn") then
-			print(Arg1)
-		end
 		if not (_G.HidePermaShow[Arg1] ~= nil and _G.HidePermaShow[Arg1] == true) then
 			if not OldPermaShowTable[Arg1] then
 				OldPermaShowTable[Arg1] = true
