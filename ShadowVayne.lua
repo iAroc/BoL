@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.00
+	Version: 2.99
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -22,18 +22,20 @@ local ScriptOnLoadDone, LastAttackedEnemy = false, nil
 local LastPrioUpdate = 0
 local DownloadStarted = false
 local HookSOWMenu = {}
-LastE = 0
 
 _SC = { init = true, initDraw = true, menuKey = 16, useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _changeKeyInstance = false, _sliceInstance = false, _listInstance = false }
 if not GetSave("scriptConfig")["Master"] then GetSave("scriptConfig")["Master"] = {} end
 _SC.master = GetSave("scriptConfig")["Master"]
 _SC.masterIndex = 0
 
-_G.scriptConfig.CustomaddParam = _G.scriptConfig.addParam
-_G.scriptConfig.addParam = function(pVar, pText, pType, defaultValue, a, b, c)
-if pText == "scriptActive" or pText == "lastHitting" or pText == "laneClear" or pText == "hybridMode" then pText = "ShadowHijacked" end
- _G.scriptConfig.CustomaddParam(pVar, pText, pType, defaultValue, a, b, c)
- end
+if FileExist(LIB_PATH.."/Selector.lua")	and VIP_USER then
+	UserVIPSelector = true
+end
+--~ 			NewSourceLibFile = io.open(LIB_PATH.."/SOW.lua", "r")
+--~ 			CryptedString = NewSourceLibFile:read("*a")
+--~ 			NewSourceLibFile = io.open(LIB_PATH.."/SOWCrypted.lua", "w+")
+--~ 			NewSourceLibFile:write(enc(CryptedString))
+--~ 			NewSourceLibFile:close()
 
 function _ReplaceAutoUpdate(LibName)
 	AutoUpdateOverWriteFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
@@ -41,7 +43,6 @@ function _ReplaceAutoUpdate(LibName)
 	AutoUpdateOverWriteFile:close()
 	AutoUpdateOverWriteString = string.gsub(AutoUpdateOverWriteString, "local AUTOUPDATE = true", "local AUTOUPDATE = false")
 	AutoUpdateOverWriteString = string.gsub(AutoUpdateOverWriteString, "local autoUpdate   = true", "local autoUpdate   = false")
-	AutoUpdateOverWriteString = string.gsub(AutoUpdateOverWriteString, "_G.Selector_AutoUpdate = true", "_G.Selector_AutoUpdate = false")
 	AutoUpdateOverWriteFile = io.open(LIB_PATH.."/"..LibName..".lua", "w+")
 	AutoUpdateOverWriteFile:write(AutoUpdateOverWriteString)
 	AutoUpdateOverWriteFile:close()
@@ -115,8 +116,8 @@ function _LibsUpdate()
 		_LibUpdateTable["VPREDICTION"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/VPrediction.lua"
 		_LibUpdateTable["SOURCELIB"]["VERSION"] = "/TheRealSource/public/master/common/SourceLib.version"
 		_LibUpdateTable["SOURCELIB"]["SCRIPT"] = "http://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
-		_LibUpdateTable["SELECTOR"]["VERSION"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision"
-		_LibUpdateTable["SELECTOR"]["SCRIPT"] = "http://raw.github.com/pqmailer/BoL_Scripts/master/Paid/Selector.lua"
+		_LibUpdateTable["SELECTOR"]["VERSION"] = "/scripts/Selector.lua"
+		_LibUpdateTable["SELECTOR"]["SCRIPT"] = "http://portalvhds71h2h1bjq6jhh.blob.core.windows.net/scripts/Selector.lua"
 		_LibUpdateTable["SHADOWVAYNE"]["VERSION"] = "/Superx321/BoL/master/ShadowVayne.Version"
 		_LibUpdateTable["SHADOWVAYNE"]["SCRIPT"] = "http://raw.github.com/Superx321/BoL/master/ShadowVayne.lua"
 	end
@@ -126,14 +127,13 @@ function _LibsUpdate()
 		if FileExist(LIB_PATH.."/SOW.lua") and _GetLocalVersion("SOW", 17, 21) < 1.129 then os.remove(LIB_PATH.."/SOW.lua")	end
 		if FileExist(LIB_PATH.."/VPREDICTION.lua") and _GetLocalVersion("VPREDICTION", 17, 20) < 2.51 then os.remove(LIB_PATH.."/VPREDICTION.lua")	end
 		if FileExist(LIB_PATH.."/SOURCELIB.lua") and _GetLocalVersion("SOURCELIB", 16, 20) < 1.058 then os.remove(LIB_PATH.."/SOURCELIB.lua")	end
-		if FileExist(LIB_PATH.."/SELECTOR.lua") and _GetLocalVersion("SELECTOR", 9, 14) < 0.12 then os.remove(LIB_PATH.."/SELECTOR.lua")	end
+		if FileExist(LIB_PATH.."/SELECTOR.lua") and _GetLocalVersion("SELECTOR", 9, 14) < 0.11 then os.remove(LIB_PATH.."/SELECTOR.lua")	end
 	end
 
 	if FileExist(LIB_PATH.."/SOW.lua") and FileExist(LIB_PATH.."/VPrediction.lua") and FileExist(LIB_PATH.."/SourceLib.lua") and FileExist(LIB_PATH.."/Selector.lua") and not DownloadingLib then
 		_ReplaceAutoUpdate("SOW")
 		_ReplaceAutoUpdate("VPrediction")
 		_ReplaceAutoUpdate("SourceLib")
-		_ReplaceAutoUpdate("Selector")
 		require "SOW"
 		require "VPrediction"
 		require "SourceLib"
@@ -164,7 +164,7 @@ function _LibsUpdate()
 		if not DownloadingLib and not _LibUpdateTable["SELECTOR"]["UPDATED"] and not FileExist(LIB_PATH.."/SELECTOR.lua") then
 			if not StartUpdatePrint then StartUpdatePrint=true;print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating Libs. Please wait...</font>") end
 			DownloadingLib = true
-			GetAsyncWebResult("raw.github.com", _LibUpdateTable["SELECTOR"]["VERSION"], tostring(math.random(1000)), function(x)_DoUpdateLib("SELECTOR", tonumber(x), 16, 20) end)
+			_DoUpdateLib("SELECTOR", 0.11, 9, 14)
 		end
 	end
 end
@@ -182,7 +182,7 @@ function OnTick()
 			_LoadMenu()
 			AddTickCallback(_CheckScriptUpdate)
 			AddTickCallback(_GetRunningModes)
-			AddTickCallback(_CheckEnemyStunnAbleBeta)
+			AddTickCallback(_CheckEnemyStunnAble)
 			AddTickCallback(_NonTargetGapCloserAfterCast)
 			AddTickCallback(_ClickThreshLantern)
 			AddTickCallback(_UsePermaShows)
@@ -437,12 +437,6 @@ function OnDraw()
 				DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0x8B42B3)
 			end
 		end
-		if DrawCirclePos ~= nil then
---~ 		print(DrawCirclePos.z)
-			DrawCircle(DrawCirclePos.x, DrawCirclePos.y, DrawCirclePos.z, 100, 0xFF2D2D)
-			DrawCircle(DrawCirclePos.x, DrawCirclePos.y, DrawCirclePos.z, 98, 0xFF2D2D)
-			DrawCircle(DrawCirclePos.x, DrawCirclePos.y, DrawCirclePos.z, 96, 0xFF2D2D)
-		end
 	end
 end
 
@@ -569,7 +563,7 @@ function _GetNeededAutoHits(enemy)
 end
 
 function _UseSelector()
-	if VIP_USER and UseVIPSelector and _G.Selector_Enabled then
+	if VIP_USER and UseVIPSelector then
 		local currentTarget = GetTarget()
 		if currentTarget ~= nil and currentTarget.type == "obj_AI_Hero" and ValidTarget(currentTarget, 550, true) then
 			selected = currentTarget
@@ -579,14 +573,11 @@ function _UseSelector()
 		if selected ~= nil then
 			SOW:ForceTarget(selected)
 		else
-			GetVIPSelectorTarget = Selector.GetTarget()
-			if GetVIPSelectorTarget ~= nil and ValidTarget(GetVIPSelectorTarget) then
-				SOW:ForceTarget(GetVIPSelectorTarget)
+			GetSelectorTarget = Selector.GetTarget(Selector.LESSCASTADVANCED)
+			if GetSelectorTarget ~= nil and ValidTarget(GetSelectorTarget) then
+				SOW:ForceTarget(GetSelectorTarget)
 			end
 		end
-	end
-	if not _G.Selector_Enabled then
-		print(_G.Selector_Enabled)
 	end
 end
 
@@ -663,111 +654,6 @@ function _CheckEnemyStunnAble()
 									end
 									_ScriptDebugMsg("Target: "..(enemy.charName)..", Reason: Autostunn, Field: NoTower, Bush: "..(tostring(BushFound)), "stunndebug")
 									break
-								end
-							end
-						end
-					end
-				end
-			end
-		end
-	end
-end
-
-function _CheckStunnAngle(enemy)
-	local CurrentDirection = (Vector(enemy) - ChampInfoTable[enemy.charName].CurrentVector)
-	if CurrentDirection ~= Vector(0,0,0) then
-		CurrentDirection = CurrentDirection:normalized()
-	end
-	ChampInfoTable[enemy.charName].CurrentAngle = ChampInfoTable[enemy.charName].CurrentDirection:dotP( CurrentDirection )
-	ChampInfoTable[enemy.charName].CurrentDirection = CurrentDirection
-	ChampInfoTable[enemy.charName].CurrentVector = Vector(enemy)
-	if ChampInfoTable[enemy.charName].CurrentAngle and ChampInfoTable[enemy.charName].CurrentAngle > 0.8 then
-		return true
-	else
-		return false
-	end
-end
-
-function _GetFlyTime(EnemyDistance)
-		if EnemyDistance <  25 then FlyTimeDelay = 0 end
-		if EnemyDistance >  24 and EnemyDistance <  75 then FlyTimeDelay = (StunnFlyTime["50"]/1000) end
-		if EnemyDistance >  74 and EnemyDistance < 125 then FlyTimeDelay = (StunnFlyTime["100"]/1000) end
-		if EnemyDistance > 124 and EnemyDistance < 175 then FlyTimeDelay = (StunnFlyTime["150"]/1000) end
-		if EnemyDistance > 174 and EnemyDistance < 225 then FlyTimeDelay = (StunnFlyTime["200"]/1000) end
-		if EnemyDistance > 224 and EnemyDistance < 275 then FlyTimeDelay = (StunnFlyTime["250"]/1000) end
-		if EnemyDistance > 274 and EnemyDistance < 325 then FlyTimeDelay = (StunnFlyTime["300"]/1000) end
-		if EnemyDistance > 324 and EnemyDistance < 375 then FlyTimeDelay = (StunnFlyTime["350"]/1000) end
-		if EnemyDistance > 374 and EnemyDistance < 425 then FlyTimeDelay = (StunnFlyTime["400"]/1000) end
-		if EnemyDistance > 424 and EnemyDistance < 475 then FlyTimeDelay = (StunnFlyTime["450"]/1000) end
-		if EnemyDistance > 474 and EnemyDistance < 525 then FlyTimeDelay = (StunnFlyTime["500"]/1000) end
-		if EnemyDistance > 524 and EnemyDistance < 575 then FlyTimeDelay = (StunnFlyTime["550"]/1000) end
-		if EnemyDistance > 574 and EnemyDistance < 625 then FlyTimeDelay = (StunnFlyTime["600"]/1000) end
-		if EnemyDistance > 624 and EnemyDistance < 675 then FlyTimeDelay = (StunnFlyTime["650"]/1000) end
-		if EnemyDistance > 674 and EnemyDistance < 725 then FlyTimeDelay = (StunnFlyTime["700"]/1000) end
-		if EnemyDistance > 724 then FlyTimeDelay = 280 end
-		return FlyTimeDelay
-end
-
-function _GetEnemyStunnPos(enemy)
---~ 	if _CheckStunnAngle(enemy) then
-		GroundDelay = 0.32
---~ 		EnemyPos = VP:CalculateTargetPosition(enemy, GroundDelay, 710, math.huge, myHero)
-		EnemyPos = VP:GetPredictedPos(enemy, GroundDelay, enemy.ms, myHero, false)
-		EnemyDistance = GetDistance(EnemyPos)
-		FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
---~ 		print(math.floor(EnemyDistance))
-		for i=1,10 do
---~ 			EnemyPos = VP:CalculateTargetPosition(enemy, GroundDelay+FlyTimeDelay, 710, math.huge, myHero)
-			EnemyPos = VP:GetPredictedPos(enemy, GroundDelay+FlyTimeDelay, enemy.ms, EnemyPos, false)
-			EnemyDistance = GetDistance(EnemyPos)
-			FlyTimeDelay = _GetFlyTime(EnemyDistance)
-		end
---~ print(GroundDelay+FlyTimeDelay)
-		return VP:GetPredictedPos(enemy, GroundDelay+FlyTimeDelay, enemy.ms, EnemyPos, false)
---~ 	else
---~ 		return false
---~ 	end
-end
-
-function _CheckEnemyStunnAbleBeta()
-	if not myHero.dead and myHero:CanUseSpell(_E) == READY and LastE < GetTickCount() then
-		for i, enemy in ipairs(GetEnemyHeroes()) do
-			if 	(VayneMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and ShadowVayneAutoCarry) or
-				(VayneMenu.targets[enemy.charName][(enemy.charName).."MixedMode"] and ShadowVayneMixedMode) or
-				(VayneMenu.targets[enemy.charName][(enemy.charName).."LaneClear"] and ShadowVayneLaneClear) or
-				(VayneMenu.targets[enemy.charName][(enemy.charName).."LastHit"] and ShadowVayneLastHit) or
-				(VayneMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
-				if not (VayneMenu.autostunn.target and LastAttackedEnemy ~= enemy) then
-					if GetDistance(enemy, myHero) <= 1500 and not enemy.dead and enemy.visible then
-						EnemyStunnPos = _GetEnemyStunnPos(enemy)
-						if EnemyStunnPos ~= false and GetDistance(enemy,EnemyStunnPos) < 300 and GetDistance(EnemyStunnPos) < 650 then
-							local BushFound, Bushpos = false, nil
-							for i = 1, VayneMenu.autostunn.pushDistance, 10  do
-								local CheckWallPos = Vector(EnemyStunnPos) + (Vector(EnemyStunnPos) - myHero):normalized()*(i)
-								if IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) and not BushFound then
-									BushFound = true
-									BushPos = CheckWallPos
-								end
-								if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) and GetDistance(EnemyStunnPos) < 650 then
-									if UnderTurret(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z), true) then
-										if VayneMenu.autostunn.towerstunn then
-											CastSpell(_E, enemy)
-											LastE = GetTickCount() + 500
-											DrawCirclePos = CheckWallPos
-											_ScriptDebugMsg("Target: "..(enemy.charName)..", Reason: Autostunn, Field: UnderTower, Bush: "..(tostring(BushFound)), "stunndebug")
-											break
-										end
-									else
-										CastSpell(_E, enemy)
-										DrawCirclePos = CheckWallPos
-										print(GetDistance(enemy,EnemyStunnPos))
-										LastE = GetTickCount() + 500
-										if BushFound and VayneMenu.autostunn.trinket and myHero:CanUseSpell(ITEM_7) == 0 then
-											CastSpell(ITEM_7, BushPos.x, BushPos.z)
-										end
-										_ScriptDebugMsg("Target: "..(enemy.charName)..", Reason: Autostunn, Field: NoTower, Bush: "..(tostring(BushFound)), "stunndebug")
-										break
-									end
 								end
 							end
 						end
@@ -953,7 +839,6 @@ function _LoadMenu()
 	VayneMenu:addSubMenu("[Condemn]: Interrupt Settings", "interrupt")
 	VayneMenu:addSubMenu("[Tumble]: Settings", "tumble")
 	VayneMenu:addSubMenu("[Misc]: Key Settings", "keysetting")
-	VayneMenu:addSubMenu("[Misc]: TS Settings", "tssetting")
 	VayneMenu:addSubMenu("[Misc]: AutoLevelSpells Settings", "autolevel")
 	VayneMenu:addSubMenu("[Misc]: VIP Settings", "vip")
 	VayneMenu:addSubMenu("[Misc]: PermaShow Settings", "permashowsettings")
@@ -964,6 +849,19 @@ function _LoadMenu()
 	VayneMenu:addSubMenu("[QSS]: Settings", "qqs")
 	VayneMenu:addSubMenu("[Debug]: Settings", "debug")
 	VayneMenu.qqs:addParam("nil","QSS/Cleanse is not Supported yet", SCRIPT_PARAM_INFO, "")
+
+	STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
+	SOWi = SOW(VP, STS)
+	SOWi:LoadToMenu(SOWMenu)
+	if UserVIPSelector then
+		Selector.Instance()
+		print("<font color=\"#F0Ff8d\"><b>ShadowVayne (SELECTOR):</b></font> <font color=\"#FF0F0F\">Version ".._GetLocalVersion("SELECTOR", 9, 14).." loaded</font>")
+	else
+		TSSMenu = scriptConfig("[SV] SimpleTargetSelector Settings", "SV_TSS")
+		STS:AddToMenu(TSSMenu)
+	end
+		_PrintScriptMsg("Version ".._GetLocalVersion("SHADOWVAYNE").." loaded")
+
 
 	VayneMenu.keysetting:addParam("nil","Basic Key Settings", SCRIPT_PARAM_INFO, "")
 	VayneMenu.keysetting:addParam("basiccondemn","Condemn on next BasicAttack:", SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte( "E" ))
@@ -1016,8 +914,6 @@ function _LoadMenu()
 	VayneMenu.keysetting:addParam("LaneClearOrb", "Orbwalker in LaneClear: ", SCRIPT_PARAM_LIST, 1, OrbWalkerTable)
 	VayneMenu.keysetting:addParam("LastHitOrb", "Orbwalker in LastHit: ", SCRIPT_PARAM_LIST, 1, OrbWalkerTable)
 
-	VayneMenu.tssetting:addParam("UsedTS", "Choose your TargetSelector (need Reload!):", SCRIPT_PARAM_LIST, 1, {"Simple Target Selector", "VIP Target Selector"})
-	if VIP_USER and VayneMenu.tssetting.UsedTS == 2 then UserVIPSelector = true end
 	for i, enemy in ipairs(GetEnemyHeroes()) do
 --~ 	Gapcloser Menu Targeted Skills
 		if isAGapcloserUnitTarget[enemy.charName] then
@@ -1071,7 +967,6 @@ function _LoadMenu()
 --~ 		VayneMenu.autostunn:addParam("accuracy", "Accuracy", SCRIPT_PARAM_SLICE, 5, 1, 10, 0)
 		VayneMenu.autostunn:addParam("towerstunn", "Stunn if Enemy lands unter a Tower", SCRIPT_PARAM_ONOFF, false)
 		VayneMenu.autostunn:addParam("trinket", "Use Auto-Trinket Bush", SCRIPT_PARAM_ONOFF, true)
-		VayneMenu.autostunn:addParam("target", "Stunn only Current Target", SCRIPT_PARAM_ONOFF, true)
 
 --~ 	Gapcloser Overwrite Menu
 		VayneMenu.anticapcloser:addParam("fap", "", SCRIPT_PARAM_INFO, "","" )
@@ -1148,20 +1043,9 @@ function _LoadMenu()
 		VayneMenu.tumble:addParam("QManaLaneClear", "Min Mana to use Q in LaneClear", SCRIPT_PARAM_SLICE, 50, 0, 100, 0)
 		VayneMenu.tumble:addParam("QManaLastHit", "Min Mana to use Q in LastHit", SCRIPT_PARAM_SLICE, 50, 0, 100, 0)
 
+
 --~ 	Debug Settings Menu
 		VayneMenu.debug:addParam("stunndebug", "Debug AutoStunn", SCRIPT_PARAM_ONOFF, false)
-
-	STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
-	SOWi = SOW(VP, STS)
-	SOWi:LoadToMenu(SOWMenu)
-	if UserVIPSelector then
-		Selector.Instance()
-		print("<font color=\"#F0Ff8d\"><b>ShadowVayne (SELECTOR):</b></font> <font color=\"#FF0F0F\">Version ".._GetLocalVersion("SELECTOR", 9, 14).." loaded</font>")
-	else
-		TSSMenu = scriptConfig("[SV] SimpleTargetSelector Settings", "SV_TSS")
-		STS:AddToMenu(TSSMenu)
-	end
-		_PrintScriptMsg("Version ".._GetLocalVersion("SHADOWVAYNE").." loaded")
 end
 
 function _CheckUpdate_ShadowVayne()
@@ -1372,6 +1256,35 @@ function _DrawCustomPermaShow()
 	end
 end
 
+function scriptConfig:_DrawSubInstance(index)
+ 	_CPS_Master = GetSave("scriptConfig")["Master"]
+	_CPS_Master.py1 = 0
+	_CPS_Master.py2 = _CPS_Master.py
+	_CPS_Master.color = { lgrey = 1413167931, grey = 4290427578, red = 1422721024, green = 1409321728, ivory = 4294967280 }
+	_CPS_Master.fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14
+	_CPS_Master.midSize = _CPS_Master.fontSize / 2
+	_CPS_Master.cellSize = _CPS_Master.fontSize + 2
+	_CPS_Master.width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213
+	_CPS_Master.row = _CPS_Master.width * 0.7
+	_CPS_Master.row4 = _CPS_Master.width * 0.9
+	_CPS_Master.row3 = _CPS_Master.width * 0.8
+	_CPS_Master.row2 = _CPS_Master.width * 0.7
+	_CPS_Master.row1 = _CPS_Master.width * 0.6
+	if (self._subInstances[index].name == "sidasacvayne_sidasacvaynesub") then
+		self._subInstances[index].header = ""
+		self._subMenuIndex = 0
+	end
+	if not ((self._subInstances[index].name == "sidasacvayne_sidasacvaynesub") or (self._subInstances[index].name == "sidasacvayne_sidasacvayneallowed")) then
+		local pVar = self._subInstances[index].name
+		local selected = self._subMenuIndex == index
+		DrawLine(self._x - 2, self._y + _CPS_Master.midSize, self._x + _CPS_Master.width + 2, self._y + _CPS_Master.midSize, _CPS_Master.cellSize, (selected and _CPS_Master.color.red or _CPS_Master.color.lgrey))
+		DrawText(self._subInstances[index].header, _CPS_Master.fontSize, self._x, self._y, (selected and _CPS_Master.color.ivory or _CPS_Master.color.grey))
+		DrawText("        >>", _CPS_Master.fontSize, self._x + _CPS_Master.row3 + 2, self._y, (selected and _CPS_Master.color.ivory or _CPS_Master.color.grey))
+		--_SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
+		self._y = self._y + _CPS_Master.cellSize
+	end
+end
+
 function scriptConfig:_DrawParam(varIndex)
 	_CPS_Master = GetSave("scriptConfig")["Master"]
 	_CPS_Master.py1 = 0
@@ -1461,33 +1374,69 @@ function scriptConfig:_DrawParam(varIndex)
 	end
 end
 
- function scriptConfig:_DrawSubInstance(index)
- 	_CPS_Master = GetSave("scriptConfig")["Master"]
-	_CPS_Master.py1 = 0
-	_CPS_Master.py2 = _CPS_Master.py
-	_CPS_Master.color = { lgrey = 1413167931, grey = 4290427578, red = 1422721024, green = 1409321728, ivory = 4294967280 }
-	_CPS_Master.fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14
-	_CPS_Master.midSize = _CPS_Master.fontSize / 2
-	_CPS_Master.cellSize = _CPS_Master.fontSize + 2
-	_CPS_Master.width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213
-	_CPS_Master.row = _CPS_Master.width * 0.7
-	_CPS_Master.row4 = _CPS_Master.width * 0.9
-	_CPS_Master.row3 = _CPS_Master.width * 0.8
-	_CPS_Master.row2 = _CPS_Master.width * 0.7
-	_CPS_Master.row1 = _CPS_Master.width * 0.6
-	if (self._subInstances[index].name == "sidasacvayne_sidasacvaynesub") then
-		self._subInstances[index].header = ""
-		self._subMenuIndex = 0
-	end
-	if not ((self._subInstances[index].name == "sidasacvayne_sidasacvaynesub") or (self._subInstances[index].name == "sidasacvayne_sidasacvayneallowed")) then
-		local pVar = self._subInstances[index].name
-		local selected = self._subMenuIndex == index
-		DrawLine(self._x - 2, self._y + _CPS_Master.midSize, self._x + _CPS_Master.width + 2, self._y + _CPS_Master.midSize, _CPS_Master.cellSize, (selected and _CPS_Master.color.red or _CPS_Master.color.lgrey))
-		DrawText(self._subInstances[index].header, _CPS_Master.fontSize, self._x, self._y, (selected and _CPS_Master.color.ivory or _CPS_Master.color.grey))
-		DrawText("        >>", _CPS_Master.fontSize, self._x + _CPS_Master.row3 + 2, self._y, (selected and _CPS_Master.color.ivory or _CPS_Master.color.grey))
-		--_SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
-		self._y = self._y + _CPS_Master.cellSize
-	end
+function __SC__remove(name)
+    if not GetSave("scriptConfig")[name] then GetSave("scriptConfig")[name] = {} end
+    table.clear(GetSave("scriptConfig")[name])
+end
+
+function __SC__save(name, content)
+    if not GetSave("scriptConfig")[name] then GetSave("scriptConfig")[name] = {} end
+    table.clear(GetSave("scriptConfig")[name])
+    table.merge(GetSave("scriptConfig")[name], content, true)
+end
+
+function scriptConfig:addParam(pVar, pText, pType, defaultValue, a, b, c)
+if (self.name == "MMA2013") and (pType == 2) then
+    newParam = { var = "ShadowHijacked", text = pText, pType = pType }
+else
+    newParam = { var = pVar, text = pText, pType = pType }
+end
+    assert(type(pVar) == "string" and type(pText) == "string" and type(pType) == "number", "addParam: wrong argument types (<string>, <string>, <pType> expected)")
+    assert(string.find(pVar, "[^%a%d]") == nil, "addParam: pVar should contain only char and number")
+    --assert(self[pVar] == nil, "addParam: pVar should be unique, already existing " .. pVar)
+    if pType == SCRIPT_PARAM_ONOFF then
+        assert(type(defaultValue) == "boolean", "addParam: wrong argument types (<boolean> expected)")
+    elseif pType == SCRIPT_PARAM_COLOR then
+        assert(type(defaultValue) == "table", "addParam: wrong argument types (<table> expected)")
+        assert(#defaultValue == 4, "addParam: wrong argument ({a,r,g,b} expected)")
+    elseif pType == SCRIPT_PARAM_ONKEYDOWN or pType == SCRIPT_PARAM_ONKEYTOGGLE then
+	   assert(type(defaultValue) == "boolean" and type(a) == "number", "addParam: wrong argument types (<boolean> <number> expected)")
+        newParam.key = a
+    elseif pType == SCRIPT_PARAM_SLICE then
+        assert(type(defaultValue) == "number" and type(a) == "number" and type(b) == "number" and (type(c) == "number" or c == nil), "addParam: wrong argument types (pVar, pText, pType, defaultValue, valMin, valMax, decimal) expected")
+        newParam.min = a
+        newParam.max = b
+        newParam.idc = c or 0
+        newParam.cursor = 0
+    elseif pType == SCRIPT_PARAM_LIST then
+        assert(type(defaultValue) == "number" and type(a) == "table", "addParam: wrong argument types (pVar, pText, pType, defaultValue, listTable) expected")
+        newParam.listTable = a
+        newParam.min = 1
+        newParam.max = #a
+        newParam.cursor = 0
+    end
+    self[pVar] = defaultValue
+    table.insert(self._param, newParam)
+    __SC__saveMaster()
+    self:load()
+end
+
+function __SC__saveMaster()
+    local config = {}
+    local P, PS, I = 0, 0, 0
+    for _, instance in pairs(_SC.instances) do
+        I = I + 1
+        P = P + #instance._param
+        PS = PS + #instance._permaShow
+    end
+    _SC.master["I" .. _SC.masterIndex] = I
+    _SC.master["P" .. _SC.masterIndex] = P
+    _SC.master["PS" .. _SC.masterIndex] = PS
+    if not _SC.master.useTS and _SC.useTS then _SC.master.useTS = true end
+    for var, value in pairs(_SC.master) do
+        config[var] = value
+    end
+    __SC__save("Master", config)
 end
 
 function _DrawText(Arg1, Arg2, Arg3, Arg4, Arg5)
@@ -1659,22 +1608,5 @@ function _LoadTables()
 		["StandPos_2"] = { ["x"] = 6623.00, ["y"] = 8649.00 },
 		["CastPos_1"] = { ["x"] = 11334.74, ["y"] = 4517.47 },
 		["CastPos_2"] = { ["x"] = 6010.5869140625, ["y"] = 8508.8740234375 }
-	}
-
-	StunnFlyTime = {
-		["700"] = 280,
-		["650"] = 265,
-		["600"] = 234,
-		["550"] = 218,
-		["500"] = 187,
-		["450"] = 171,
-		["400"] = 156,
-		["350"] = 140,
-		["300"] = 94,
-		["250"] = 78,
-		["200"] = 62,
-		["150"] = 31,
-		["100"] = 23,
-		["50"] = 15,
 	}
 end
