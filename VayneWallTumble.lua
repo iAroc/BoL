@@ -22,23 +22,24 @@ end
 
 function _WallTumble()
 	if VIP_USER then
-		if myHero:CanUseSpell(_Q) ~= READY then TumbleOverWall_1, TumbleOverWall_2 = false,false end
 		if TumbleOverWall_1 then
-			if GetDistance(TumbleSpots.VisionPos_1) <= 50 then
+			if myHero:CanUseSpell(_Q) ~= READY then TumbleOverWall_1 = false;myHero:HoldPosition() end
+			if GetDistance(TumbleSpots.StandPos_1) <= 25 then
 				TumbleOverWall_1 = false
 				CastSpell(_Q, TumbleSpots.CastPos_1.x,  TumbleSpots.CastPos_1.y)
 				myHero:HoldPosition()
 			else
-				if GetDistance(TumbleSpots.VisionPos_1) > 50 then myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y) end
+				if GetDistance(TumbleSpots.StandPos_1) > 25 then myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y) end
 			end
 		end
 		if TumbleOverWall_2 then
-			if GetDistance(TumbleSpots.VisionPos_2) <= 50 then
+			if myHero:CanUseSpell(_Q) ~= READY then TumbleOverWall_2 = false;myHero:HoldPosition() end
+			if GetDistance(TumbleSpots.StandPos_2) <= 25 then
 				TumbleOverWall_2 = false
 				CastSpell(_Q, TumbleSpots.CastPos_2.x,  TumbleSpots.CastPos_2.y)
 				myHero:HoldPosition()
 			else
-				if GetDistance(TumbleSpots.VisionPos_2) > 50 then myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y) end
+				if GetDistance(TumbleSpots.StandPos_2) > 25 then myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y) end
 			end
 		end
 	end
