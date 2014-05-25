@@ -182,7 +182,11 @@ function OnTick()
 			_LoadMenu()
 			AddTickCallback(_CheckScriptUpdate)
 			AddTickCallback(_GetRunningModes)
-			AddTickCallback(_CheckEnemyStunnAbleBeta)
+			if VIP_USER then
+				AddTickCallback(_CheckEnemyStunnAbleBeta)
+			else
+				AddTickCallback(_CheckEnemyStunnAble)
+			end
 			AddTickCallback(_NonTargetGapCloserAfterCast)
 			AddTickCallback(_ClickThreshLantern)
 			AddTickCallback(_UsePermaShows)
