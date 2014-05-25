@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.00
+	Version: 3.01
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -171,7 +171,8 @@ end
 
 function OnTick()
 	if not LibsDone then
-		_LibsUpdate()
+	LibsDone = true
+--~ 		_LibsUpdate()
 	else
 		if not ScriptStartOver then
 			ScriptStartOver = true
