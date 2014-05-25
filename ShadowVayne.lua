@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.01
+	Version: 3.02
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -107,20 +107,6 @@ function _CheckScriptUpdate()
 end
 
 function _LibsUpdate()
-	if _LibUpdateTable == nil then
-		_LibUpdateTable = { ["SOW"] = {}, ["VPREDICTION"] = {}, ["SOURCELIB"] = {}, ["SELECTOR"] = {}, ["SHADOWVAYNE"] = {} }
-		_LibUpdateTable["SOW"]["VERSION"] = "/honda7/BoL/master/VersionFiles/SOW.version"
-		_LibUpdateTable["SOW"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/SOW.lua"
-		_LibUpdateTable["VPREDICTION"]["VERSION"] = "/honda7/BoL/master/VersionFiles/vPrediction.version"
-		_LibUpdateTable["VPREDICTION"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/VPrediction.lua"
-		_LibUpdateTable["SOURCELIB"]["VERSION"] = "/TheRealSource/public/master/common/SourceLib.version"
-		_LibUpdateTable["SOURCELIB"]["SCRIPT"] = "http://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
-		_LibUpdateTable["SELECTOR"]["VERSION"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision"
-		_LibUpdateTable["SELECTOR"]["SCRIPT"] = "http://raw.github.com/pqmailer/BoL_Scripts/master/Paid/Selector.lua"
-		_LibUpdateTable["SHADOWVAYNE"]["VERSION"] = "/Superx321/BoL/master/ShadowVayne.Version"
-		_LibUpdateTable["SHADOWVAYNE"]["SCRIPT"] = "http://raw.github.com/Superx321/BoL/master/ShadowVayne.lua"
-	end
-
 	if not DeletedOldLibs then
 		DeletedOldLibs = true
 		if FileExist(LIB_PATH.."/SOW.lua") and _GetLocalVersion("SOW", 17, 21) < 1.129 then os.remove(LIB_PATH.."/SOW.lua")	end
@@ -170,6 +156,20 @@ function _LibsUpdate()
 end
 
 function OnTick()
+	if _LibUpdateTable == nil then
+		_LibUpdateTable = { ["SOW"] = {}, ["VPREDICTION"] = {}, ["SOURCELIB"] = {}, ["SELECTOR"] = {}, ["SHADOWVAYNE"] = {} }
+		_LibUpdateTable["SOW"]["VERSION"] = "/honda7/BoL/master/VersionFiles/SOW.version"
+		_LibUpdateTable["SOW"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/SOW.lua"
+		_LibUpdateTable["VPREDICTION"]["VERSION"] = "/honda7/BoL/master/VersionFiles/vPrediction.version"
+		_LibUpdateTable["VPREDICTION"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/VPrediction.lua"
+		_LibUpdateTable["SOURCELIB"]["VERSION"] = "/TheRealSource/public/master/common/SourceLib.version"
+		_LibUpdateTable["SOURCELIB"]["SCRIPT"] = "http://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
+		_LibUpdateTable["SELECTOR"]["VERSION"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision"
+		_LibUpdateTable["SELECTOR"]["SCRIPT"] = "http://raw.github.com/pqmailer/BoL_Scripts/master/Paid/Selector.lua"
+		_LibUpdateTable["SHADOWVAYNE"]["VERSION"] = "/Superx321/BoL/master/ShadowVayne.Version"
+		_LibUpdateTable["SHADOWVAYNE"]["SCRIPT"] = "http://raw.github.com/Superx321/BoL/master/ShadowVayne.lua"
+	end
+
 	if not LibsDone then
 		LibsDone = true
 		require "SOW"
