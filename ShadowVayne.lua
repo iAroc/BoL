@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.02
+	Version: 3.04
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -30,22 +30,160 @@ _SC.master = GetSave("scriptConfig")["Master"]
 _SC.masterIndex = 0
 
 _G.scriptConfig.CustomaddParam = _G.scriptConfig.addParam
-_G.scriptConfig.addParam = function(pVar, pText, pType, defaultValue, a, b, c)
-if pText == "scriptActive" or pText == "lastHitting" or pText == "laneClear" or pText == "hybridMode" then pText = "ShadowHijacked" end
- _G.scriptConfig.CustomaddParam(pVar, pText, pType, defaultValue, a, b, c)
+_G.scriptConfig.addParam = function(self, pVar, pText, pType, defaultValue, a, b, c, d)
+if pVar == "scriptActive" or pVar == "lastHitting" or pVar == "laneClear" or pVar == "hybridMode" then pVar = "ShadowHijacked" end
+if (self.name == "sidasacsetup_sidasacautocarrysub" and pText == "Hotkey")
+	or (self.name == "sidasacsetup_sidasacmixedmodesub" and pText == "Hotkey")
+	or (self.name == "sidasacsetup_sidasaclaneclearsub" and pText == "Hotkey")
+	or (self.name == "sidasacsetup_sidasaclasthitsub" and pText == "Hotkey") then
+pText = "ShadowVayne found. Set the Keysettings there!"
+pType = 5
+end
+--~ if pType:lower():find("hotkey") then print(pText, " ", pType, " ", defaultValue," ", a," ",b," ",pVar.name) end
+ _G.scriptConfig.CustomaddParam(self, pVar, pText, pType, defaultValue, a, b, c, d)
  end
 
-function _ReplaceAutoUpdate(LibName)
-	AutoUpdateOverWriteFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
-	AutoUpdateOverWriteString = AutoUpdateOverWriteFile:read("*a")
-	AutoUpdateOverWriteFile:close()
-	AutoUpdateOverWriteString = string.gsub(AutoUpdateOverWriteString, "local AUTOUPDATE = true", "local AUTOUPDATE = false")
-	AutoUpdateOverWriteString = string.gsub(AutoUpdateOverWriteString, "local autoUpdate   = true", "local autoUpdate   = false")
-	AutoUpdateOverWriteString = string.gsub(AutoUpdateOverWriteString, "_G.Selector_AutoUpdate = true", "_G.Selector_AutoUpdate = false")
-	AutoUpdateOverWriteFile = io.open(LIB_PATH.."/"..LibName..".lua", "w+")
-	AutoUpdateOverWriteFile:write(AutoUpdateOverWriteString)
-	AutoUpdateOverWriteFile:close()
+ CustomRequire = function(LibName, LoadedMsg, VersionHost, VersionPath, ScriptPath, UpdatedMsg, FastLoadVersion, DownloadMsg)
+	if not DoingALib then
+		DoingALib = true
+		if not _RequireTable then _RequireTable = {} end
+		if not _RequireTable[LibName] then _RequireTable[LibName] = {} end
+
+		local GetLocalVersion = function()
+			if not FileExist(LIB_PATH..LibName..".lua") then
+				LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "w+")
+				LibNameFile:write("version = 0")
+				LibNameFile:close()
+			end
+			LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
+			LibNameString = LibNameFile:read("*a")
+			LibNameFile:close()
+			LibNameVersionPos = LibNameString:lower():find("version")
+			if type(LibNameVersionPos) == "number" then
+				for i = 1,20 do
+					GetCurrentChar = string.sub(LibNameString, LibNameVersionPos+i, LibNameVersionPos+i)
+					if type(tonumber(GetCurrentChar)) == "number" then
+						VersionNumberStartPos = LibNameVersionPos+i
+						break
+					end
+				end
+
+				for i = 0,20 do
+					GetCurrentChar = string.sub(LibNameString, VersionNumberStartPos+i, VersionNumberStartPos+i)
+					if type(tonumber(GetCurrentChar)) ~= "number" and GetCurrentChar ~= "." then
+						VersionNumberEndPos = VersionNumberStartPos+i-1
+						break
+					end
+				end
+				return string.sub(LibNameString, VersionNumberStartPos, VersionNumberEndPos)
+			else
+				return 0.01
+			end
+		end
+
+		local SwapAutoUpdate = function(SwapState)
+			LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
+			LibNameString = LibNameFile:read("*a")
+			LibNameCutString = LibNameString
+			GroundPos = 0
+			LibNameFile:close()
+			for i = 1,10 do
+				LibNameUpdatePos = LibNameCutString:lower():find("autoupdate")
+				if type(LibNameUpdatePos) == "number" then
+					if string.find(string.sub(LibNameCutString, LibNameUpdatePos, LibNameUpdatePos+20), "= true") then
+						StartString = string.sub(LibNameString, 0, GroundPos+LibNameUpdatePos-1)
+						if SwapState == false then
+							ReplaceString = string.gsub(string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20), "= true", "= false")
+						else
+							ReplaceString = string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20)
+						end
+						EndString = string.sub(LibNameString, GroundPos+LibNameUpdatePos+21)
+						break
+					elseif string.find(string.sub(LibNameCutString, LibNameUpdatePos, LibNameUpdatePos+20), "= false") then
+						StartString = string.sub(LibNameString, 0, GroundPos+LibNameUpdatePos-1)
+						if SwapState == true then
+							ReplaceString = string.gsub(string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20), "= false", "= true")
+						else
+							ReplaceString = string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20)
+						end
+						EndString = string.sub(LibNameString, GroundPos+LibNameUpdatePos+21)
+						break
+					else
+						LibNameCutString = string.sub(LibNameCutString, 20)
+						GroundPos = GroundPos + 20
+					end
+				else
+
+				StartString = LibNameString
+				ReplaceString = ""
+				EndString = ""
+				end
+			end
+			LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "w+")
+			LibNameFile:write(StartString..ReplaceString..EndString)
+			LibNameFile:close()
+		end
+
+		local RequireTheLib = function()
+			SwapAutoUpdate(false)
+			require(LibName)
+			if LoadedMsg ~= nil then
+				LoadedMsg = string.gsub(LoadedMsg, "localversion", GetLocalVersion())
+				print(LoadedMsg)
+			end
+			if UpdatedMsg ~= nil and _RequireTable[LibName]["oldversion"] ~= nil then
+				UpdatedMsg = string.gsub(UpdatedMsg, "localversion", _RequireTable[LibName]["oldversion"])
+				UpdatedMsg = string.gsub(UpdatedMsg, "serverversion", _RequireTable[LibName]["newversion"])
+				UpdatedMsg = string.gsub(UpdatedMsg, "LibName", LibName)
+				print(UpdatedMsg)
+			end
+			SwapAutoUpdate(true)
+			 _RequireTable[LibName]["required"] = true
+			DoingALib = false
+		end
+
+		local AfterDownloadFile = function()
+			_RequireTable[LibName]["updated"] = true
+			RequireTheLib()
+		end
+
+		local AfterGetVersion = function(WebDataVersion)
+			WebVersion = tonumber(WebDataVersion)
+			LocalVersion = tonumber(GetLocalVersion())
+			if WebVersion > LocalVersion then
+				_RequireTable[LibName]["oldversion"] = LocalVersion
+				_RequireTable[LibName]["newversion"] = WebVersion
+				DownloadMsg = string.gsub(DownloadMsg, "LibName", LibName)
+				print(DownloadMsg)
+				DelayAction(function() DownloadFile(ScriptPath, LIB_PATH..LibName..".lua", function() AfterDownloadFile() end) end, 1)
+			else
+				_RequireTable[LibName]["updated"] = false
+				RequireTheLib()
+			end
+		end
+
+		if VersionHost ~= nil and VersionPath ~= nil and ScriptPath~= nil then
+			if FastLoadVersion ~= nil and tonumber(FastLoadVersion*1000) <= tonumber(GetLocalVersion()*1000) then
+				RequireTheLib()
+				DelayAction(function() CustomRequire(LibName, nil, VersionHost, VersionPath, ScriptPath, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated, please reload</font>", nil, DownloadMsg) end, 3)
+			else
+				GetAsyncWebResult(VersionHost, VersionPath, tostring(math.random(1000)), function(x) AfterGetVersion(x) end)
+			end
+		else
+			RequireTheLib()
+		end
+	else
+		DelayAction(function() CustomRequire(LibName, LoadedMsg, VersionHost, VersionPath, ScriptPath, UpdatedMsg, FastLoadVersion, DownloadMsg) end, 0.5)
+	end
 end
+CustomRequire("SourceLib", nil, "raw.github.com", "/TheRealSource/public/master/common/SourceLib.version", "http://raw.github.com/TheRealSource/public/master/common/SourceLib.lua", "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated</font>", 1.059, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating SourceLib, please wait...</font>")
+CustomRequire("SOW", nil, "raw.github.com", "/Hellsing/BoL/master/version/SOW.version", "http://raw.github.com/Hellsing/BoL/master/common/SOW.lua", "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated</font>", 1.129, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating SOW, please wait...</font>")
+CustomRequire("VPrediction", nil, "raw.github.com", "/Hellsing/BoL/master/version/VPrediction.version", "http://raw.github.com/Hellsing/BoL/master/common/VPrediction.lua", "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated</font>", 2.50, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating VPrediction, please wait...</font>")
+CustomRequire("Selector", nil, "raw.github.com", "/pqmailer/BoL_Scripts/master/Paid/Selector.revision", "http://raw.github.com/pqmailer/BoL_Scripts/master/Paid/Selector.lua", "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated</font>", 0.12, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating Selector, please wait...</font>")
+CustomRequire("CustomPermaShow", nil, "raw.github.com", "/Superx321/BoL/master/common/CustomPermaShow.Version", "http://raw.github.com/Superx321/BoL/master/common/CustomPermaShow.lua", "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated</font>", 1.02, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating LibName, please wait...</font>")
+--~ require "VPrediction2431"
+--~ require "VPrediction"
+--~ _RequireTable["VPrediction"] = {["required"] = true}
 
 function _GetLocalVersion(LibName, StartPos, EndPos)
 	if LibName == "SHADOWVAYNE" then
@@ -60,22 +198,6 @@ function _GetLocalVersion(LibName, StartPos, EndPos)
 		if LibNamePos == nil then LibNamePos, Dummy = string.find(LibNameString, "@version") end
 		LibNameFile:close()
 		return tonumber(string.sub(LibNameString, LibNamePos+StartPos, LibNamePos+EndPos))
-	end
-end
-
-function _DoUpdateLib(LibName, ServerVersion, VersionPosStart, VersionPosEnd)
-	if FileExist(LIB_PATH.."/"..LibName..".lua") then
-		_LibUpdateTable[LibName]["LocaleVersion"] = _GetLocalVersion(LibName, VersionPosStart, VersionPosEnd)
-	else
-		_LibUpdateTable[LibName]["LocaleVersion"] = 0
-	end
-
-	if ServerVersion > _LibUpdateTable[LibName]["LocaleVersion"] then
-		print("<font color=\"#F0Ff8d\"><b>ShadowVayne ("..LibName.."):</b></font> <font color=\"#FF0F0F\">Update found ("..ServerVersion.."). Downloading...</font>")
-		DelayAction(function()	DownloadFile(_LibUpdateTable[LibName]["SCRIPT"], LIB_PATH.."/"..LibName..".lua", function() _LibUpdateTable[LibName]["UPDATED"] = true;DelayAction(function() DownloadingLib = false end, 0.5);print("<font color=\"#F0Ff8d\"><b>ShadowVayne ("..LibName.."):</b></font> <font color=\"#FF0F0F\">Successfully updated to Version "..ServerVersion..". </font>") end) end, 2)
-	else
-		DelayAction(function() DownloadingLib = false end, 0.5)
-		_LibUpdateTable[LibName]["UPDATED"] = true
 	end
 end
 
@@ -106,84 +228,33 @@ function _CheckScriptUpdate()
 	end
 end
 
-function _LibsUpdate()
-	if not DeletedOldLibs then
-		DeletedOldLibs = true
-		if FileExist(LIB_PATH.."/SOW.lua") and _GetLocalVersion("SOW", 17, 21) < 1.129 then os.remove(LIB_PATH.."/SOW.lua")	end
-		if FileExist(LIB_PATH.."/VPREDICTION.lua") and _GetLocalVersion("VPREDICTION", 17, 20) < 2.51 then os.remove(LIB_PATH.."/VPREDICTION.lua")	end
-		if FileExist(LIB_PATH.."/SOURCELIB.lua") and _GetLocalVersion("SOURCELIB", 16, 20) < 1.058 then os.remove(LIB_PATH.."/SOURCELIB.lua")	end
-		if FileExist(LIB_PATH.."/SELECTOR.lua") and _GetLocalVersion("SELECTOR", 9, 14) < 0.12 then os.remove(LIB_PATH.."/SELECTOR.lua")	end
-	end
-
-	if FileExist(LIB_PATH.."/SOW.lua") and FileExist(LIB_PATH.."/VPrediction.lua") and FileExist(LIB_PATH.."/SourceLib.lua") and FileExist(LIB_PATH.."/Selector.lua") and not DownloadingLib then
-		_ReplaceAutoUpdate("SOW")
-		_ReplaceAutoUpdate("VPrediction")
-		_ReplaceAutoUpdate("SourceLib")
-		_ReplaceAutoUpdate("Selector")
-		require "SOW"
-		require "VPrediction"
-		require "SourceLib"
-		require "Selector"
-		LibsDone = true
-		print("<font color=\"#F0Ff8d\"><b>ShadowVayne (SOW):</b></font> <font color=\"#FF0F0F\">Version ".._GetLocalVersion("SOW", 17, 21).." loaded</font>")
-		print("<font color=\"#F0Ff8d\"><b>ShadowVayne (VPREDICTION):</b></font> <font color=\"#FF0F0F\">Version ".._GetLocalVersion("VPREDICTION", 17, 20).." loaded</font>")
-		print("<font color=\"#F0Ff8d\"><b>ShadowVayne (SOURCELIB):</b></font> <font color=\"#FF0F0F\">Version ".._GetLocalVersion("SOURCELIB", 16, 20).." loaded</font>")
-	else
-		if not DownloadingLib and not _LibUpdateTable["SOW"]["UPDATED"] and not FileExist(LIB_PATH.."/SOW.lua") then
-			if not StartUpdatePrint then StartUpdatePrint=true;print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating Libs. Please wait...</font>") end
-			DownloadingLib = true
-			GetAsyncWebResult("raw.github.com", _LibUpdateTable["SOW"]["VERSION"], tostring(math.random(1000)), function(x) _DoUpdateLib("SOW", tonumber(x), 17, 21) end)
-		end
-
-		if not DownloadingLib and not _LibUpdateTable["VPREDICTION"]["UPDATED"] and not FileExist(LIB_PATH.."/VPREDICTION.lua") then
-			if not StartUpdatePrint then StartUpdatePrint=true;print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating Libs. Please wait...</font>") end
-			DownloadingLib = true
-			GetAsyncWebResult("raw.github.com", _LibUpdateTable["VPREDICTION"]["VERSION"], tostring(math.random(1000)), function(x) _DoUpdateLib("VPREDICTION", tonumber(x), 17, 20) end)
-		end
-
-		if not DownloadingLib and not _LibUpdateTable["SOURCELIB"]["UPDATED"] and not FileExist(LIB_PATH.."/SOURCELIB.lua") then
-			if not StartUpdatePrint then StartUpdatePrint=true;print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating Libs. Please wait...</font>") end
-			DownloadingLib = true
-			GetAsyncWebResult("raw.github.com", _LibUpdateTable["SOURCELIB"]["VERSION"], tostring(math.random(1000)), function(x)_DoUpdateLib("SOURCELIB", tonumber(x), 16, 20) end)
-		end
-
-		if not DownloadingLib and not _LibUpdateTable["SELECTOR"]["UPDATED"] and not FileExist(LIB_PATH.."/SELECTOR.lua") then
-			if not StartUpdatePrint then StartUpdatePrint=true;print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating Libs. Please wait...</font>") end
-			DownloadingLib = true
-			GetAsyncWebResult("raw.github.com", _LibUpdateTable["SELECTOR"]["VERSION"], tostring(math.random(1000)), function(x)_DoUpdateLib("SELECTOR", tonumber(x), 16, 20) end)
-		end
-	end
-end
-
 function OnTick()
 	if _LibUpdateTable == nil then
-		_LibUpdateTable = { ["SOW"] = {}, ["VPREDICTION"] = {}, ["SOURCELIB"] = {}, ["SELECTOR"] = {}, ["SHADOWVAYNE"] = {} }
-		_LibUpdateTable["SOW"]["VERSION"] = "/honda7/BoL/master/VersionFiles/SOW.version"
-		_LibUpdateTable["SOW"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/SOW.lua"
-		_LibUpdateTable["VPREDICTION"]["VERSION"] = "/honda7/BoL/master/VersionFiles/vPrediction.version"
-		_LibUpdateTable["VPREDICTION"]["SCRIPT"] = "http://raw.github.com/honda7/BoL/master/Common/VPrediction.lua"
-		_LibUpdateTable["SOURCELIB"]["VERSION"] = "/TheRealSource/public/master/common/SourceLib.version"
-		_LibUpdateTable["SOURCELIB"]["SCRIPT"] = "http://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
-		_LibUpdateTable["SELECTOR"]["VERSION"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision"
-		_LibUpdateTable["SELECTOR"]["SCRIPT"] = "http://raw.github.com/pqmailer/BoL_Scripts/master/Paid/Selector.lua"
+		_LibUpdateTable = { ["SHADOWVAYNE"] = {} }
 		_LibUpdateTable["SHADOWVAYNE"]["VERSION"] = "/Superx321/BoL/master/ShadowVayne.Version"
 		_LibUpdateTable["SHADOWVAYNE"]["SCRIPT"] = "http://raw.github.com/Superx321/BoL/master/ShadowVayne.lua"
 	end
+	if not ScriptStartOver
+	and _RequireTable["SourceLib"] ~= nil and _RequireTable["SourceLib"]["required"] == true
+	and _RequireTable["VPrediction"] ~= nil and _RequireTable["VPrediction"]["required"] == true
+	and _RequireTable["SOW"] ~= nil and _RequireTable["SOW"]["required"] == true
+	and _RequireTable["Selector"] ~= nil and _RequireTable["Selector"]["required"] == true
+	and _RequireTable["CustomPermaShow"] ~= nil and _RequireTable["CustomPermaShow"]["required"] == true then
+		_CheckSACMMASOW()
+		if SAC_V84 and not SACLoaded then
+			if not AuthWaitPrint then _PrintScriptMsg("Waiting for SAC:Reborn Auth");AuthWaitPrint=true end
+			SACWait = true
+		end
 
-	if not LibsDone then
-		LibsDone = true
-		require "SOW"
-		require "VPrediction"
-		require "SourceLib"
-		require "Selector"
+		if SAC_V84 and SACLoaded then
+			SACWait = false
+		end
 
---~ 		_LibsUpdate()
-	else
-		if not ScriptStartOver then
+		if not SACWait then
+			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">All Libs loaded</font>")
 			ScriptStartOver = true
 			VP = VPrediction(true)
 			_LoadTables()
-			_CheckSACMMASOW()
 			_HijackPrintChat()
 			_LoadMenu()
 			AddTickCallback(_CheckScriptUpdate)
@@ -206,15 +277,15 @@ function OnTick()
 			autoLevelSetFunction(_AutoLevelSpell)
 			autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 			ScriptOnLoadDone = true
-			HidePermaShow = {["LaneClear OnHold:"] = true,["Orbwalk OnHold:"] = true, ["LastHit OnHold:"] = true, ["HybridMode OnHold:"] = true,}
-			HidePermaShow["Condemn on next BasicAttack:"] = true
-			HidePermaShow["Auto Carry"] = true
-			HidePermaShow["Last Hit"] = true
-			HidePermaShow["Mixed Mode"] = true
-			HidePermaShow["Lane Clear"] = true
-			HidePermaShow["              Sida's Auto Carry: Reborn"] = true
-			HidePermaShow["Auto-Condemn"] = true
-			HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
+			_G.HidePermaShow = {["LaneClear OnHold:"] = true,["Orbwalk OnHold:"] = true, ["LastHit OnHold:"] = true, ["HybridMode OnHold:"] = true,}
+			_G.HidePermaShow["Condemn on next BasicAttack:"] = true
+			_G.HidePermaShow["Auto Carry"] = true
+			_G.HidePermaShow["Last Hit"] = true
+			_G.HidePermaShow["Mixed Mode"] = true
+			_G.HidePermaShow["Lane Clear"] = true
+			_G.HidePermaShow["              Sida's Auto Carry: Reborn"] = true
+			_G.HidePermaShow["Auto-Condemn"] = true
+			_G.HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
 		end
 	end
 end
@@ -258,22 +329,22 @@ end
 function _WallTumble()
 	if VIP_USER then
 		if myHero:CanUseSpell(_Q) ~= READY then TumbleOverWall_1, TumbleOverWall_2 = false,false end
-		if TumbleOverWall_1 then
-			if GetDistance(TumbleSpots.VisionPos_1) <= 50 then
+		if TumbleOverWall_1 and VayneMenu.walltumble.spot1 then
+			if GetDistance(TumbleSpots.StandPos_1) <= 25 then
 				TumbleOverWall_1 = false
 				CastSpell(_Q, TumbleSpots.CastPos_1.x,  TumbleSpots.CastPos_1.y)
 				myHero:HoldPosition()
 			else
-				if GetDistance(TumbleSpots.VisionPos_1) > 50 then myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y) end
+				if GetDistance(TumbleSpots.StandPos_1) > 25 then myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y) end
 			end
 		end
-		if TumbleOverWall_2 then
-			if GetDistance(TumbleSpots.VisionPos_2) <= 50 then
+		if TumbleOverWall_2 and VayneMenu.walltumble.spot2 then
+			if GetDistance(TumbleSpots.StandPos_2) <= 25 then
 				TumbleOverWall_2 = false
 				CastSpell(_Q, TumbleSpots.CastPos_2.x,  TumbleSpots.CastPos_2.y)
 				myHero:HoldPosition()
 			else
-				if GetDistance(TumbleSpots.VisionPos_2) > 50 then myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y) end
+				if GetDistance(TumbleSpots.StandPos_2) > 25 then myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y) end
 			end
 		end
 	end
@@ -281,15 +352,19 @@ end
 
 function _WallTumbleDraw()
 	if VIP_USER then
-		if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
-			DrawCircle(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x107458)
-		else
-			DrawCircle(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x80FFFF)
+		if VayneMenu.walltumble.spot1 then
+			if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
+				DrawCircle(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x107458)
+			else
+				DrawCircle(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x80FFFF)
+			end
 		end
-		if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
-			DrawCircle(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x107458)
-		else
-			DrawCircle(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x80FFFF)
+		if VayneMenu.walltumble.spot2 then
+			if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
+				DrawCircle(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x107458)
+			else
+				DrawCircle(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x80FFFF)
+			end
 		end
 	end
 end
@@ -297,32 +372,36 @@ end
 function OnSendPacket(p)
 	if VIP_USER then
 		if p.header == 153 and p.size == 26 then
-			if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
-				p.pos = 1
-				P_NetworkID = p:DecodeF()
-				P_SpellID = p:Decode1()
-				if P_NetworkID == myHero.networkID and P_SpellID == _Q then
-					if DontBlockNext then
-						DontBlockNext = false
-					else
-						p:Block()
-						DontBlockNext = true
-						TumbleOverWall_1 = true
+			if VayneMenu.walltumble.spot1 then
+				if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
+					p.pos = 1
+					P_NetworkID = p:DecodeF()
+					P_SpellID = p:Decode1()
+					if P_NetworkID == myHero.networkID and P_SpellID == _Q then
+						if DontBlockNext then
+							DontBlockNext = false
+						else
+							p:Block()
+							DontBlockNext = true
+							TumbleOverWall_1 = true
+						end
 					end
 				end
 			end
 
-			if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
-				p.pos = 1
-				P_NetworkID = p:DecodeF()
-				P_SpellID = p:Decode1()
-				if P_NetworkID == myHero.networkID and P_SpellID == _Q then
-					if DontBlockNext then
-						DontBlockNext = false
-					else
-						p:Block()
-						DontBlockNext = true
-						TumbleOverWall_2 = true
+			if VayneMenu.walltumble.spot2 then
+				if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
+					p.pos = 1
+					P_NetworkID = p:DecodeF()
+					P_SpellID = p:Decode1()
+					if P_NetworkID == myHero.networkID and P_SpellID == _Q then
+						if DontBlockNext then
+							DontBlockNext = false
+						else
+							p:Block()
+							DontBlockNext = true
+							TumbleOverWall_2 = true
+						end
 					end
 				end
 			end
@@ -336,18 +415,16 @@ function OnSendPacket(p)
 			P_X2 = RoundNumber(P_X, 2)
 			P_Y = p:DecodeF()
 			P_Y2 = RoundNumber(P_Y, 2)
-			if TumbleOverWall_1 == true then
+			if TumbleOverWall_1 == true and VayneMenu.walltumble.spot1 then
 				RunToX, RunToY = TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y
 				if not (P_X2 == RunToX and P_Y2 == RunToY) then
 					p:Block()
 					myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y)
 				end
 			end
-			if TumbleOverWall_2 == true then
+			if TumbleOverWall_2 == true and VayneMenu.walltumble.spot2 then
 				RunToX, RunToY = TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y
 				if not (P_X2 == RunToX and P_Y2 == RunToY) then
-					print(P_X2)
-					print(RunToX)
 					p:Block()
 					myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y)
 				end
@@ -379,14 +456,20 @@ function _UseTumble()
 end
 
 function _CheckSACMMASOW()
-	if AutoCarry ~= nil then
-		if AutoCarry.Helper ~= nil then
+	if _G.AutoCarry ~= nil then
+		if _G.AutoCarry.Helper ~= nil then
 			Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
 			SACLoaded = true
 		else
-			REVLoaded = true
-			REVMenu = _G.AutoCarry.AutoCarry.MainMenu
+			if _G.AutoCarry.AutoCarry ~= nil then
+				REVLoaded = true
+				REVMenu = _G.AutoCarry.AutoCarry.MainMenu
+			end
 		end
+	end
+
+	if _G.Reborn_Loaded then
+		SAC_V84 = true
 	end
 
 	if _G.MMA_Loaded then
@@ -480,7 +563,6 @@ function OnProcessSpell(unit, spell)
 		if unit.isMe then
 			if spell.name:find("Attack") then
 				LastAttackedEnemy = spell.target
-				IsAttacking = true
 				DelayAction(function() IsAttacking = false;_CallBackAfterAA() end, spell.windUpTime - GetLatency() / 2000)
 			end
 
@@ -589,17 +671,14 @@ function _UseSelector()
 			end
 		end
 	end
-	if not _G.Selector_Enabled then
-		print(_G.Selector_Enabled)
-	end
 end
 
 function _UsePermaShows()
-	CustomPermaShow("AutoCarry (Using "..AutoCarryOrbText..")", VayneMenu.keysetting.autocarry, VayneMenu.permashowsettings.carrypermashow, nil, nil, nil, 1)
-	CustomPermaShow("MixedMode (Using "..MixedModeOrbText..")", VayneMenu.keysetting.mixedmode, VayneMenu.permashowsettings.mixedpermashow, nil, nil, nil, 2)
-	CustomPermaShow("LaneClear (Using "..LaneClearOrbText..")", VayneMenu.keysetting.laneclear, VayneMenu.permashowsettings.laneclearpermashow, nil, nil, nil, 3)
-	CustomPermaShow("LastHit (Using "..LastHitOrbText..")", VayneMenu.keysetting.lasthit, VayneMenu.permashowsettings.lasthitpermashow, nil, nil, nil, 4)
-	CustomPermaShow("Auto-E after next BasicAttack", VayneMenu.keysetting.basiccondemn, VayneMenu.permashowsettings.epermashow, nil, nil, nil,  5)
+	CustomPermaShow("AutoCarry (Using "..AutoCarryOrbText..")", VayneMenu.keysetting.autocarry, VayneMenu.permashowsettings.carrypermashow, nil, 1426521024, nil, 1)
+	CustomPermaShow("MixedMode (Using "..MixedModeOrbText..")", VayneMenu.keysetting.mixedmode, VayneMenu.permashowsettings.mixedpermashow, nil, 1426521024, nil, 2)
+	CustomPermaShow("LaneClear (Using "..LaneClearOrbText..")", VayneMenu.keysetting.laneclear, VayneMenu.permashowsettings.laneclearpermashow, nil, 1426521024, nil, 3)
+	CustomPermaShow("LastHit (Using "..LastHitOrbText..")", VayneMenu.keysetting.lasthit, VayneMenu.permashowsettings.lasthitpermashow, nil, 1426521024, nil, 4)
+	CustomPermaShow("Auto-E after next BasicAttack", VayneMenu.keysetting.basiccondemn, VayneMenu.permashowsettings.epermashow, nil, 1426521024, nil,  5)
 end
 
 function OnCreateObj(Obj)
@@ -891,8 +970,6 @@ function _GetRunningModes()
 		ShadowVayneLaneClear = false
 		ShadowVayneLastHit = false
 	end
-
-	--~ Reset All Modes to false
 	if SACLoaded then Keys.AutoCarry,Keys.MixedMode,Keys.LaneClear,Keys.LastHit = false,false,false,false end
 	if RevampedLoaded then REVMenu.AutoCarry,REVMenu.MixedMode,REVMenu.LaneClear,REVMenu.LastHit = false,false,false,false end
 	--if SOWLoaded then SOWMenu._param[7].key,SOWMenu._param[8].key,SOWMenu._param[9].key,SOWMenu._param[10].key = 5,5,5,5 end
@@ -915,7 +992,7 @@ function _GetRunningModes()
 	if AutoCarryOrbText == "MMA" then _G.MMA_Orbwalker = ShadowVayneAutoCarry end
 	if AutoCarryOrbText == "Reborn" then Keys.AutoCarry = ShadowVayneAutoCarry end
 	if AutoCarryOrbText == "SOW" then SOWMenu.Mode0 = ShadowVayneAutoCarry end
-	if AutoCarrycOrbText == "Revamped" then REVMenu.AutoCarry = ShadowVayneAutoCarry end
+	if AutoCarryOrbText == "Revamped" then REVMenu.AutoCarry = ShadowVayneAutoCarry end
 
 	if MixedModeOrbText == "MMA" then _G.MMA_HybridMode = ShadowVayneMixedMode end
 	if MixedModeOrbText == "Reborn" then Keys.MixedMode = ShadowVayneMixedMode end
@@ -931,6 +1008,29 @@ function _GetRunningModes()
 	if LastHitOrbText == "Reborn" then Keys.LastHit = ShadowVayneLastHit end
 	if LastHitOrbText == "SOW" then SOWMenu.Mode3 = ShadowVayneLastHit end
 	if LastHitOrbText == "Revamped" then REVMenu.LastHit = ShadowVayneLastHit end
+
+	if SAC_V84 and SACLoaded then
+		if AutoCarryOrbText == "Reborn" then
+			VayneMenu.keysetting.SACAutoCarry = Keys.AutoCarry
+		else
+			VayneMenu.keysetting.SACAutoCarry = false
+		end
+		if MixedModeOrbText == "Reborn" then
+			VayneMenu.keysetting.SACMixedMode = Keys.MixedMode
+		else
+			VayneMenu.keysetting.SACMixedMode = false
+		end
+		if LaneClearOrbText == "Reborn" then
+			VayneMenu.keysetting.SACLaneClear = Keys.LaneClear
+		else
+			VayneMenu.keysetting.SACLaneClear = false
+		end
+		if LastHitOrbText == "Reborn" then
+			VayneMenu.keysetting.SACLastHit = Keys.LastHit
+		else
+			VayneMenu.keysetting.SACLastHit = false
+		end
+	end
 end
 
 function _HijackPrintChat()
@@ -958,6 +1058,7 @@ function _LoadMenu()
 	VayneMenu:addSubMenu("[Misc]: PermaShow Settings", "permashowsettings")
 	VayneMenu:addSubMenu("[Misc]: AutoUpdate Settings", "autoup")
 	VayneMenu:addSubMenu("[Misc]: Draw Settings", "draw")
+	VayneMenu:addSubMenu("[Misc]: WallTumble Settings", "walltumble")
 	VayneMenu:addSubMenu("[BotRK]: Settings", "botrksettings")
 	VayneMenu:addSubMenu("[Bilgewater]: Settings", "bilgesettings")
 	VayneMenu:addSubMenu("[QSS]: Settings", "qqs")
@@ -1014,6 +1115,16 @@ function _LoadMenu()
 	VayneMenu.keysetting:addParam("MixedModeOrb", "Orbwalker in MixedMode: ", SCRIPT_PARAM_LIST, 1, OrbWalkerTable)
 	VayneMenu.keysetting:addParam("LaneClearOrb", "Orbwalker in LaneClear: ", SCRIPT_PARAM_LIST, 1, OrbWalkerTable)
 	VayneMenu.keysetting:addParam("LastHitOrb", "Orbwalker in LastHit: ", SCRIPT_PARAM_LIST, 1, OrbWalkerTable)
+	if SAC_V84 and SACLoaded then
+	VayneMenu.keysetting:addParam("SACAutoCarry","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+	VayneMenu.keysetting:addParam("SACMixedMode","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+	VayneMenu.keysetting:addParam("SACLaneClear","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+	VayneMenu.keysetting:addParam("SACLastHit","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+	Keys:RegisterMenuKey(VayneMenu.keysetting, "SACAutoCarry", AutoCarry.MODE_AUTOCARRY)
+	Keys:RegisterMenuKey(VayneMenu.keysetting, "SACMixedMode", AutoCarry.MODE_MIXEDMODE)
+	Keys:RegisterMenuKey(VayneMenu.keysetting, "SACLaneClear", AutoCarry.MODE_LANECLEAR)
+	Keys:RegisterMenuKey(VayneMenu.keysetting, "SACLastHit", AutoCarry.MODE_LASTHIT)
+	end
 
 	VayneMenu.tssetting:addParam("UsedTS", "Choose your TargetSelector (need Reload!):", SCRIPT_PARAM_LIST, 1, {"Simple Target Selector", "VIP Target Selector"})
 	if VIP_USER and VayneMenu.tssetting.UsedTS == 2 then UserVIPSelector = true end
@@ -1150,17 +1261,30 @@ function _LoadMenu()
 --~ 	Debug Settings Menu
 		VayneMenu.debug:addParam("stunndebug", "Debug AutoStunn", SCRIPT_PARAM_ONOFF, false)
 
+--~ 	Walltumble Settings Menu
+		VayneMenu.walltumble:addParam("spot1", "Draw & Use Spot 1 (Drake-Spot)", SCRIPT_PARAM_ONOFF, true)
+		VayneMenu.walltumble:addParam("spot2", "Draw & Use Spot 2 (Min-Spot)", SCRIPT_PARAM_ONOFF, true)
+
 	STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
 	SOWi = SOW(VP, STS)
 	SOWi:LoadToMenu(SOWMenu)
+	SOWi:RegisterBeforeAttackCallback(_PreAttack)
+	SOWi:RegisterAfterAttackCallback(_AfterAttack)
 	if UserVIPSelector then
 		Selector.Instance()
-		print("<font color=\"#F0Ff8d\"><b>ShadowVayne (SELECTOR):</b></font> <font color=\"#FF0F0F\">Version ".._GetLocalVersion("SELECTOR", 9, 14).." loaded</font>")
 	else
 		TSSMenu = scriptConfig("[SV] SimpleTargetSelector Settings", "SV_TSS")
 		STS:AddToMenu(TSSMenu)
 	end
 		_PrintScriptMsg("Version ".._GetLocalVersion("SHADOWVAYNE").." loaded")
+end
+
+function _PreAttack()
+	IsAttacking = true
+end
+
+function _AfterAttack()
+	IsAttacking = false
 end
 
 function _CheckUpdate_ShadowVayne()
@@ -1276,101 +1400,6 @@ function _ClickThreshLantern()
 	end
 end
 
-function CustomPermaShow(TextVar, ValueVar, VisibleVar, PermaColorVar, OnColorVar, OffColorVar, IndexVar)
-	if not _CPS_Added then
-		_G.DrawCustomText = _G.DrawText
-		_G.DrawText = function(Arg1, Arg2, Arg3, Arg4, Arg5) _DrawText(Arg1, Arg2, Arg3, Arg4, Arg5) end
-		_G.DrawCustomLine = _G.DrawLine
-		_G.DrawLine = function(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6) _DrawLine(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6) end
-		OldPermaShowTable, OldPermaShowCount, IsPermaShowStatusOn, PermaShowTable = {}, 0, {}, {}
-		AddDrawCallback(_DrawCustomPermaShow)
-		_CPS_Added = true
-	end
-
-	local _CPS_Updated = false
-	for i=1, #PermaShowTable do
-		if PermaShowTable[i]["IndexVar"] == IndexVar then
-			PermaShowTable[i]["ValueVar"], PermaShowTable[i]["VisibleVar"],_CPS_Updated = ValueVar,VisibleVar,true
-			PermaShowTable[i]["PermaColorVar"],PermaShowTable[i]["OnColorVar"],PermaShowTable[i]["OffColorVar"] = PermaColorVar, OnColorVar, OffColorVar
-			PermaShowTable[i]["TextVar"] = TextVar
-		end
-	end
-
-	if not _CPS_Updated then
-		PermaShowTable[#PermaShowTable+1] = {["TextVar"] = TextVar, ["ValueVar"] = ValueVar, ["VisibleVar"] = VisibleVar, ["PermaColorVar"] = PermaColorVar, ["OnColorVar"] = OnColorVar, ["OffColorVar"] = OffColorVar, ["IndexVar"] = IndexVar}
-	end
-end
-
-function _DrawCustomPermaShow()
-	_CPS_Master = GetSave("scriptConfig")["Master"]
-	_CPS_Master.py1 = _CPS_Master.py
-	_CPS_Master.py2 = _CPS_Master.py
-	_CPS_Master.color = { lgrey = 1413167931, grey = 4290427578, green = 1409321728}
-	_CPS_Master.fontSize = WINDOW_H and math.round(WINDOW_H / 72) or 10
-	_CPS_Master.midSize = _CPS_Master.fontSize / 2
-	_CPS_Master.cellSize = _CPS_Master.fontSize + 1
-	_CPS_Master.width = WINDOW_W and math.round(WINDOW_W / 6.4) or 160
-	_CPS_Master.row = _CPS_Master.width * 0.7
-
-	for i = 1, #PermaShowTable do
-		if PermaShowTable[i].ValueVar == true then
-			if PermaShowTable[i].OnColorVar == nil then
-				if PermaShowTable[i].PermaColorVar == nil then
-					ColorVar = _CPS_Master.color.green
-				else
-					ColorVar = PermaShowTable[i].PermaColorVar
-				end
-			else
-				ColorVar = PermaShowTable[i].OnColorVar
-			end
-			TextVar = "      ON"
-		elseif PermaShowTable[i].ValueVar == false then
-			if PermaShowTable[i].OffColorVar == nil then
-				if PermaShowTable[i].PermaColorVar == nil then
-					ColorVar = _CPS_Master.color.lgrey
-				else
-					ColorVar = PermaShowTable[i].PermaColorVar
-				end
-			else
-				ColorVar = PermaShowTable[i].OffColorVar
-			end
-			TextVar = "      OFF"
-		else
-			if PermaShowTable[i].PermaColorVar == nil then
-				ColorVar = _CPS_Master.color.lgrey
-			else
-				ColorVar = PermaShowTable[i].PermaColorVar
-			end
-			TextVar = PermaShowTable[i].ValueVar
-		end
-		if PermaShowTable[i]["VisibleVar"] then
-			DrawCustomLine(_CPS_Master.px - 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.px + _CPS_Master.row - 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.cellSize, _CPS_Master.color.lgrey)
-			DrawCustomText(PermaShowTable[i].TextVar, _CPS_Master.fontSize, _CPS_Master.px, _CPS_Master.py1, _CPS_Master.color.grey)
-			DrawCustomLine(_CPS_Master.px + _CPS_Master.row, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.px + _CPS_Master.width + 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.cellSize, ColorVar)
-			DrawCustomText(TextVar, _CPS_Master.fontSize, _CPS_Master.px + _CPS_Master.row + 1, _CPS_Master.py1, _CPS_Master.color.grey)
-			_CPS_Master.py1 = _CPS_Master.py1 + _CPS_Master.cellSize
-		end
-	end
-	for i=1,OldPermaShowCount do
-		if IsPermaShowStatusOn[_CPS_Master.py2] == true then
-			ColorVar = _CPS_Master.color.green
-			TextVar = "      ON"
-		elseif IsPermaShowStatusOn[_CPS_Master.py2] == false then
-			ColorVar = _CPS_Master.color.lgrey
-			TextVar = "      OFF"
-		else
-			ColorVar = _CPS_Master.color.lgrey
-			TextVar = IsPermaShowStatusOn[_CPS_Master.py2]
-		end
-		DrawCustomLine(_CPS_Master.px - 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.px + _CPS_Master.row - 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.cellSize, _CPS_Master.color.lgrey)
-		DrawCustomText(OldPermaShowTable[i].Arg1, _CPS_Master.fontSize, _CPS_Master.px, _CPS_Master.py1, _CPS_Master.color.grey)
-		DrawCustomLine(_CPS_Master.px + _CPS_Master.row, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.px + _CPS_Master.width + 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.cellSize, (ColorVar))
-		DrawCustomText(TextVar, _CPS_Master.fontSize, _CPS_Master.px + _CPS_Master.row + 1, _CPS_Master.py1, _CPS_Master.color.grey)
-		_CPS_Master.py1 = _CPS_Master.py1 + _CPS_Master.cellSize
-		_CPS_Master.py2 = _CPS_Master.py2 + _CPS_Master.cellSize
-	end
-end
-
 function scriptConfig:_DrawParam(varIndex)
 	_CPS_Master = GetSave("scriptConfig")["Master"]
 	_CPS_Master.py1 = 0
@@ -1392,11 +1421,11 @@ function scriptConfig:_DrawParam(varIndex)
 		self._param[varIndex].pType = 5
 		self._param[varIndex].text = "ShadowVayne found. Set the Keysettings there!"
 	end
-	if (self.name == "sidasacsetup_sidasacautocarrysub" and pText == "Auto Carry")
-	or (self.name == "sidasacsetup_sidasacmixedmodesub" and pText == "Mixed Mode")
-	or (self.name == "sidasacsetup_sidasaclaneclearsub" and pText == "Lane Clear")
-	or (self.name == "sidasacsetup_sidasaclasthitsub" and pText == "Last Hit")
-	or (self.name == "MMA2013" and pVar == "ShadowHijacked")
+	if (self.name == "sidasacsetup_sidasacautocarrysub" and pText == "Hotkey")
+	or (self.name == "sidasacsetup_sidasacmixedmodesub" and pText == "Hotkey")
+	or (self.name == "sidasacsetup_sidasaclaneclearsub" and pText == "Hotkey")
+	or (self.name == "sidasacsetup_sidasaclasthitsub" and pText == "Hotkey")
+	or (pVar == "ShadowHijacked")
 	then
 		self._param[varIndex].pType = 5
 		self._param[varIndex].text = "ShadowVayne found. Set the Keysettings there!"
@@ -1407,6 +1436,10 @@ function scriptConfig:_DrawParam(varIndex)
 	or (self.name == "SV_SOW" and pVar == "Mode2" and pText == "Laneclear!") -- SOW LaneClear
 	or (self.name == "SV_SOW" and pVar == "Mode0" and pText == "Carry me!") -- SOW AutoCarry
 	or (self.name == "SV_SOW" and pVar == "Hotkeys" and pText == "")
+	or (self.name == "SV_MAIN_keysetting" and pVar == "SACAutoCarry")
+	or (self.name == "SV_MAIN_keysetting" and pVar == "SACMixedMode")
+	or (self.name == "SV_MAIN_keysetting" and pVar == "SACLaneClear")
+	or (self.name == "SV_MAIN_keysetting" and pVar == "SACLastHit")
 	or (self.name == "sidasacvayne" and pVar ~= "toggleMode")
 	or (self.name == "sidasacvayne_sidasacvaynesub")
 	)
@@ -1460,7 +1493,7 @@ function scriptConfig:_DrawParam(varIndex)
 	end
 end
 
- function scriptConfig:_DrawSubInstance(index)
+function scriptConfig:_DrawSubInstance(index)
  	_CPS_Master = GetSave("scriptConfig")["Master"]
 	_CPS_Master.py1 = 0
 	_CPS_Master.py2 = _CPS_Master.py
@@ -1486,47 +1519,6 @@ end
 		DrawText("        >>", _CPS_Master.fontSize, self._x + _CPS_Master.row3 + 2, self._y, (selected and _CPS_Master.color.ivory or _CPS_Master.color.grey))
 		--_SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
 		self._y = self._y + _CPS_Master.cellSize
-	end
-end
-
-function _DrawText(Arg1, Arg2, Arg3, Arg4, Arg5)
-	_CPS_Master = GetSave("scriptConfig")["Master"]
-	_CPS_Master.row = (WINDOW_W and math.round(WINDOW_W / 6.4) or 160) * 0.7
-	if Arg1 == "Selector" then
-		Arg1 = "[SV] VIPTargetSelector Settings"
-	end
-	if Arg3 == _CPS_Master.px then
-		if not (HidePermaShow[Arg1] ~= nil and HidePermaShow[Arg1] == true) then
-			if not OldPermaShowTable[Arg1] then
-				OldPermaShowTable[Arg1] = true
-				OldPermaShowCount = OldPermaShowCount + 1
-				OldPermaShowTable[OldPermaShowCount] = {}
-				OldPermaShowTable[OldPermaShowCount]["Status"] = true
-				OldPermaShowTable[OldPermaShowCount]["Arg1"] = Arg1
-				OldPermaShowTable[OldPermaShowCount]["Arg2"] = Arg2
-				OldPermaShowTable[OldPermaShowCount]["Arg3"] = Arg3
-				OldPermaShowTable[OldPermaShowCount]["Arg4"] = Arg4
-				OldPermaShowTable[OldPermaShowCount]["Arg5"] = Arg5
-			end
-		end
-	elseif Arg3 == (_CPS_Master.px + _CPS_Master.row + 1) then
-		if Arg1 == "      ON" then
-			IsPermaShowStatusOn[Arg4] = true
-		elseif Arg1 == "      OFF" then
-			IsPermaShowStatusOn[Arg4] = false
-		else
-			IsPermaShowStatusOn[Arg4] = Arg1
-		end
-	else
-		DrawCustomText(Arg1, Arg2, Arg3, Arg4, Arg5)
-	end
-end
-
-function _DrawLine(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6)
-	_CPS_Master = GetSave("scriptConfig")["Master"]
-	_CPS_Master.row = (WINDOW_W and math.round(WINDOW_W / 6.4) or 160) * 0.7
-	if not (Arg1 == (_CPS_Master.px - 1) or Arg1 == (_CPS_Master.px + _CPS_Master.row)) then
-		DrawCustomLine(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6)
 	end
 end
 
@@ -1652,9 +1644,9 @@ function _LoadTables()
 	end
 
 	TumbleSpots = {
-		["VisionPos_1"] = { ["x"] = 11589, ["y"] = 52, ["z"] = 4657 },
+		["VisionPos_1"] = { ["x"] = 11590.95, ["y"] = 52, ["z"] = 4656.26 },
 		["VisionPos_2"] = { ["x"] = 6623, ["y"] = 56, ["z"] = 8649 },
-		["StandPos_1"] = { ["x"] = 11590.95, ["y"] = 4656.26 },
+		["StandPos_1"] = { ["x"] = 11590.95, ["y"] = 4656.26},
 		["StandPos_2"] = { ["x"] = 6623.00, ["y"] = 8649.00 },
 		["CastPos_1"] = { ["x"] = 11334.74, ["y"] = 4517.47 },
 		["CastPos_2"] = { ["x"] = 6010.5869140625, ["y"] = 8508.8740234375 }
