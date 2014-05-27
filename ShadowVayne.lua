@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.06
+	Version: 3.07
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -78,7 +78,12 @@ end
 							break
 						end
 					end
-					return string.sub(LibNameString, VersionNumberStartPos, VersionNumberEndPos)
+					FileVersion = string.sub(LibNameString, VersionNumberStartPos, VersionNumberEndPos)
+					if FileVersion == "2.431" then
+						return 5
+					else
+						return FileVersion
+					end
 				else
 					return 0.01
 				end
@@ -184,6 +189,7 @@ end
 end
 CustomRequire("SourceLib", nil, "raw.github.com", "/TheRealSource/public/master/common/SourceLib.version", "http://raw.github.com/TheRealSource/public/master/common/SourceLib.lua", "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated</font>", 1.059, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating SourceLib, please wait...</font>")
 CustomRequire("SOW", nil, "raw.github.com", "/Hellsing/BoL/master/version/SOW.version", "http://raw.github.com/Hellsing/BoL/master/common/SOW.lua", "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated</font>", 1.129, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating SOW, please wait...</font>")
+--~ CustomRequire("VPrediction")
 CustomRequire("VPrediction", nil, "raw.github.com", "/Hellsing/BoL/master/version/VPrediction.version", "http://raw.github.com/Hellsing/BoL/master/common/VPrediction.lua", "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated</font>", 2.50, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating VPrediction, please wait...</font>")
 CustomRequire("Selector", nil, "raw.github.com", "/pqmailer/BoL_Scripts/master/Paid/Selector.revision", "http://raw.github.com/pqmailer/BoL_Scripts/master/Paid/Selector.lua", "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated</font>", 0.12, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating Selector, please wait...</font>")
 CustomRequire("CustomPermaShow", nil, "raw.github.com", "/Superx321/BoL/master/common/CustomPermaShow.Version", "http://raw.github.com/Superx321/BoL/master/common/CustomPermaShow.lua", "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated</font>", 1.02, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating LibName, please wait...</font>")
