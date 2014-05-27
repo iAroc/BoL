@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.04
+	Version: 3.05
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -155,7 +155,7 @@ end
 				_RequireTable[LibName]["newversion"] = WebVersion
 				DownloadMsg = string.gsub(DownloadMsg, "LibName", LibName)
 				print(DownloadMsg)
-				DelayAction(function() DownloadFile(ScriptPath, LIB_PATH..LibName..".lua", function() AfterDownloadFile() end) end, 1)
+				DelayAction(function() DownloadFile(ScriptPath.."?rand="..tostring(math.random(1000)), LIB_PATH..LibName..".lua", function() AfterDownloadFile() end) end, 1)
 			else
 				_RequireTable[LibName]["updated"] = false
 				RequireTheLib()
@@ -370,7 +370,7 @@ function _WallTumbleDraw()
 end
 
 function OnSendPacket(p)
-	if VIP_USER then
+	if VIP_USER and ScriptStartOver then
 		if p.header == 153 and p.size == 26 then
 			if VayneMenu.walltumble.spot1 then
 				if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
