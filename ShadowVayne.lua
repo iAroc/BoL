@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.05
+	Version: 3.06
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -43,137 +43,143 @@ end
  _G.scriptConfig.CustomaddParam(self, pVar, pText, pType, defaultValue, a, b, c, d)
  end
 
- CustomRequire = function(LibName, LoadedMsg, VersionHost, VersionPath, ScriptPath, UpdatedMsg, FastLoadVersion, DownloadMsg)
-	if not DoingALib then
-		DoingALib = true
-		if not _RequireTable then _RequireTable = {} end
-		if not _RequireTable[LibName] then _RequireTable[LibName] = {} end
+ CustomRequire = function(LibName, LoadedMsg, VersionHost, VersionPath, ScriptPath, UpdatedMsg, FastLoadVersion, DownloadMsg, WaitScriptLoaded)
+	if WaitScriptLoaded and not ScriptStartOver then
+		DelayAction(function() CustomRequire(LibName, nil, VersionHost, VersionPath, ScriptPath, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated, please reload</font>", nil, DownloadMsg, true) end, 0.5)
+	else
+		if not DoingALib then
+			DoingALib = true
+			if not _RequireTable then _RequireTable = {} end
+			if not _RequireTable[LibName] then _RequireTable[LibName] = {} end
 
-		local GetLocalVersion = function()
-			if not FileExist(LIB_PATH..LibName..".lua") then
+			local GetLocalVersion = function()
+				if not FileExist(LIB_PATH..LibName..".lua") then
+					LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "w+")
+					LibNameFile:write("version = 0")
+					LibNameFile:close()
+				end
+				LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
+				LibNameString = LibNameFile:read("*a")
+				LibNameFile:close()
+				LibNameVersionPos = LibNameString:lower():find("version")
+				if type(LibNameVersionPos) == "number" then
+					for i = 1,20 do
+						GetCurrentChar = string.sub(LibNameString, LibNameVersionPos+i, LibNameVersionPos+i)
+						if type(tonumber(GetCurrentChar)) == "number" then
+							VersionNumberStartPos = LibNameVersionPos+i
+							break
+						end
+					end
+
+					for i = 0,20 do
+						GetCurrentChar = string.sub(LibNameString, VersionNumberStartPos+i, VersionNumberStartPos+i)
+						if type(tonumber(GetCurrentChar)) ~= "number" and GetCurrentChar ~= "." then
+							VersionNumberEndPos = VersionNumberStartPos+i-1
+							break
+						end
+					end
+					return string.sub(LibNameString, VersionNumberStartPos, VersionNumberEndPos)
+				else
+					return 0.01
+				end
+			end
+
+			local SwapAutoUpdate = function(SwapState)
+				LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
+				LibNameString = LibNameFile:read("*a")
+				LibNameCutString = LibNameString
+				GroundPos = 0
+				LibNameFile:close()
+				for i = 1,10 do
+					LibNameUpdatePos = LibNameCutString:lower():find("autoupdate")
+					if type(LibNameUpdatePos) == "number" then
+						if string.find(string.sub(LibNameCutString, LibNameUpdatePos, LibNameUpdatePos+20), "= true") then
+							StartString = string.sub(LibNameString, 0, GroundPos+LibNameUpdatePos-1)
+							if SwapState == false then
+								ReplaceString = string.gsub(string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20), "= true", "= false")
+							else
+								ReplaceString = string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20)
+							end
+							EndString = string.sub(LibNameString, GroundPos+LibNameUpdatePos+21)
+							break
+						elseif string.find(string.sub(LibNameCutString, LibNameUpdatePos, LibNameUpdatePos+20), "= false") then
+							StartString = string.sub(LibNameString, 0, GroundPos+LibNameUpdatePos-1)
+							if SwapState == true then
+								ReplaceString = string.gsub(string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20), "= false", "= true")
+							else
+								ReplaceString = string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20)
+							end
+							EndString = string.sub(LibNameString, GroundPos+LibNameUpdatePos+21)
+							break
+						else
+							LibNameCutString = string.sub(LibNameCutString, 20)
+							GroundPos = GroundPos + 20
+						end
+					else
+
+					StartString = LibNameString
+					ReplaceString = ""
+					EndString = ""
+					end
+				end
 				LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "w+")
-				LibNameFile:write("version = 0")
+				LibNameFile:write(StartString..ReplaceString..EndString)
 				LibNameFile:close()
 			end
-			LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
-			LibNameString = LibNameFile:read("*a")
-			LibNameFile:close()
-			LibNameVersionPos = LibNameString:lower():find("version")
-			if type(LibNameVersionPos) == "number" then
-				for i = 1,20 do
-					GetCurrentChar = string.sub(LibNameString, LibNameVersionPos+i, LibNameVersionPos+i)
-					if type(tonumber(GetCurrentChar)) == "number" then
-						VersionNumberStartPos = LibNameVersionPos+i
-						break
-					end
-				end
 
-				for i = 0,20 do
-					GetCurrentChar = string.sub(LibNameString, VersionNumberStartPos+i, VersionNumberStartPos+i)
-					if type(tonumber(GetCurrentChar)) ~= "number" and GetCurrentChar ~= "." then
-						VersionNumberEndPos = VersionNumberStartPos+i-1
-						break
-					end
+			local RequireTheLib = function()
+				SwapAutoUpdate(false)
+				require(LibName)
+				if LoadedMsg ~= nil then
+					LoadedMsg = string.gsub(LoadedMsg, "localversion", GetLocalVersion())
+					print(LoadedMsg)
 				end
-				return string.sub(LibNameString, VersionNumberStartPos, VersionNumberEndPos)
-			else
-				return 0.01
+				if UpdatedMsg ~= nil and _RequireTable[LibName]["oldversion"] ~= nil then
+					UpdatedMsg = string.gsub(UpdatedMsg, "localversion", _RequireTable[LibName]["oldversion"])
+					UpdatedMsg = string.gsub(UpdatedMsg, "serverversion", _RequireTable[LibName]["newversion"])
+					UpdatedMsg = string.gsub(UpdatedMsg, "LibName", LibName)
+					print(UpdatedMsg)
+				end
+				SwapAutoUpdate(true)
+				 _RequireTable[LibName]["required"] = true
+				DoingALib = false
 			end
-		end
 
-		local SwapAutoUpdate = function(SwapState)
-			LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
-			LibNameString = LibNameFile:read("*a")
-			LibNameCutString = LibNameString
-			GroundPos = 0
-			LibNameFile:close()
-			for i = 1,10 do
-				LibNameUpdatePos = LibNameCutString:lower():find("autoupdate")
-				if type(LibNameUpdatePos) == "number" then
-					if string.find(string.sub(LibNameCutString, LibNameUpdatePos, LibNameUpdatePos+20), "= true") then
-						StartString = string.sub(LibNameString, 0, GroundPos+LibNameUpdatePos-1)
-						if SwapState == false then
-							ReplaceString = string.gsub(string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20), "= true", "= false")
-						else
-							ReplaceString = string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20)
-						end
-						EndString = string.sub(LibNameString, GroundPos+LibNameUpdatePos+21)
-						break
-					elseif string.find(string.sub(LibNameCutString, LibNameUpdatePos, LibNameUpdatePos+20), "= false") then
-						StartString = string.sub(LibNameString, 0, GroundPos+LibNameUpdatePos-1)
-						if SwapState == true then
-							ReplaceString = string.gsub(string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20), "= false", "= true")
-						else
-							ReplaceString = string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20)
-						end
-						EndString = string.sub(LibNameString, GroundPos+LibNameUpdatePos+21)
-						break
-					else
-						LibNameCutString = string.sub(LibNameCutString, 20)
-						GroundPos = GroundPos + 20
-					end
+			local AfterDownloadFile = function()
+				_RequireTable[LibName]["updated"] = true
+				RequireTheLib()
+			end
+
+			local AfterGetVersion = function(WebDataVersion)
+				WebVersion = tonumber(WebDataVersion)
+				LocalVersion = tonumber(GetLocalVersion())
+				if WebVersion > LocalVersion then
+					_RequireTable[LibName]["oldversion"] = LocalVersion
+					_RequireTable[LibName]["newversion"] = WebVersion
+					DownloadMsg = string.gsub(DownloadMsg, "LibName", LibName)
+					print(DownloadMsg)
+					DelayAction(function() DownloadFile(ScriptPath.."?rand="..tostring(math.random(1000)), LIB_PATH..LibName..".lua", function() AfterDownloadFile();_RequireTable[LibName]["waitinglateupdate"] = false end) end, 1)
 				else
-
-				StartString = LibNameString
-				ReplaceString = ""
-				EndString = ""
+					_RequireTable[LibName]["updated"] = false
+					_RequireTable[LibName]["waitinglateupdate"] = false
+					RequireTheLib()
 				end
 			end
-			LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "w+")
-			LibNameFile:write(StartString..ReplaceString..EndString)
-			LibNameFile:close()
-		end
 
-		local RequireTheLib = function()
-			SwapAutoUpdate(false)
-			require(LibName)
-			if LoadedMsg ~= nil then
-				LoadedMsg = string.gsub(LoadedMsg, "localversion", GetLocalVersion())
-				print(LoadedMsg)
-			end
-			if UpdatedMsg ~= nil and _RequireTable[LibName]["oldversion"] ~= nil then
-				UpdatedMsg = string.gsub(UpdatedMsg, "localversion", _RequireTable[LibName]["oldversion"])
-				UpdatedMsg = string.gsub(UpdatedMsg, "serverversion", _RequireTable[LibName]["newversion"])
-				UpdatedMsg = string.gsub(UpdatedMsg, "LibName", LibName)
-				print(UpdatedMsg)
-			end
-			SwapAutoUpdate(true)
-			 _RequireTable[LibName]["required"] = true
-			DoingALib = false
-		end
-
-		local AfterDownloadFile = function()
-			_RequireTable[LibName]["updated"] = true
-			RequireTheLib()
-		end
-
-		local AfterGetVersion = function(WebDataVersion)
-			WebVersion = tonumber(WebDataVersion)
-			LocalVersion = tonumber(GetLocalVersion())
-			if WebVersion > LocalVersion then
-				_RequireTable[LibName]["oldversion"] = LocalVersion
-				_RequireTable[LibName]["newversion"] = WebVersion
-				DownloadMsg = string.gsub(DownloadMsg, "LibName", LibName)
-				print(DownloadMsg)
-				DelayAction(function() DownloadFile(ScriptPath.."?rand="..tostring(math.random(1000)), LIB_PATH..LibName..".lua", function() AfterDownloadFile() end) end, 1)
+			if VersionHost ~= nil and VersionPath ~= nil and ScriptPath~= nil then
+				if FastLoadVersion ~= nil and tonumber(FastLoadVersion*1000) <= tonumber(GetLocalVersion()*1000) then
+					RequireTheLib()
+					DelayAction(function() CustomRequire(LibName, nil, VersionHost, VersionPath, ScriptPath, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated, please reload</font>", nil, DownloadMsg, true) end, 0.5)
+					_RequireTable[LibName]["waitinglateupdate"] = true
+				else
+					GetAsyncWebResult(VersionHost, VersionPath, tostring(math.random(1000)), function(x) AfterGetVersion(x) end)
+				end
 			else
-				_RequireTable[LibName]["updated"] = false
 				RequireTheLib()
-			end
-		end
-
-		if VersionHost ~= nil and VersionPath ~= nil and ScriptPath~= nil then
-			if FastLoadVersion ~= nil and tonumber(FastLoadVersion*1000) <= tonumber(GetLocalVersion()*1000) then
-				RequireTheLib()
-				DelayAction(function() CustomRequire(LibName, nil, VersionHost, VersionPath, ScriptPath, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated, please reload</font>", nil, DownloadMsg) end, 3)
-			else
-				GetAsyncWebResult(VersionHost, VersionPath, tostring(math.random(1000)), function(x) AfterGetVersion(x) end)
 			end
 		else
-			RequireTheLib()
+			DelayAction(function() CustomRequire(LibName, LoadedMsg, VersionHost, VersionPath, ScriptPath, UpdatedMsg, FastLoadVersion, DownloadMsg) end, 0.5)
 		end
-	else
-		DelayAction(function() CustomRequire(LibName, LoadedMsg, VersionHost, VersionPath, ScriptPath, UpdatedMsg, FastLoadVersion, DownloadMsg) end, 0.5)
 	end
 end
 CustomRequire("SourceLib", nil, "raw.github.com", "/TheRealSource/public/master/common/SourceLib.version", "http://raw.github.com/TheRealSource/public/master/common/SourceLib.lua", "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">LibName Updated</font>", 1.059, "<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating SourceLib, please wait...</font>")
@@ -202,7 +208,14 @@ function _GetLocalVersion(LibName, StartPos, EndPos)
 end
 
 function _CheckScriptUpdate()
-	if not UpdateFinished then
+	if (_RequireTable["SourceLib"]["waitinglateupdate"] ~= nil and _RequireTable["SourceLib"]["waitinglateupdate"] == true)
+	or (_RequireTable["SOW"]["waitinglateupdate"] ~= nil and _RequireTable["SOW"]["waitinglateupdate"] == true)
+	or (_RequireTable["VPrediction"]["waitinglateupdate"] ~= nil and _RequireTable["VPrediction"]["waitinglateupdate"] == true)
+	or (_RequireTable["Selector"]["waitinglateupdate"] ~= nil and _RequireTable["Selector"]["waitinglateupdate"] == true)
+	or (_RequireTable["CustomPermaShow"]["waitinglateupdate"] ~= nil and _RequireTable["CustomPermaShow"]["waitinglateupdate"] == true)
+	then UpdateWait = true else UpdateWait = false end
+
+	if not UpdateFinished and not UpdateWait then
 		if not DownloadingLib and _LibUpdateTable["SHADOWVAYNE"]["SERVERVERSION"] == nil then
 			DownloadingLib = true
 			GetAsyncWebResult("raw.github.com", _LibUpdateTable["SHADOWVAYNE"]["VERSION"], tostring(math.random(1000)), function(x) _LibUpdateTable["SHADOWVAYNE"]["SERVERVERSION"] = tonumber(x);DelayAction(function() DownloadingLib = false end, 0.5) end)
