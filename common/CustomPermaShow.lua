@@ -1,3 +1,5 @@
+version = 1.03
+
 if not _G.HidePermaShow then
 	_G.HidePermaShow = {}
 end
