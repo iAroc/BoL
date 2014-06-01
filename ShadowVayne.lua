@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.08
+	Version: 3.09
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -49,7 +49,7 @@ end
 	["2"] = {["Name"] = "SourceLib", 		["MinVersion"] = 1.059,	["Host"] = "raw.github.com", ["Version"] = "/TheRealSource/public/master/common/SourceLib.version",	["Script"] = "/TheRealSource/public/master/common/SourceLib.lua" },
 	["3"] = {["Name"] = "SOW", 				["MinVersion"] = 1.129,	["Host"] = "raw.github.com", ["Version"] = "/Hellsing/BoL/master/version/SOW.version", 				["Script"] = "/Hellsing/BoL/master/common/SOW.lua" },
 	["4"] = {["Name"] = "Selector", 		["MinVersion"] = 0.130,	["Host"] = "raw.github.com", ["Version"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision",	["Script"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.lua" },
-	["5"] = {["Name"] = "CustomPermaShow", 	["MinVersion"] = 1.030,	["Host"] = "raw.github.com", ["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version",	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua" },
+	["5"] = {["Name"] = "CustomPermaShow", 	["MinVersion"] = 1.050,	["Host"] = "raw.github.com", ["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version",	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua" },
 	}
 LibNameFile = io.open(SCRIPT_PATH.."/".. GetCurrentEnv().FILE_NAME, "r")
 LibNameString = LibNameFile:read("*a")
@@ -261,16 +261,32 @@ function OnTick()
 			ScriptOnLoadDone = true
 			_G.HidePermaShow = {["LaneClear OnHold:"] = true,["Orbwalk OnHold:"] = true, ["LastHit OnHold:"] = true, ["HybridMode OnHold:"] = true,}
 			_G.HidePermaShow["Condemn on next BasicAttack:"] = true
+			_G.HidePermaShow["              Sida's Auto Carry: Reborn"] = true
 			_G.HidePermaShow["Auto Carry"] = true
 			_G.HidePermaShow["Last Hit"] = true
 			_G.HidePermaShow["Mixed Mode"] = true
 			_G.HidePermaShow["Lane Clear"] = true
-			_G.HidePermaShow["              Sida's Auto Carry: Reborn"] = true
 			_G.HidePermaShow["Auto-Condemn"] = true
+			_G.HidePermaShow["No mode active"] = true
 			_G.HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
+			for i, enemy in ipairs(GetEnemyHeroes()) do
+				if enemy.charName == "Rengar" then
+					RengarHero = enemy
+					AddTickCallback(_UpdateRengarDistance)
+				end
+			end
+
 		end
 	end
 end
+
+function _UpdateRengarDistance()
+	if ShootRengar then
+		CastSpell(_E, RengarHero)
+	end
+end
+
+
 
 function OnRecall(hero, channelTimeInMs)
   if hero.isMe then
@@ -423,7 +439,7 @@ function _CallBackAfterAA()
 end
 
 function _UseTumble()
-	if IsAttacking == false and not myHero.dead and myHero:CanUseSpell(_Q) == READY and LastAttackedEnemy ~= nil then
+	if IsAttacking == false and not myHero.dead and myHero:CanUseSpell(_Q) == READY and LastAttackedEnemy ~= nil and not LastAttackedEnemy.dead and LastAttackedEnemy.visible and not ShootRengar then
 		if  (SVMainMenu.tumble.Qautocarry and ShadowVayneAutoCarry and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaAutoCarry)) or
 			(SVMainMenu.tumble.Qmixedmode and ShadowVayneMixedMode and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaMixedMode)) or
 			(SVMainMenu.tumble.Qlaneclear and ShadowVayneLaneClear and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLaneClear)) or
@@ -554,10 +570,9 @@ function OnProcessSpell(unit, spell)
 			end
 		end
 
-		--~ 			if spell.name:find("VayneCondemn") then -- E detected, cooldown for next E 500 ticks
---~ 				CastedLastE = GetTickCount() + 500
---~ 			end
---~ 		end
+ 			if spell.name:find("VayneCondemn") then -- E detected, cooldown for next E 500 ticks
+				ShootRengar = false
+			end
 
 		if isAGapcloserUnitNoTarget[spell.name] and GetDistance(unit) <= 2000 and (spell.target == nil or spell.target.isMe) and unit.team ~= myHero.team then
 			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then spellExpired = false end
@@ -666,6 +681,18 @@ end
 function OnCreateObj(Obj)
 	if Obj.name == "ThreshLantern" then
 		LanternObj = Obj
+	end
+	if Obj.name == "Rengar_LeapSound.troy" and myHero:CanUseSpell(_E) == READY and GetDistanceSqr(RengarHero) < 1000*1000 then
+		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."AutoCarry"] and ShadowVayneAutoCarry then ShootRengar = true end
+		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."LastHit"] and ShadowVayneMixedMode then ShootRengar = true end
+		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."MixedMode"] and ShadowVayneLaneClear then ShootRengar = true end
+		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."LaneClear"] and ShadowVayneLastHit then ShootRengar = true end
+		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."Always"] then ShootRengar = true end
+		if SVMainMenu.autostunn.OverwriteAutoCarry and ShadowVayneAutoCarry then  ShootRengar = true end
+		if SVMainMenu.autostunn.OverwriteMixedMode and ShadowVayneMixedMode then  ShootRengar = true end
+		if SVMainMenu.autostunn.OverwriteLaneClear and ShadowVayneLaneClear then  ShootRengar = true end
+		if SVMainMenu.autostunn.OverwriteLastHit and ShadowVayneLastHit then  ShootRengar = true end
+		if SVMainMenu.autostunn.Overwritealways then  ShootRengar = true end
 	end
 end
 
@@ -1067,25 +1094,25 @@ function _LoadMenu()
 		if MMALoaded then
 			if SACLoaded then
 				OrbWalkerTable = { "SOW", "MMA", "Reborn"}
-				StartParam = 17
 			elseif REVLoaded then
 				OrbWalkerTable = { "SOW", "MMA", "Revamped"}
-				StartParam = 17
 			else
 				OrbWalkerTable = { "SOW", "MMA"}
-				StartParam = 16
 			end
 		else
 			if SACLoaded then
 				OrbWalkerTable = { "SOW", "Reborn"}
-				StartParam = 16
 			elseif REVLoaded then
 				OrbWalkerTable = { "SOW", "Revamped"}
-				StartParam = 16
 			else
 				OrbWalkerTable = { "SOW"}
-				StartParam = 15
 			end
+		end
+	end
+	for i=1,30 do
+		if SVMainMenu.keysetting._param[i].text == "Choose..." then
+			StartParam = i + 1
+			break
 		end
 	end
 
@@ -1198,7 +1225,6 @@ function _LoadMenu()
 		SVMainMenu.permashowsettings:addParam("mixedpermashow", "PermaShow: Mixed Mode", SCRIPT_PARAM_ONOFF, true)
 		SVMainMenu.permashowsettings:addParam("laneclearpermashow", "PermaShow: Laneclear", SCRIPT_PARAM_ONOFF, true)
 		SVMainMenu.permashowsettings:addParam("lasthitpermashow", "PermaShow: Last hit", SCRIPT_PARAM_ONOFF, true)
-		SVMainMenu.keysetting:permaShow("basiccondemn")
 
 --~ 	BotRK Settings Menu
 		SVMainMenu.botrksettings:addParam("botrkautocarry", "Use BotRK in AutoCarry", SCRIPT_PARAM_ONOFF, true)
@@ -1532,7 +1558,9 @@ function _LoadTables()
         ['Poppy']       = {true, spell = "PoppyHeroicCharge",	spellKey = "E"},
 		['Quinn']       = {true, spell = "QuinnE",				spellKey = "E"},
         ['XinZhao']     = {true, spell = "XenZhaoSweep",		spellKey = "E"},
-        ['LeeSin']	    = {true, spell = "blindmonkqtwo",		spellKey = "Q"}
+        ['LeeSin']	    = {true, spell = "blindmonkqtwo",		spellKey = "Q"},
+        ['Fizz']	    = {true, spell = "FizzPiercingStrike",	spellKey = "Q"},
+        ['Rengar']	    = {true, spell = "RengarLeap",			spellKey = "Q/R"},
     }
 
 	isAGapcloserUnitNoTarget = {
@@ -1552,7 +1580,7 @@ function _LoadTables()
 		["SejuaniArcticAssault"]	= {true, champ = "Sejuani", 	range = 650,  	projSpeed = 2000, spellKey = "Q"},
 		["ShenShadowDash"]			= {true, champ = "Shen", 		range = 575,  	projSpeed = 2000, spellKey = "E"},
 		["RocketJump"]				= {true, champ = "Tristana", 	range = 900,  	projSpeed = 2000, spellKey = "W"},
-		["slashCast"]				= {true, champ = "Tryndamere", 	range = 650,  	projSpeed = 1450, spellKey = "E"}
+		["slashCast"]				= {true, champ = "Tryndamere", 	range = 650,  	projSpeed = 1450, spellKey = "E"},
 	}
 
 	isAChampToInterrupt = {
