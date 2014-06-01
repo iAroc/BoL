@@ -1,4 +1,4 @@
-version = 1.04
+version = 1.05
 
 if not _G.HidePermaShow then
 	_G.HidePermaShow = {}
@@ -92,7 +92,7 @@ function _DrawCustomPermaShow()
 			TextVar = PermaShowTable[i].ValueVar
 		end
 		if PermaShowTable[i]["VisibleVar"] then
-			if not (_G.HidePermaShow[PermaShowTable[i].TextVar] ~= nil and _G.HidePermaShow[PermaShowTable[i].TextVar] == true) and not _G.HideCustomPermaShow then
+			if not (_G.HidePermaShow[PermaShowTable[i].TextVar] ~= nil and _G.HidePermaShow[PermaShowTable[i].TextVar] == true) and not _G.HideCustomPermaShow and type(PermaShowTable[i].TextVar) ~= "number" then
 				DrawCustomLine(_CPS_Master.px - 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.px + _CPS_Master.row - 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.cellSize, _CPS_Master.color.lgrey)
 				DrawCustomText(PermaShowTable[i].TextVar, _CPS_Master.fontSize, _CPS_Master.px, _CPS_Master.py1, _CPS_Master.color.grey)
 				DrawCustomLine(_CPS_Master.px + _CPS_Master.row, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.px + _CPS_Master.width + 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.cellSize, ColorVar)
@@ -112,7 +112,7 @@ function _DrawCustomPermaShow()
 			ColorVar = _CPS_Master.color.lgrey
 			TextVar = IsPermaShowStatusOn[_CPS_Master.py2]
 		end
-		if not _G.HideCustomPermaShow then
+		if not _G.HideCustomPermaShow and type(OldPermaShowTable[i].Arg1) ~= "number" then
 			DrawCustomLine(_CPS_Master.px - 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.px + _CPS_Master.row - 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.cellSize, _CPS_Master.color.lgrey)
 			DrawCustomText(OldPermaShowTable[i].Arg1, _CPS_Master.fontSize, _CPS_Master.px, _CPS_Master.py1, _CPS_Master.color.grey)
 			DrawCustomLine(_CPS_Master.px + _CPS_Master.row, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.px + _CPS_Master.width + 1, _CPS_Master.py1 + _CPS_Master.midSize, _CPS_Master.cellSize, (ColorVar))
