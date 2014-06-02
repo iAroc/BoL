@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.10
+	Version: 3.11
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -31,11 +31,16 @@ _SC.masterIndex = 0
 
 _G.scriptConfig.CustomaddParam = _G.scriptConfig.addParam
 _G.scriptConfig.addParam = function(self, pVar, pText, pType, defaultValue, a, b, c, d)
-if pVar == "scriptActive" or pVar == "lastHitting" or pVar == "laneClear" or pVar == "hybridMode" then pVar = "ShadowHijacked" end
-if (self.name == "sidasacsetup_sidasacautocarrysub" and pText == "Hotkey")
-	or (self.name == "sidasacsetup_sidasacmixedmodesub" and pText == "Hotkey")
-	or (self.name == "sidasacsetup_sidasaclaneclearsub" and pText == "Hotkey")
-	or (self.name == "sidasacsetup_sidasaclasthitsub" and pText == "Hotkey") then
+if pVar == "scriptActive" or pVar == "lastHitting" or pVar == "laneClear" or pVar == "hybridMode" then
+pVar = "ShadowHijacked"
+--~ pText = "ShadowVayne found. Set the Keysettings there!"
+--~ pType = 5
+
+end
+if (self.name == "sidasacsetup_sidasacautocarrysub" and (pText == "Hotkey" or pText == "Auto Carry"))
+	or (self.name == "sidasacsetup_sidasacmixedmodesub" and (pText == "Hotkey" or pText == "Mixed Mode"))
+	or (self.name == "sidasacsetup_sidasaclaneclearsub" and (pText == "Hotkey" or pText == "Lane Clear"))
+	or (self.name == "sidasacsetup_sidasaclasthitsub" and (pText == "Hotkey" or pText == "Last Hit")) then
 pText = "ShadowVayne found. Set the Keysettings there!"
 pType = 5
 end
@@ -125,12 +130,14 @@ SVUpdateMenu:addParam("nil","Files without Freezing your Game", SCRIPT_PARAM_INF
 SVUpdateMenu:addParam("nil","But it can Bugsplat cause a that", SCRIPT_PARAM_INFO, "")
 SVUpdateMenu:addParam("version","ShadowVayne Version:", SCRIPT_PARAM_INFO, "v"..version)
 
-DownLoadCount = 0
+DownLoadCount = 5
 for i = 1,5 do
 	if  tonumber(_GetLocalVersion(_AutoUpdates[tostring(i)]["Name"])) < tonumber(_AutoUpdates[tostring(i)]["MinVersion"]) and  tonumber(_GetLocalVersion(_AutoUpdates[tostring(i)]["Name"])) ~= 2.431 then
 		_PrintUpdateMsg("Updating, please wait...",_AutoUpdates[tostring(i)]["Name"])
 		DownLoadCount = DownLoadCount + 1
 		DelayAction(function() DownloadFile(tostring("http://".._AutoUpdates[tostring(i)]["Host"].._AutoUpdates[tostring(i)]["Script"].."?rand="..tostring(math.random(1000))),LIB_PATH.._AutoUpdates[tostring(i)]["Name"]..".lua", function() _PrintUpdateMsg("Successfully Updated!",_AutoUpdates[tostring(i)]["Name"]);DownLoadCount = DownLoadCount - 1 end) end, 1)
+	else
+		DownLoadCount = DownLoadCount - 1
 	end
 end
 
@@ -229,6 +236,8 @@ end
 
 function _CheckRengarGapcloser()
 	if ShootRengar then
+		if RengarHero.dead or RengarHero.health < 1 then ShootRengar = false end
+		if not StartResetTimer then StartResetTimer=true;DelayAction(function() StartResetTimer, ShootRengar = false,false end, 2) end
 		CastSpell(_E, RengarHero)
 	end
 end
