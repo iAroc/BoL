@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.11
+	Version: 3.12
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -50,11 +50,11 @@ end
 
  -- AutoUpdate Start
  _AutoUpdates = {
-	["1"] = {["Name"] = "VPrediction", 		["MinVersion"] = 2.510,	["Host"] = "raw.github.com", ["Version"] = "/Hellsing/BoL/master/version/VPrediction.version", 		["Script"] = "/Hellsing/BoL/master/common/VPrediction.lua" },
-	["2"] = {["Name"] = "SourceLib", 		["MinVersion"] = 1.059,	["Host"] = "raw.github.com", ["Version"] = "/TheRealSource/public/master/common/SourceLib.version",	["Script"] = "/TheRealSource/public/master/common/SourceLib.lua" },
-	["3"] = {["Name"] = "SOW", 				["MinVersion"] = 1.129,	["Host"] = "raw.github.com", ["Version"] = "/Hellsing/BoL/master/version/SOW.version", 				["Script"] = "/Hellsing/BoL/master/common/SOW.lua" },
-	["4"] = {["Name"] = "Selector", 		["MinVersion"] = 0.130,	["Host"] = "raw.github.com", ["Version"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision",	["Script"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.lua" },
-	["5"] = {["Name"] = "CustomPermaShow", 	["MinVersion"] = 1.050,	["Host"] = "raw.github.com", ["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version",	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua" },
+	["1"] = {["Name"] = "VPrediction", 		["MinVersion"] = 2.510, ["Parts"] = 94,		["Host"] = "raw.github.com", ["Version"] = "/Hellsing/BoL/master/version/VPrediction.version", 		["Script"] = "/Hellsing/BoL/master/common/VPrediction.lua" },
+	["2"] = {["Name"] = "SourceLib", 		["MinVersion"] = 1.059, ["Parts"] = 131,	["Host"] = "raw.github.com", ["Version"] = "/TheRealSource/public/master/common/SourceLib.version",	["Script"] = "/TheRealSource/public/master/common/SourceLib.lua" },
+	["3"] = {["Name"] = "SOW", 				["MinVersion"] = 1.129, ["Parts"] = 27,		["Host"] = "raw.github.com", ["Version"] = "/Hellsing/BoL/master/version/SOW.version", 				["Script"] = "/Hellsing/BoL/master/common/SOW.lua" },
+	["4"] = {["Name"] = "Selector", 		["MinVersion"] = 0.130, ["Parts"] = 903,	["Host"] = "raw.github.com", ["Version"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision",	["Script"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.lua" },
+	["5"] = {["Name"] = "CustomPermaShow", 	["MinVersion"] = 1.050, ["Parts"] = 10,		["Host"] = "raw.github.com", ["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version",	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua" },
 	}
 LibNameFile = io.open(SCRIPT_PATH.."/".. GetCurrentEnv().FILE_NAME, "r")
 LibNameString = LibNameFile:read("*a")
@@ -113,6 +113,90 @@ function _PrintUpdateMsg(Msg, LibName)
 	end
 end
 
+function math.round(num, idp)
+  return tonumber(string.format("%." .. (idp or 0) .. "f", num))
+end
+
+function _UpdateLib(VPredY, LibNr)
+	LibNr = tostring(LibNr)
+	DrawText(_AutoUpdates[LibNr]["Name"].." AutoUpdate Debug:",12,10,VPredY,ARGB(255, 255, 255, 255))
+	VPredY = VPredY + 10
+	DrawText("LocalFile: ".. LIB_PATH.._AutoUpdates[LibNr]["Name"]..".lua",12,10,VPredY,ARGB(255, 255, 255, 255))
+	VPredY = VPredY + 10
+	DrawText("ServerVersionFile: http://".. _AutoUpdates[LibNr]["Host"].._AutoUpdates[LibNr]["Version"],12,10,VPredY,ARGB(255, 255, 255, 255))
+	VPredY = VPredY + 10
+	DrawText("ServerScriptFile: http://".. _AutoUpdates[LibNr]["Host"].._AutoUpdates[LibNr]["Script"],12,10,VPredY,ARGB(255, 255, 255, 255))
+	VPredY = VPredY + 10
+	DrawText("LocalFileExist: ".. tostring(FileExist(LIB_PATH.._AutoUpdates[LibNr]["Name"]..".lua")),12,10,VPredY,ARGB(255, 255, 255, 255))
+	VPredY = VPredY + 10
+	DrawText("LocalVersion: "..tonumber(_GetLocalVersion(_AutoUpdates[LibNr]["Name"])),12,10,VPredY,ARGB(255, 255, 255, 255))
+	VPredY = VPredY + 10
+	if not _AutoUpdates[LibNr]["ServerAnswer"] then _AutoUpdates[LibNr]["ServerAnswer"] = GetWebResult(_AutoUpdates[LibNr]["Host"],_AutoUpdates[LibNr]["Version"]) end
+	DrawText("ServerVersion: ".. tonumber(_AutoUpdates[LibNr]["ServerAnswer"]) ,12,10,VPredY,ARGB(255, 255, 255, 255))
+	VPredY = VPredY + 10
+	if _GetLocalVersion(_AutoUpdates[LibNr]["Name"]) == nil then
+		LocalVersion = 0
+	else
+		LocalVersion = _GetLocalVersion(_AutoUpdates[LibNr]["Name"])
+	end
+	if tonumber(_AutoUpdates[LibNr]["ServerAnswer"]) > tonumber(LocalVersion) and tonumber(_AutoUpdates[LibNr]["ServerAnswer"]) ~= 2.431 then NeedUpdate = "true" else NeedUpdate = "false" end
+	if NeedUpdate == "true" and not _AutoUpdates[LibNr]["Started"] then
+	_AutoUpdates[LibNr]["Started"] = true
+	if not SplittedVPredTable then SplittedVPredTable = {} end
+	if not SplittedVPredTable[LibNr] then SplittedVPredTable[LibNr] = {} end
+		_AutoUpdates[LibNr]["NeededParts"] = tonumber(_AutoUpdates[LibNr]["Parts"])
+		_AutoUpdates[LibNr]["Downloads"] = _AutoUpdates[LibNr]["NeededParts"]
+		for i=0,_AutoUpdates[LibNr]["Downloads"]-1 do
+			GetAsyncWebResult("raw.github.com", "/Superx321/BoL/master/Split_Lib/".._AutoUpdates[LibNr]["Name"].."/".._AutoUpdates[LibNr]["Name"].."_Part_"..i..".lua", tostring(math.random(1000)), function(x) _AutoUpdates[LibNr]["Downloads"] = _AutoUpdates[LibNr]["Downloads"] -1;SplittedVPredTable[LibNr][i+1] = x end)
+		end
+	end
+	if NeedUpdate == "true" or _AutoUpdates[LibNr]["Downloaded"] then
+		_AutoUpdates[LibNr]["Downloaded"] = true
+		if _AutoUpdates[LibNr]["Downloads"] == 0 then
+			DrawText("Download Finished!!",12,10,VPredY,ARGB(255, 255, 255, 255))
+			if not _AutoUpdates[LibNr]["Saved"] then
+			_AutoUpdates[LibNr]["Saved"] = true
+			SplittedVPredString = ""
+			for i=1,#SplittedVPredTable[LibNr] do
+			SplittedVPredString = SplittedVPredString .. SplittedVPredTable[LibNr][i]
+			end
+			LibNameFile = io.open(LIB_PATH.._AutoUpdates[LibNr]["Name"]..".lua", "w+")
+			LibNameFile:write(Base64Decode(SplittedVPredString))
+			LibNameFile:close()
+			if not _AutoUpdates[LibNr]["ResetMainDownload"] then _AutoUpdates[LibNr]["ResetMainDownload"] = true;DownLoadCount = DownLoadCount-1 end
+			end
+		else
+			DrawText("Downloading: ".. math.round((100/_AutoUpdates[LibNr]["NeededParts"]) * (_AutoUpdates[LibNr]["NeededParts"]-_AutoUpdates[LibNr]["Downloads"]),2).."%",12,10,VPredY,ARGB(255, 255, 255, 255))
+		end
+	else
+		DrawText("No Download Needed" ,12,10,VPredY,ARGB(255, 255, 255, 255))
+		if not _AutoUpdates[LibNr]["ResetMainDownload"] then _AutoUpdates[LibNr]["ResetMainDownload"] = true;DownLoadCount = DownLoadCount-1 end
+	end
+	VPredY = VPredY + 10
+end
+
+function _DebugAutoUpdate()
+StartY = 0
+_UpdateLib(StartY,1)
+StartY = StartY + 90
+_UpdateLib(StartY,2)
+StartY = StartY + 90
+_UpdateLib(StartY,3)
+StartY = StartY + 90
+_UpdateLib(StartY,4)
+StartY = StartY + 90
+_UpdateLib(StartY,5)
+end
+
+function StartTheCallback()
+	if NeedSync == 0 then
+		AddDrawCallback(_DebugAutoUpdate)
+	else
+		DelayAction(function() StartTheCallback() end, 0.1)
+	end
+end
+
+
 SVUpdateMenu = scriptConfig("[ShadowVayne] UpdateSettings", "SV_UPDATE")
 SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
 SVSOWMenu = scriptConfig("[ShadowVayne] SimpleOrbWalker Settings", "SV_SOW")
@@ -128,16 +212,27 @@ SVUpdateMenu:addParam("nil","", SCRIPT_PARAM_INFO, "")
 SVUpdateMenu:addParam("nil","GetAsyncWebResult will download the ", SCRIPT_PARAM_INFO, "")
 SVUpdateMenu:addParam("nil","Files without Freezing your Game", SCRIPT_PARAM_INFO, "")
 SVUpdateMenu:addParam("nil","But it can Bugsplat cause a that", SCRIPT_PARAM_INFO, "")
+SVUpdateMenu:addParam("UseDebug","Script wont Load Fix", SCRIPT_PARAM_ONOFF, false)
+
 SVUpdateMenu:addParam("version","ShadowVayne Version:", SCRIPT_PARAM_INFO, "v"..version)
 
 DownLoadCount = 5
-for i = 1,5 do
-	if  tonumber(_GetLocalVersion(_AutoUpdates[tostring(i)]["Name"])) < tonumber(_AutoUpdates[tostring(i)]["MinVersion"]) and  tonumber(_GetLocalVersion(_AutoUpdates[tostring(i)]["Name"])) ~= 2.431 then
-		_PrintUpdateMsg("Updating, please wait...",_AutoUpdates[tostring(i)]["Name"])
-		DownLoadCount = DownLoadCount + 1
-		DelayAction(function() DownloadFile(tostring("http://".._AutoUpdates[tostring(i)]["Host"].._AutoUpdates[tostring(i)]["Script"].."?rand="..tostring(math.random(1000))),LIB_PATH.._AutoUpdates[tostring(i)]["Name"]..".lua", function() _PrintUpdateMsg("Successfully Updated!",_AutoUpdates[tostring(i)]["Name"]);DownLoadCount = DownLoadCount - 1 end) end, 1)
-	else
-		DownLoadCount = DownLoadCount - 1
+if SVUpdateMenu.UseDebug then
+	NeedSync = 5
+	GetAsyncWebResult("raw.github.com", _AutoUpdates["1"]["Version"], tostring(math.random(1000)), function(x) _AutoUpdates["1"]["ServerAnswer"] = x;NeedSync = NeedSync - 1 end)
+	GetAsyncWebResult("raw.github.com", _AutoUpdates["2"]["Version"], tostring(math.random(1000)), function(x) _AutoUpdates["2"]["ServerAnswer"] = x;NeedSync = NeedSync - 1 end)
+	GetAsyncWebResult("raw.github.com", _AutoUpdates["3"]["Version"], tostring(math.random(1000)), function(x) _AutoUpdates["3"]["ServerAnswer"] = x;NeedSync = NeedSync - 1 end)
+	GetAsyncWebResult("raw.github.com", _AutoUpdates["4"]["Version"], tostring(math.random(1000)), function(x) _AutoUpdates["4"]["ServerAnswer"] = x;NeedSync = NeedSync - 1 end)
+	GetAsyncWebResult("raw.github.com", _AutoUpdates["5"]["Version"], tostring(math.random(1000)), function(x) _AutoUpdates["5"]["ServerAnswer"] = x;NeedSync = NeedSync - 1 end)
+	StartTheCallback()
+else
+	for i = 1,5 do
+		if  tonumber(_GetLocalVersion(_AutoUpdates[tostring(i)]["Name"])) < tonumber(_AutoUpdates[tostring(i)]["MinVersion"]) and  tonumber(_GetLocalVersion(_AutoUpdates[tostring(i)]["Name"])) ~= 2.431 then
+			_PrintUpdateMsg("Updating, please wait...",_AutoUpdates[tostring(i)]["Name"])
+			DelayAction(function() DownloadFile(tostring("http://".._AutoUpdates[tostring(i)]["Host"].._AutoUpdates[tostring(i)]["Script"].."?rand="..tostring(math.random(1000))),LIB_PATH.._AutoUpdates[tostring(i)]["Name"]..".lua", function() _PrintUpdateMsg("Successfully Updated!",_AutoUpdates[tostring(i)]["Name"]);DownLoadCount = DownLoadCount - 1 end) end, 1)
+		else
+			DownLoadCount = DownLoadCount - 1
+		end
 	end
 end
 
@@ -1451,6 +1546,7 @@ function _CheckEnemyStunnAbleProdiction()
 				(SVMainMenu.targets[enemy.charName][(enemy.charName).."LaneClear"] and ShadowVayneLaneClear) or
 				(SVMainMenu.targets[enemy.charName][(enemy.charName).."LastHit"] and ShadowVayneLastHit) or
 				(SVMainMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
+				if AutoCarryOrbText == "SOW" and ShadowVayneAutoCarry then LastAttackedEnemy = NewSOWTarget end
 				if not (SVMainMenu.autostunn.target and LastAttackedEnemy ~= enemy) then
 					if GetDistance(enemy, myHero) <= 1500 and not enemy.dead and enemy.visible then
 						EnemyStunnPos = ProdE:GetPrediction(enemy, myHero)
