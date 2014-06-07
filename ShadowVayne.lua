@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.12
+	Version: 3.13
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -14,15 +14,10 @@ if myHero.charName ~= "Vayne" then return end
 if not VIP_USER then
 	rawset(_G, "LoadVIPScript", function() return end)
 end
-MainScriptName = GetCurrentEnv().FILE_NAME
 
-local informationTable, AAInfoTable, CastedLastE, ScriptStartTick = {}, {}, 0, 0
-local TickCountScriptStart, OnLoadDone, spellExpired, Beta = GetTickCount(), nil, true, false
+local informationTable,CastedLastE  = {}, 0
+local spellExpired  =  nil
 local ScriptOnLoadDone, LastAttackedEnemy = false, nil
-local LastPrioUpdate = 0
-local DownloadStarted = false
-local HookSOWMenu = {}
-LastE = 0
 
 _SC = { init = true, initDraw = true, menuKey = 16, useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _changeKeyInstance = false, _sliceInstance = false, _listInstance = false }
 if not GetSave("scriptConfig")["Master"] then GetSave("scriptConfig")["Master"] = {} end
@@ -48,22 +43,106 @@ end
  _G.scriptConfig.CustomaddParam(self, pVar, pText, pType, defaultValue, a, b, c, d)
  end
 
- -- AutoUpdate Start
- _AutoUpdates = {
-	["1"] = {["Name"] = "VPrediction", 		["MinVersion"] = 2.510, ["Parts"] = 94,		["Host"] = "raw.github.com", ["Version"] = "/Hellsing/BoL/master/version/VPrediction.version", 		["Script"] = "/Hellsing/BoL/master/common/VPrediction.lua" },
-	["2"] = {["Name"] = "SourceLib", 		["MinVersion"] = 1.059, ["Parts"] = 131,	["Host"] = "raw.github.com", ["Version"] = "/TheRealSource/public/master/common/SourceLib.version",	["Script"] = "/TheRealSource/public/master/common/SourceLib.lua" },
-	["3"] = {["Name"] = "SOW", 				["MinVersion"] = 1.129, ["Parts"] = 27,		["Host"] = "raw.github.com", ["Version"] = "/Hellsing/BoL/master/version/SOW.version", 				["Script"] = "/Hellsing/BoL/master/common/SOW.lua" },
-	["4"] = {["Name"] = "Selector", 		["MinVersion"] = 0.130, ["Parts"] = 903,	["Host"] = "raw.github.com", ["Version"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision",	["Script"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.lua" },
-	["5"] = {["Name"] = "CustomPermaShow", 	["MinVersion"] = 1.050, ["Parts"] = 10,		["Host"] = "raw.github.com", ["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version",	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua" },
-	}
-LibNameFile = io.open(SCRIPT_PATH.."/".. GetCurrentEnv().FILE_NAME, "r")
-LibNameString = LibNameFile:read("*a")
-LibNameFile:close()
-version =  tonumber(string.sub(LibNameString, 51, 54))
+---------------------------------
+---------  Auto Updates ---------
+---------------------------------
+ function _GetLibs()
+	if not GetLibsStarted then
+		GetLibsStarted = true
+		socket = require("socket")
+		LibsDone = 0
+		SocketsClosed = 0
+		GotVersions = 0
+		clientversion = {}
+		clientscript = {}
+
+		for i=1,#_AutoUpdates do
+		clientversion[i] = socket.connect("reddi-ts.de", 80)
+		clientversion[i]:send("GET /BoL/Scripts.php?path=".._AutoUpdates[i]["Version"].." HTTP/1.0\r\n\r\n")
+		end
+
+		for i=1,#_AutoUpdates do
+		clientscript[i] = socket.connect("reddi-ts.de", 80)
+		clientscript[i]:send("GET /BoL/Scripts.php?path=".._AutoUpdates[i]["Script"].." HTTP/1.0\r\n\r\n")
+		end
+	end
+
+	if GotVersions ~= #_AutoUpdates then
+		for i=1,#_AutoUpdates do
+			if _AutoUpdates[i]["VersionClosed"] ~= true then
+				s, status, partial = clientversion[i]:receive(1024)
+				if not _AutoUpdates[i]["VersionRaw"] then _AutoUpdates[i]["VersionRaw"] = "" end
+				_AutoUpdates[i]["VersionRaw"] = _AutoUpdates[i]["VersionRaw"]..(s or partial)
+				if status == "closed" then
+					clientversion[i]:close()
+					_AutoUpdates[i]["VersionClosed"] = true
+					GotVersions = GotVersions + 1
+					_AutoUpdates[i]["ServerVersion"] = tonumber(string.sub(_AutoUpdates[i]["VersionRaw"], -8))
+				end
+			end
+		end
+	end
+
+
+	if SocketsClosed ~= #_AutoUpdates then
+		for i=1,#_AutoUpdates do
+			if _AutoUpdates[i]["ScriptClosed"] ~= true then
+				s, status, partial = clientscript[i]:receive(1024)
+				if not _AutoUpdates[i]["ScriptRaw"] then _AutoUpdates[i]["ScriptRaw"] = "" end
+				_AutoUpdates[i]["ScriptRaw"] = _AutoUpdates[i]["ScriptRaw"]..(s or partial)
+				if status == "closed" then
+					clientscript[i]:close()
+					_AutoUpdates[i]["ScriptClosed"] = true
+					SocketsClosed = SocketsClosed + 1
+				end
+			end
+		end
+	end
+
+	if SocketsClosed == #_AutoUpdates and not WroteIt then
+		WroteIt = true
+		for i=1,#_AutoUpdates do
+			if tonumber(_AutoUpdates[i]["ServerVersion"]) > tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"])) then
+				if _AutoUpdates[i]["Name"] == "ShadowVayne" then
+					if SVUpdateMenu.UseAutoCheck then
+						if SVUpdateMenu.UseAutoLoad then
+							LibNameFile = io.open(SCRIPT_PATH.. GetCurrentEnv().FILE_NAME, "w+")
+							LibNameString = _AutoUpdates[i]["ScriptRaw"]
+							LibNameFindCache = string.find(LibNameString, "text/html")
+							LibNameStringSub = string.sub(LibNameString, LibNameFindCache+13)
+							LibNameFile:write(LibNameStringSub)
+							LibNameFile:close()
+							_PrintUpdateMsg("Updated Version "..tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"])).." => "..tonumber(_AutoUpdates[i]["ServerVersion"]).."", _AutoUpdates[i]["Name"])
+							_PrintUpdateMsg("Please Reload with F9!", _AutoUpdates[i]["Name"])
+						else
+							_PrintUpdateMsg("New Update available: Version "..tonumber(_AutoUpdates[i]["ServerVersion"]), _AutoUpdates[i]["Name"])
+							_PrintUpdateMsg("AutoDownload is set to off", _AutoUpdates[i]["Name"])
+						end
+					end
+				else
+					_PrintUpdateMsg("Updated Version "..tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"])).." => "..tonumber(_AutoUpdates[i]["ServerVersion"]).."", _AutoUpdates[i]["Name"])
+					LibNameFile = io.open(LIB_PATH.._AutoUpdates[i]["Name"]..".lua", "w+")
+					LibNameString = _AutoUpdates[i]["ScriptRaw"]
+					LibNameFindCache = string.find(LibNameString, "text/html")
+					LibNameStringSub = string.sub(LibNameString, LibNameFindCache+13)
+					LibNameFile:write(LibNameStringSub)
+					LibNameFile:close()
+				end
+			end
+			LibsDone = LibsDone + 1
+		end
+	end
+
+	if LibsDone == #_AutoUpdates then
+		AllLibsLoaded = true
+	else
+		_GetLibs()
+	end
+end
 
 function _GetLocalVersion(LibName)
-	if LibName == "MainScript" then
-		FilePath = SCRIPT_PATH.."ShadowVayne.lua"
+	if LibName == "ShadowVayne" then
+		FilePath = SCRIPT_PATH.. GetCurrentEnv().FILE_NAME
 	else
 		FilePath = LIB_PATH..LibName..".lua"
 	end
@@ -104,137 +183,39 @@ function _GetLocalVersion(LibName)
 end
 
 function _PrintUpdateMsg(Msg, LibName)
-	if not SVUpdateMenu["UseSilent"] then
-		if LibName == nil or LibName == "MainScript" then
-			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
-		else
-			print("<font color=\"#F0Ff8d\"><b>ShadowVayne("..LibName.."):</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
-		end
-	end
-end
-
-function math.round(num, idp)
-  return tonumber(string.format("%." .. (idp or 0) .. "f", num))
-end
-
-function _UpdateLib(VPredY, LibNr)
-	LibNr = tostring(LibNr)
-	DrawText(_AutoUpdates[LibNr]["Name"].." AutoUpdate Debug:",12,10,VPredY,ARGB(255, 255, 255, 255))
-	VPredY = VPredY + 10
-	DrawText("LocalFile: ".. LIB_PATH.._AutoUpdates[LibNr]["Name"]..".lua",12,10,VPredY,ARGB(255, 255, 255, 255))
-	VPredY = VPredY + 10
-	DrawText("ServerVersionFile: http://".. _AutoUpdates[LibNr]["Host"].._AutoUpdates[LibNr]["Version"],12,10,VPredY,ARGB(255, 255, 255, 255))
-	VPredY = VPredY + 10
-	DrawText("ServerScriptFile: http://".. _AutoUpdates[LibNr]["Host"].._AutoUpdates[LibNr]["Script"],12,10,VPredY,ARGB(255, 255, 255, 255))
-	VPredY = VPredY + 10
-	DrawText("LocalFileExist: ".. tostring(FileExist(LIB_PATH.._AutoUpdates[LibNr]["Name"]..".lua")),12,10,VPredY,ARGB(255, 255, 255, 255))
-	VPredY = VPredY + 10
-	DrawText("LocalVersion: "..tonumber(_GetLocalVersion(_AutoUpdates[LibNr]["Name"])),12,10,VPredY,ARGB(255, 255, 255, 255))
-	VPredY = VPredY + 10
-	if not _AutoUpdates[LibNr]["ServerAnswer"] then _AutoUpdates[LibNr]["ServerAnswer"] = GetWebResult(_AutoUpdates[LibNr]["Host"],_AutoUpdates[LibNr]["Version"]) end
-	DrawText("ServerVersion: ".. tonumber(_AutoUpdates[LibNr]["ServerAnswer"]) ,12,10,VPredY,ARGB(255, 255, 255, 255))
-	VPredY = VPredY + 10
-	if _GetLocalVersion(_AutoUpdates[LibNr]["Name"]) == nil then
-		LocalVersion = 0
+	if LibName == nil or LibName == "ShadowVayne" then
+		print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
 	else
-		LocalVersion = _GetLocalVersion(_AutoUpdates[LibNr]["Name"])
-	end
-	if tonumber(_AutoUpdates[LibNr]["ServerAnswer"]) > tonumber(LocalVersion) and tonumber(_AutoUpdates[LibNr]["ServerAnswer"]) ~= 2.431 then NeedUpdate = "true" else NeedUpdate = "false" end
-	if NeedUpdate == "true" and not _AutoUpdates[LibNr]["Started"] then
-	_AutoUpdates[LibNr]["Started"] = true
-	if not SplittedVPredTable then SplittedVPredTable = {} end
-	if not SplittedVPredTable[LibNr] then SplittedVPredTable[LibNr] = {} end
-		_AutoUpdates[LibNr]["NeededParts"] = tonumber(_AutoUpdates[LibNr]["Parts"])
-		_AutoUpdates[LibNr]["Downloads"] = _AutoUpdates[LibNr]["NeededParts"]
-		for i=0,_AutoUpdates[LibNr]["Downloads"]-1 do
-			GetAsyncWebResult("raw.github.com", "/Superx321/BoL/master/Split_Lib/".._AutoUpdates[LibNr]["Name"].."/".._AutoUpdates[LibNr]["Name"].."_Part_"..i..".lua", tostring(math.random(1000)), function(x) _AutoUpdates[LibNr]["Downloads"] = _AutoUpdates[LibNr]["Downloads"] -1;SplittedVPredTable[LibNr][i+1] = x end)
-		end
-	end
-	if NeedUpdate == "true" or _AutoUpdates[LibNr]["Downloaded"] then
-		_AutoUpdates[LibNr]["Downloaded"] = true
-		if _AutoUpdates[LibNr]["Downloads"] == 0 then
-			DrawText("Download Finished!!",12,10,VPredY,ARGB(255, 255, 255, 255))
-			if not _AutoUpdates[LibNr]["Saved"] then
-			_AutoUpdates[LibNr]["Saved"] = true
-			SplittedVPredString = ""
-			for i=1,#SplittedVPredTable[LibNr] do
-			SplittedVPredString = SplittedVPredString .. SplittedVPredTable[LibNr][i]
-			end
-			LibNameFile = io.open(LIB_PATH.._AutoUpdates[LibNr]["Name"]..".lua", "w+")
-			LibNameFile:write(Base64Decode(SplittedVPredString))
-			LibNameFile:close()
-			if not _AutoUpdates[LibNr]["ResetMainDownload"] then _AutoUpdates[LibNr]["ResetMainDownload"] = true;DownLoadCount = DownLoadCount-1 end
-			end
-		else
-			DrawText("Downloading: ".. math.round((100/_AutoUpdates[LibNr]["NeededParts"]) * (_AutoUpdates[LibNr]["NeededParts"]-_AutoUpdates[LibNr]["Downloads"]),2).."%",12,10,VPredY,ARGB(255, 255, 255, 255))
-		end
-	else
-		DrawText("No Download Needed" ,12,10,VPredY,ARGB(255, 255, 255, 255))
-		if not _AutoUpdates[LibNr]["ResetMainDownload"] then _AutoUpdates[LibNr]["ResetMainDownload"] = true;DownLoadCount = DownLoadCount-1 end
-	end
-	VPredY = VPredY + 10
-end
-
-function _DebugAutoUpdate()
-StartY = 0
-_UpdateLib(StartY,1)
-StartY = StartY + 90
-_UpdateLib(StartY,2)
-StartY = StartY + 90
-_UpdateLib(StartY,3)
-StartY = StartY + 90
-_UpdateLib(StartY,4)
-StartY = StartY + 90
-_UpdateLib(StartY,5)
-end
-
-function StartTheCallback()
-	if NeedSync == 0 then
-		AddDrawCallback(_DebugAutoUpdate)
-	else
-		DelayAction(function() StartTheCallback() end, 0.1)
+		print("<font color=\"#F0Ff8d\"><b>ShadowVayne("..LibName.."):</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
 	end
 end
 
+LibNameFile = io.open(SCRIPT_PATH.."/".. GetCurrentEnv().FILE_NAME, "r")
+LibNameString = LibNameFile:read("*a")
+LibNameFile:close()
+SV_Version =  tonumber(_GetLocalVersion("ShadowVayne"))
 
 SVUpdateMenu = scriptConfig("[ShadowVayne] UpdateSettings", "SV_UPDATE")
 SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
 SVSOWMenu = scriptConfig("[ShadowVayne] SimpleOrbWalker Settings", "SV_SOW")
+SVSTSMenu = scriptConfig("[ShadowVayne] SimpleTargetSelector Settings", "SV_STS")
 
 SVMainMenu:addParam("nil","Waiting for the Script to load", SCRIPT_PARAM_INFO, "")
 SVSOWMenu:addParam("nil","Waiting for the Script to load", SCRIPT_PARAM_INFO, "")
 
 SVUpdateMenu:addParam("UseAutoCheck","Check for Updates", SCRIPT_PARAM_ONOFF, true)
 SVUpdateMenu:addParam("UseAutoLoad","Automatic Download Updates", SCRIPT_PARAM_ONOFF, true)
-SVUpdateMenu:addParam("UseASync","Use GetAsyncWebResult", SCRIPT_PARAM_ONOFF, false)
-SVUpdateMenu:addParam("UseSilent","Silent Update", SCRIPT_PARAM_ONOFF, false)
-SVUpdateMenu:addParam("nil","", SCRIPT_PARAM_INFO, "")
-SVUpdateMenu:addParam("nil","GetAsyncWebResult will download the ", SCRIPT_PARAM_INFO, "")
-SVUpdateMenu:addParam("nil","Files without Freezing your Game", SCRIPT_PARAM_INFO, "")
-SVUpdateMenu:addParam("nil","But it can Bugsplat cause a that", SCRIPT_PARAM_INFO, "")
-SVUpdateMenu:addParam("UseDebug","Script wont Load Fix", SCRIPT_PARAM_ONOFF, false)
 
-SVUpdateMenu:addParam("version","ShadowVayne Version:", SCRIPT_PARAM_INFO, "v"..version)
-
-DownLoadCount = 5
-if SVUpdateMenu.UseDebug then
-	NeedSync = 5
-	GetAsyncWebResult("raw.github.com", _AutoUpdates["1"]["Version"], tostring(math.random(1000)), function(x) _AutoUpdates["1"]["ServerAnswer"] = x;NeedSync = NeedSync - 1 end)
-	GetAsyncWebResult("raw.github.com", _AutoUpdates["2"]["Version"], tostring(math.random(1000)), function(x) _AutoUpdates["2"]["ServerAnswer"] = x;NeedSync = NeedSync - 1 end)
-	GetAsyncWebResult("raw.github.com", _AutoUpdates["3"]["Version"], tostring(math.random(1000)), function(x) _AutoUpdates["3"]["ServerAnswer"] = x;NeedSync = NeedSync - 1 end)
-	GetAsyncWebResult("raw.github.com", _AutoUpdates["4"]["Version"], tostring(math.random(1000)), function(x) _AutoUpdates["4"]["ServerAnswer"] = x;NeedSync = NeedSync - 1 end)
-	GetAsyncWebResult("raw.github.com", _AutoUpdates["5"]["Version"], tostring(math.random(1000)), function(x) _AutoUpdates["5"]["ServerAnswer"] = x;NeedSync = NeedSync - 1 end)
-	StartTheCallback()
-else
-	for i = 1,5 do
-		if  tonumber(_GetLocalVersion(_AutoUpdates[tostring(i)]["Name"])) < tonumber(_AutoUpdates[tostring(i)]["MinVersion"]) and  tonumber(_GetLocalVersion(_AutoUpdates[tostring(i)]["Name"])) ~= 2.431 then
-			_PrintUpdateMsg("Updating, please wait...",_AutoUpdates[tostring(i)]["Name"])
-			DelayAction(function() DownloadFile(tostring("http://".._AutoUpdates[tostring(i)]["Host"].._AutoUpdates[tostring(i)]["Script"].."?rand="..tostring(math.random(1000))),LIB_PATH.._AutoUpdates[tostring(i)]["Name"]..".lua", function() _PrintUpdateMsg("Successfully Updated!",_AutoUpdates[tostring(i)]["Name"]);DownLoadCount = DownLoadCount - 1 end) end, 1)
-		else
-			DownLoadCount = DownLoadCount - 1
-		end
-	end
-end
+SVUpdateMenu:addParam("version","ShadowVayne Version:", SCRIPT_PARAM_INFO, "v"..SV_Version)
+ _AutoUpdates = {
+			{["Name"] = "VPrediction", 		["Version"] = "/Hellsing/BoL/master/version/VPrediction.version", 		["Script"] = "/Hellsing/BoL/master/common/VPrediction.lua"},
+			{["Name"] = "SOW", 				["Version"] = "/Hellsing/BoL/master/version/SOW.version", 				["Script"] = "/Hellsing/BoL/master/common/SOW.lua"},
+			{["Name"] = "CustomPermaShow", 	["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version", 	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua"},
+			{["Name"] = "SourceLib", 		["Version"] = "/TheRealSource/public/master/common/SourceLib.version", 	["Script"] = "/TheRealSource/public/master/common/SourceLib.lua"},
+		--	{["Name"] = "Selector", 		["Version"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision", 	["Script"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.lua"},
+			{["Name"] = "ShadowVayne", 		["Version"] = "/Superx321/BoL/master/ShadowVayne.Version", 				["Script"] = "/Superx321/BoL/master/ShadowVayne.lua"},
+		}
+_GetLibs()
 
 ---------------------------------
 ---------  Cast E Spell ---------
@@ -302,6 +283,8 @@ function OnProcessSpell(unit, spell)
 		end
 
  			if spell.name:find("VayneCondemn") then -- E detected, cooldown for next E 500 ticks
+				LastSpellTarget = spell.target
+				DelayAction(function() myHero:Attack(LastSpellTarget) end, spell.windUpTime - GetLatency() / 2000)
 				ShootRengar = false
 			end
 
@@ -367,41 +350,6 @@ function _RengarLeapObj(Obj)
 		if SVMainMenu.autostunn.OverwriteLaneClear and ShadowVayneLaneClear then  ShootRengar = true end
 		if SVMainMenu.autostunn.OverwriteLastHit and ShadowVayneLastHit then  ShootRengar = true end
 		if SVMainMenu.autostunn.Overwritealways then  ShootRengar = true end
-	end
-end
-
----------------------------------
-------- MainScript Update -------
----------------------------------
-function _CheckScriptUpdate()
-	if not UpdateFinished and DownLoadCount == 0 and ScriptStartOver then
-		LocalVersion = _GetLocalVersion("MainScript")
-		if SVUpdateMenu.UseAutoCheck then
-			if SVUpdateMenu.UseASync then
-				UpdateFinished = true
-				GetAsyncWebResult("raw.github.com", "/Superx321/BoL/master/ShadowVayne.Version",tostring(math.random(1000)), function(x) _DoMainScriptUpdate(x) end)
-			else
-				UpdateFinished = true
-				ServerVersion = GetWebResult("raw.github.com", "/Superx321/BoL/master/ShadowVayne.Version",tostring(math.random(1000)))
-				_DoMainScriptUpdate(ServerVersion)
-			end
-		end
-	end
-end
-
-function _DoMainScriptUpdate(ServerVersion)
-	ServerVersion = tonumber(ServerVersion)
-	LocalVersion = tonumber(_GetLocalVersion("MainScript"))
-	if ServerVersion > LocalVersion then
-		_PrintUpdateMsg("New Update available: Version "..ServerVersion, "MainScript")
-		if SVUpdateMenu.UseAutoLoad then
-			_PrintUpdateMsg("Downloading, please wait...", "MainScript")
-			DelayAction(function() DownloadFile("http://raw.github.com/Superx321/BoL/master/ShadowVayne.lua?rand="..tostring(math.random(1000)),SCRIPT_PATH..MainScriptName, function() _PrintUpdateMsg("Successfully Updated!","MainScript") end) end, 1)
-	else
-			_PrintUpdateMsg("AutoDownload is turned off", "MainScript")
-		end
-	else
-		_PrintUpdateMsg("No Updates available", "MainScript")
 	end
 end
 
@@ -479,11 +427,11 @@ _SwapAutoUpdate(true, LibName)
 end
 
 function OnTick()
-	if not ScriptStartOver and DownLoadCount == 0 then
+	if not ScriptStartOver and AllLibsLoaded then
 		_RequireWithoutUpdate("VPrediction")
 		_RequireWithoutUpdate("SourceLib")
 		_RequireWithoutUpdate("SOW")
-		if VIP_USER then _RequireWithoutUpdate("Selector") end
+		if VIP_USER and FileExist(LIB_PATH.."Selector.lua") then _RequireWithoutUpdate("Selector") end
 		_RequireWithoutUpdate("CustomPermaShow")
 		_CheckSACMMASOW()
 		if SAC_V84 and not SACLoaded then
@@ -496,26 +444,17 @@ function OnTick()
 		end
 
 		if not SACWait then
-			print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">All Libs loaded</font>")
 			ScriptStartOver = true
 			VP = VPrediction(true)
 			_LoadTables()
 			_LoadMenu()
-			AddTickCallback(_CheckScriptUpdate)
+			_ArrangeEnemies()
 			AddTickCallback(_GetRunningModes)
-			if VIP_USER then
-				if SVMainMenu.vip.pr0diction then
-					AddTickCallback(_CheckEnemyStunnAbleProdiction)
-				else
-					AddTickCallback(_CheckEnemyStunnAbleBeta)
-				end
-			else
-				AddTickCallback(_CheckEnemyStunnAble)
-			end
+			AddTickCallback(_CheckStunn)
 			AddTickCallback(_NonTargetGapCloserAfterCast)
 			AddTickCallback(_ClickThreshLantern)
 			AddTickCallback(_UsePermaShows)
-			AddTickCallback(_UseSelector)
+--~ 			AddTickCallback(_UseSelector)
 			AddTickCallback(_UseTumble)
 			AddTickCallback(_UseBotRK)
 			AddTickCallback(_UseBilgeWater)
@@ -553,6 +492,7 @@ function _LoadMenu()
 	SVMainMenu:addSubMenu("[Condemn]: AutoStunn Settings", "autostunn")
 	SVMainMenu:addSubMenu("[Condemn]: AutoStunn Targets", "targets")
 	SVMainMenu:addSubMenu("[Condemn]: Interrupt Settings", "interrupt")
+	SVMainMenu:addSubMenu("[Condemn]: Draw Settings", "condemndraw")
 	SVMainMenu:addSubMenu("[Tumble]: Settings", "tumble")
 	SVMainMenu:addSubMenu("[Misc]: Key Settings", "keysetting")
 	SVMainMenu:addSubMenu("[Misc]: AutoLevelSpells Settings", "autolevel")
@@ -673,6 +613,9 @@ function _LoadMenu()
 				SVMainMenu.interrupt[(enemy.charName)..(TableInfo.spellKey)]:addParam((enemy.charName).."Always", "Always", SCRIPT_PARAM_ONOFF, true)
 			end
 		end
+
+--~ 	Condemn Draw Menu
+		SVMainMenu.condemndraw:addParam((enemy.charName), "Draw ".. enemy.charName .." Stunn-Circle", SCRIPT_PARAM_ONOFF, true)
 	end
 
 --~ 	AutoStunn Settings Menu
@@ -710,7 +653,7 @@ function _LoadMenu()
 --~ 	Vip Menu
 		SVMainMenu.vip:addParam("EPackets", "Use Packets for E Cast (VIP Only)", SCRIPT_PARAM_ONOFF, true)
 --~ 		SVMainMenu.vip:addParam("vpred", "Use VPrediction (VIP Only)", SCRIPT_PARAM_ONOFF, true)
-		SVMainMenu.vip:addParam("selector", "Use Selector (VIP Only) (Need Reload!)", SCRIPT_PARAM_ONOFF, false)
+--~ 		SVMainMenu.vip:addParam("selector", "Use Selector (VIP Only) (Need Reload!)", SCRIPT_PARAM_ONOFF, false)
 		SVMainMenu.vip:addParam("pr0diction", "Use Pr0diction (VIP Only)", SCRIPT_PARAM_ONOFF, false)
 
 --~ 	PermaShow Menu
@@ -757,6 +700,8 @@ function _LoadMenu()
 		SVMainMenu.walltumble:addParam("spot1", "Draw & Use Spot 1 (Drake-Spot)", SCRIPT_PARAM_ONOFF, true)
 		SVMainMenu.walltumble:addParam("spot2", "Draw & Use Spot 2 (Min-Spot)", SCRIPT_PARAM_ONOFF, true)
 
+
+
 	STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
 	SOWi = SOW(VP, STS)
 	SOWi:LoadToMenu(SVSOWMenu)
@@ -768,13 +713,13 @@ function _LoadMenu()
 		ProdE = Prod:AddProdictionObject(_E, 650, 2300, 0.311, 90)
 	end
 
-	if VIP_USER and SVMainMenu.vip.selector then
-		Selector.Instance()
-	else
-		TSSMenu = scriptConfig("[SV] SimpleTargetSelector Settings", "SV_TSS")
-		STS:AddToMenu(TSSMenu)
-	end
-		_PrintScriptMsg("Version ".._GetLocalVersion("MainScript").." loaded")
+--~ 	if VIP_USER and SVMainMenu.vip.selector and FileExist(LIB_PATH.."Selector.lua") and 1==2 then
+--~ 		Selector.Instance()
+--~ 	else
+--~ 		TSSMenu = scriptConfig("[SV] SimpleTargetSelector Settings", "SV_TSS")
+		STS:AddToMenu(SVSTSMenu)
+--~ 	end
+		_PrintScriptMsg("Version "..SV_Version.." loaded")
 		SVMainMenu._param[1].text = "HideParam"
 		SVSOWMenu._param[1].text = "Set the Keysettings in the MainScript Menu!"
 end
@@ -850,20 +795,20 @@ function _LoadTables()
     AP = {
         "Ahri", "Akali", "Anivia", "Annie", "Brand", "Cassiopeia", "Diana", "Evelynn", "FiddleSticks", "Fizz", "Gragas", "Heimerdinger", "Karthus",
         "Kassadin", "Katarina", "Kayle", "Kennen", "Leblanc", "Lissandra", "Lux", "Malzahar", "Mordekaiser", "Morgana", "Nidalee", "Orianna",
-        "Rumble", "Ryze", "Sion", "Swain", "Syndra", "Teemo", "TwistedFate", "Veigar", "Viktor", "Vladimir", "Xerath", "Ziggs", "Zyra", "MasterYi", "Velkoz",
+        "Rumble", "Ryze", "Sion", "Swain", "Syndra", "Teemo", "TwistedFate", "Veigar", "Viktor", "Vladimir", "Xerath", "Ziggs", "Zyra", "MasterYi", "Velkoz"
     },
     Support = {
-        "Blitzcrank", "Janna", "Karma", "Leona", "Lulu", "Nami", "Sona", "Soraka", "Thresh", "Zilean", "Braum",
+        "Blitzcrank", "Janna", "Karma", "Leona", "Lulu", "Nami", "Sona", "Soraka", "Thresh", "Zilean"
     },
 
     Tank = {
         "Amumu", "Chogath", "DrMundo", "Galio", "Hecarim", "Malphite", "Maokai", "Nasus", "Rammus", "Sejuani", "Shen", "Singed", "Skarner", "Volibear",
-        "Warwick", "Yorick", "Zac", "Nunu", "Taric", "Alistar",
+        "Warwick", "Yorick", "Zac", "Nunu", "Taric", "Alistar", "Braum",
     },
 
     AD_Carry = {
         "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jayce", "KogMaw", "MissFortune", "Pantheon", "Quinn", "Shaco", "Sivir",
-        "Talon", "Tristana", "Twitch", "Urgot", "Varus", "Vayne", "Zed", "Jinx" , "Lucian",
+        "Talon", "Tristana", "Twitch", "Urgot", "Varus", "Vayne", "Zed", "Jinx" , "Lucian", "Yasuo",
 
     },
 
@@ -906,6 +851,47 @@ function _LoadTables()
 		["100"] = 23,
 		["50"] = 15,
 	}
+end
+
+function _ArrangeEnemies()
+	local priorityOrder = {
+        [2] = {5,4,4,4,4},
+        [3] = {5,4,4,3,3},
+        [4] = {5,4,3,2,2},
+        [5] = {5,4,3,2,1},
+    }
+	for i, enemy in ipairs(GetEnemyHeroes()) do
+		for i=1,#priorityTable.AD_Carry do
+			if enemy.charName == priorityTable.AD_Carry[i] then
+				SVSTSMenu.STS[enemy.hash] = priorityOrder[#GetEnemyHeroes()][1]
+			end
+		end
+
+		for i=1,#priorityTable.AP do
+		if enemy.charName == priorityTable.AP[i] then
+				SVSTSMenu.STS[enemy.hash] = priorityOrder[#GetEnemyHeroes()][2]
+			end
+		end
+
+		for i=1,#priorityTable.Support do
+			if enemy.charName == priorityTable.Support[i] then
+				SVSTSMenu.STS[enemy.hash] = priorityOrder[#GetEnemyHeroes()][3]
+			end
+		end
+
+		for i=1,#priorityTable.Bruiser do
+			if enemy.charName == priorityTable.Bruiser[i] then
+				SVSTSMenu.STS[enemy.hash] = priorityOrder[#GetEnemyHeroes()][4]
+			end
+		end
+
+		for i=1,#priorityTable.Tank do
+			if enemy.charName == priorityTable.Tank[i] then
+				SVSTSMenu.STS[enemy.hash] = priorityOrder[#GetEnemyHeroes()][5]
+			end
+		end
+
+	end
 end
 
 ---------------------------------
@@ -1073,6 +1059,13 @@ function OnDraw()
 				DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0x8B42B3)
 			end
 		end
+
+		for i, enemy in ipairs(GetEnemyHeroes()) do
+			if not _DrawStunnCircles then _DrawStunnCircles = {} end
+			if SVMainMenu.condemndraw[enemy.charName] and _DrawStunnCircles[enemy.charName] ~= nil and myHero:CanUseSpell(_E) == READY and GetDistance(enemy) < 700 and not enemy.dead and enemy.visible then
+				DrawCircle(_DrawStunnCircles[enemy.charName].x, _DrawStunnCircles[enemy.charName].y, _DrawStunnCircles[enemy.charName].z, 100, 0x8B42B3)
+			end
+		end
 	end
 end
 
@@ -1084,16 +1077,19 @@ function _CallBackAfterAA()
 end
 
 function _SetToggleMode()
-	if SVMainMenu.keysetting.togglemode then
-		SVMainMenu.keysetting._param[7].pType = SCRIPT_PARAM_ONKEYTOGGLE
-		SVMainMenu.keysetting._param[8].pType = SCRIPT_PARAM_ONKEYTOGGLE
-		SVMainMenu.keysetting._param[9].pType = SCRIPT_PARAM_ONKEYTOGGLE
-		SVMainMenu.keysetting._param[10].pType = SCRIPT_PARAM_ONKEYTOGGLE
-	else
-		SVMainMenu.keysetting._param[7].pType = SCRIPT_PARAM_ONKEYDOWN
-		SVMainMenu.keysetting._param[8].pType = SCRIPT_PARAM_ONKEYDOWN
-		SVMainMenu.keysetting._param[9].pType = SCRIPT_PARAM_ONKEYDOWN
-		SVMainMenu.keysetting._param[10].pType = SCRIPT_PARAM_ONKEYDOWN
+	if OldToggleStatus ~= SVMainMenu.keysetting.togglemode then
+		OldToggleStatus = SVMainMenu.keysetting.togglemode
+		if SVMainMenu.keysetting.togglemode then
+			SVMainMenu.keysetting._param[7].pType = SCRIPT_PARAM_ONKEYTOGGLE
+			SVMainMenu.keysetting._param[8].pType = SCRIPT_PARAM_ONKEYTOGGLE
+			SVMainMenu.keysetting._param[9].pType = SCRIPT_PARAM_ONKEYTOGGLE
+			SVMainMenu.keysetting._param[10].pType = SCRIPT_PARAM_ONKEYTOGGLE
+		else
+			SVMainMenu.keysetting._param[7].pType = SCRIPT_PARAM_ONKEYDOWN
+			SVMainMenu.keysetting._param[8].pType = SCRIPT_PARAM_ONKEYDOWN
+			SVMainMenu.keysetting._param[9].pType = SCRIPT_PARAM_ONKEYDOWN
+			SVMainMenu.keysetting._param[10].pType = SCRIPT_PARAM_ONKEYDOWN
+		end
 	end
 end
 
@@ -1230,8 +1226,8 @@ function _UseTumble()
 			(SVMainMenu.tumble.Qlaneclear and ShadowVayneLaneClear and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLaneClear)) or
 			(SVMainMenu.tumble.Qlasthit and  ShadowVayneLastHit and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLastHit)) or
 			(SVMainMenu.tumble.Qalways) then
-			local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 290
-			if GetDistance(AfterTumblePos, LastAttackedEnemy) < 650 then
+			local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
+			if GetDistance(AfterTumblePos, LastAttackedEnemy) < 600 then
 				CastSpell(_Q, mousePos.x, mousePos.z)
 			end
 		end
@@ -1239,7 +1235,7 @@ function _UseTumble()
 end
 
 function _UseSelector()
-	if VIP_USER and SVMainMenu.vip.selector and _G.Selector_Enabled and ShadowVayneAutoCarry then
+	if VIP_USER and SVMainMenu.vip.selector and _G.Selector_Enabled and ShadowVayneAutoCarry and FileExist(LIB_PATH.."Selector.lua") then
 		local currentTarget = GetTarget()
 		if currentTarget ~= nil and currentTarget.type == "obj_AI_Hero" and ValidTarget(currentTarget, 650, true) then
 			selected = currentTarget
@@ -1337,9 +1333,136 @@ function _GenerateThreshLanter(Obj)
 		LanternObj = Obj
 	end
 end
+
 ---------------------------------
 ---------- Stunn Logic ----------
 ---------------------------------
+function _CheckStunn()
+	if not myHero.dead and myHero:CanUseSpell(_E) == READY and CastedLastE < GetTickCount() then
+		for i, enemy in ipairs(GetEnemyHeroes()) do
+			if GetDistance(enemy, myHero) <= 1000 and not enemy.dead and enemy.visible then
+				if not VIP_USER then -- FREEUSER
+					local CurrentDirection = (Vector(enemy) - ChampInfoTable[enemy.charName].CurrentVector)
+					if CurrentDirection ~= Vector(0,0,0) then
+						CurrentDirection = CurrentDirection:normalized()
+					end
+					ChampInfoTable[enemy.charName].CurrentAngle = ChampInfoTable[enemy.charName].CurrentDirection:dotP( CurrentDirection )
+					ChampInfoTable[enemy.charName].CurrentDirection = CurrentDirection
+					ChampInfoTable[enemy.charName].CurrentVector = Vector(enemy)
+					if ChampInfoTable[enemy.charName].CurrentDirection ~= Vector(0,0,0) then
+						if ChampInfoTable[enemy.charName].CurrentAngle and ChampInfoTable[enemy.charName].CurrentAngle > 0.8 then
+							local AfterCastPos = Vector(enemy) + ChampInfoTable[enemy.charName].CurrentDirection * (enemy.ms * 0.0005)
+							local timeElapsed = _GetCollisionTime(AfterCastPos, ChampInfoTable[enemy.charName].CurrentDirection, enemy.ms, myHero, 2200 )
+							if timeElapsed ~= nil then
+								StunnPos =  Vector(enemy) + ChampInfoTable[enemy.charName].CurrentDirection * enemy.ms * (timeElapsed + 0.5)/2
+							end
+						end
+					else
+						StunnPos = Vector(enemy)
+					end
+				end
+
+				if VIP_USER and not SVMainMenu.vip.pr0diction then -- VPRED
+					GroundDelay = 0.32
+					EnemyPos = VP:GetPredictedPos(enemy, GroundDelay, enemy.ms, myHero, false)
+					if EnemyPos ~= nil then
+						EnemyDistance = GetDistance(EnemyPos)
+						FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
+						for i=1,10 do
+							EnemyPos = VP:GetPredictedPos(enemy, GroundDelay+FlyTimeDelay, enemy.ms, EnemyPos, false)
+							if EnemyPos~= nil then
+								EnemyDistance = GetDistance(EnemyPos)
+								FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
+							end
+						end
+						StunnPos = VP:GetPredictedPos(enemy, GroundDelay+FlyTimeDelay, enemy.ms, EnemyPos, false)
+					end
+				end
+
+				if VIP_USER and SVMainMenu.vip.pr0diction then -- PR0D
+					GroundDelay = 0.32
+					EnemyPos = Prodiction.GetTimePrediction(enemy, GroundDelay)
+					if EnemyPos ~= nil then
+						EnemyDistance = GetDistance(EnemyPos)
+						FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
+						for i=1,10 do
+							EnemyPos = Prodiction.GetTimePrediction(enemy, GroundDelay+FlyTimeDelay)
+							if EnemyPos~= nil then
+								EnemyDistance = GetDistance(EnemyPos)
+								FlyTimeDelay = _GetFlyTime(EnemyDistance)
+							end
+						end
+
+						StunnPos = Prodiction.GetTimePrediction(enemy, GroundDelay+FlyTimeDelay)
+					end
+				end
+				if StunnPos ~= nil and GetDistance(StunnPos) < 710 then
+					_CheckWallStunn(StunnPos, enemy)
+				end
+			end
+		end
+	end
+end
+
+function _CheckWallStunn(StunnPos, enemy)
+	if not _DrawStunnCircles then _DrawStunnCircles = {} end
+	local BushFound, Bushpos = false, nil
+	local FoundWall = false
+	for i = 1, SVMainMenu.autostunn.pushDistance, 15  do
+		local CheckWallPos = Vector(StunnPos) + (Vector(StunnPos) - myHero):normalized()*(i)
+		if IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) and not BushFound then
+			BushFound = true
+			BushPos = CheckWallPos
+		end
+		if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
+			if not FoundWall then _DrawStunnCircles = { [enemy.charName] = CheckWallPos };FoundWall = true end
+			if 	(SVMainMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and ShadowVayneAutoCarry) or
+				(SVMainMenu.targets[enemy.charName][(enemy.charName).."MixedMode"] and ShadowVayneMixedMode) or
+				(SVMainMenu.targets[enemy.charName][(enemy.charName).."LaneClear"] and ShadowVayneLaneClear) or
+				(SVMainMenu.targets[enemy.charName][(enemy.charName).."LastHit"]   and ShadowVayneLastHit) or
+				(SVMainMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
+				if UnderTurret(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z), true) then
+					if SVMainMenu.autostunn.towerstunn then
+					if SVMainMenu.autostunn.target then
+						if STS:GetTarget(720) == enemy then
+							CastSpell(_E, enemy)
+							CastedLastE = GetTickCount() + 500
+							break
+						end
+					else
+						CastSpell(_E, enemy)
+						CastedLastE = GetTickCount() + 500
+						break
+					end
+					end
+				else
+					if SVMainMenu.autostunn.target then
+						if STS:GetTarget(720) == enemy then
+							CastSpell(_E, enemy)
+							CastedLastE = GetTickCount() + 500
+							if BushFound and SVMainMenu.autostunn.trinket and myHero:CanUseSpell(ITEM_7) == 0 then
+								CastSpell(ITEM_7, BushPos.x, BushPos.z)
+							end
+							break
+						end
+					else
+						CastSpell(_E, enemy)
+						CastedLastE = GetTickCount() + 500
+						if BushFound and SVMainMenu.autostunn.trinket and myHero:CanUseSpell(ITEM_7) == 0 then
+							CastSpell(ITEM_7, BushPos.x, BushPos.z)
+						end
+						break
+					end
+					break
+				end
+			end
+		end
+	end
+	if FoundWall == false then
+		_DrawStunnCircles = { [enemy.charName] = nil }
+	end
+end
+
 function _GetCollisionTime (targetPos, targetDir, targetSpeed, sourcePos, projSpeed ) --Function done by Yomie from EzCondemn
 	local velocity = targetDir * targetSpeed
 
@@ -1378,23 +1501,6 @@ function _GetCollisionTime (targetPos, targetDir, targetSpeed, sourcePos, projSp
 	return nil
 end
 
-function _GetEnemyStunnPos(enemy)
---~ 	if _CheckStunnAngle(enemy) then
-		GroundDelay = 0.32
-		EnemyPos = VP:GetPredictedPos(enemy, GroundDelay, enemy.ms, myHero, false)
-		EnemyDistance = GetDistance(EnemyPos)
-		FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
-		for i=1,10 do
-			EnemyPos = VP:GetPredictedPos(enemy, GroundDelay+FlyTimeDelay, enemy.ms, EnemyPos, false)
-			EnemyDistance = GetDistance(EnemyPos)
-			FlyTimeDelay = _GetFlyTime(EnemyDistance)
-		end
-		return VP:GetPredictedPos(enemy, GroundDelay+FlyTimeDelay, enemy.ms, EnemyPos, false)
---~ 	else
---~ 		return false
---~ 	end
-end
-
 function _GetFlyTime(EnemyDistance)
 		if EnemyDistance <  25 then FlyTimeDelay = 0 end
 		if EnemyDistance >  24 and EnemyDistance <  75 then FlyTimeDelay = (StunnFlyTime["50"]/1000) end
@@ -1411,180 +1517,8 @@ function _GetFlyTime(EnemyDistance)
 		if EnemyDistance > 574 and EnemyDistance < 625 then FlyTimeDelay = (StunnFlyTime["600"]/1000) end
 		if EnemyDistance > 624 and EnemyDistance < 675 then FlyTimeDelay = (StunnFlyTime["650"]/1000) end
 		if EnemyDistance > 674 and EnemyDistance < 725 then FlyTimeDelay = (StunnFlyTime["700"]/1000) end
-		if EnemyDistance > 724 then FlyTimeDelay = 280 end
+		if EnemyDistance > 724 then FlyTimeDelay = 280/1000 end
 		return FlyTimeDelay
-end
-
-function _CheckStunnAngle(enemy)
-	local CurrentDirection = (Vector(enemy) - ChampInfoTable[enemy.charName].CurrentVector)
-	if CurrentDirection ~= Vector(0,0,0) then
-		CurrentDirection = CurrentDirection:normalized()
-	end
-	ChampInfoTable[enemy.charName].CurrentAngle = ChampInfoTable[enemy.charName].CurrentDirection:dotP( CurrentDirection )
-	ChampInfoTable[enemy.charName].CurrentDirection = CurrentDirection
-	ChampInfoTable[enemy.charName].CurrentVector = Vector(enemy)
-	if ChampInfoTable[enemy.charName].CurrentAngle and ChampInfoTable[enemy.charName].CurrentAngle > 0.8 then
-		return true
-	else
-		return false
-	end
-end
-
-function _CheckEnemyStunnAble()
-	if not myHero.dead and myHero:CanUseSpell(_E) == READY and CastedLastE < GetTickCount() then
-		for i, enemy in ipairs(GetEnemyHeroes()) do
-			if 	(SVMainMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and ShadowVayneAutoCarry) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."MixedMode"] and ShadowVayneMixedMode) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."LaneClear"] and ShadowVayneLaneClear) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."LastHit"] and ShadowVayneLastHit) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
-				if GetDistance(enemy, myHero) <= 1000 and not enemy.dead and enemy.visible then
-					local CurrentDirection = (Vector(enemy) - ChampInfoTable[enemy.charName].CurrentVector)
-					if CurrentDirection ~= Vector(0,0,0) then
-						CurrentDirection = CurrentDirection:normalized()
-					end
-					ChampInfoTable[enemy.charName].CurrentAngle = ChampInfoTable[enemy.charName].CurrentDirection:dotP( CurrentDirection )
-					ChampInfoTable[enemy.charName].CurrentDirection = CurrentDirection
-					ChampInfoTable[enemy.charName].CurrentVector = Vector(enemy)
-					if ChampInfoTable[enemy.charName].CurrentDirection ~= Vector(0,0,0) then
-						if ChampInfoTable[enemy.charName].CurrentAngle and ChampInfoTable[enemy.charName].CurrentAngle > 0.8 then
-							local AfterCastPos = Vector(enemy) + ChampInfoTable[enemy.charName].CurrentDirection * (enemy.ms * 0.0005)
-							local timeElapsed = _GetCollisionTime(AfterCastPos, ChampInfoTable[enemy.charName].CurrentDirection, enemy.ms, myHero, 2200 )
-							if timeElapsed ~= nil then
-								StunnPos =  Vector(enemy) + ChampInfoTable[enemy.charName].CurrentDirection * enemy.ms * (timeElapsed + 0.5)/2
-							end
-						end
-					else
-						StunnPos = Vector(enemy)
-					end
-					if GetDistance(Vector(StunnPos), myHero) <= 710 then
-						local BushFound, Bushpos = false, nil
-						for i = 1, SVMainMenu.autostunn.pushDistance, 10  do
-							local CheckWallPos = Vector(StunnPos) + (Vector(StunnPos) - myHero):normalized()*(i)
-							if IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) and not BushFound then
-								BushFound = true
-								BushPos = CheckWallPos
-							end
-							if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
-								if UnderTurret(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z), true) then
-									if SVMainMenu.autostunn.towerstunn then
-										_CastPacketSpell(_E, enemy)
-										CastedLastE = GetTickCount() + 500
-										_ScriptDebugMsg("Target: "..(enemy.charName)..", Reason: Autostunn, Field: UnderTower, Bush: "..(tostring(BushFound)), "stunndebug")
-										break
-									end
-								else
-									_CastPacketSpell(_E, enemy)
-									if BushFound and SVMainMenu.autostunn.trinket and myHero:CanUseSpell(ITEM_7) == 0 then
-										CastSpell(ITEM_7, BushPos.x, BushPos.z)
-									end
-									_ScriptDebugMsg("Target: "..(enemy.charName)..", Reason: Autostunn, Field: NoTower, Bush: "..(tostring(BushFound)), "stunndebug")
-									break
-								end
-							end
-						end
-					end
-				end
-			end
-		end
-	end
-end
-
-function _CheckEnemyStunnAbleBeta()
-	if not myHero.dead and myHero:CanUseSpell(_E) == READY and LastE < GetTickCount() then
-		for i, enemy in ipairs(GetEnemyHeroes()) do
-			if 	(SVMainMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and ShadowVayneAutoCarry) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."MixedMode"] and ShadowVayneMixedMode) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."LaneClear"] and ShadowVayneLaneClear) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."LastHit"] and ShadowVayneLastHit) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
-				if not (SVMainMenu.autostunn.target and LastAttackedEnemy ~= enemy) then
-					if GetDistance(enemy, myHero) <= 1500 and not enemy.dead and enemy.visible then
-						EnemyStunnPos = _GetEnemyStunnPos(enemy)
-						if EnemyStunnPos ~= false and GetDistance(enemy,EnemyStunnPos) < 300 and GetDistance(EnemyStunnPos) < 650 then
-							local BushFound, Bushpos = false, nil
-							for i = 1, SVMainMenu.autostunn.pushDistance, 10  do
-								local CheckWallPos = Vector(EnemyStunnPos) + (Vector(EnemyStunnPos) - myHero):normalized()*(i)
-								if IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) and not BushFound then
-									BushFound = true
-									BushPos = CheckWallPos
-								end
-								if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) and GetDistance(EnemyStunnPos) < 650 then
-									if UnderTurret(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z), true) then
-										if SVMainMenu.autostunn.towerstunn then
-											CastSpell(_E, enemy)
-											LastE = GetTickCount() + 500
-											DrawCirclePos = CheckWallPos
-											_ScriptDebugMsg("Target: "..(enemy.charName)..", Reason: Autostunn, Field: UnderTower, Bush: "..(tostring(BushFound)), "stunndebug")
-											break
-										end
-									else
-										CastSpell(_E, enemy)
-										DrawCirclePos = CheckWallPos
-										LastE = GetTickCount() + 500
-										if BushFound and SVMainMenu.autostunn.trinket and myHero:CanUseSpell(ITEM_7) == 0 then
-											CastSpell(ITEM_7, BushPos.x, BushPos.z)
-										end
-										_ScriptDebugMsg("Target: "..(enemy.charName)..", Reason: Autostunn, Field: NoTower, Bush: "..(tostring(BushFound)), "stunndebug")
-										break
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-		end
-	end
-end
-
-function _CheckEnemyStunnAbleProdiction()
-	if not myHero.dead and myHero:CanUseSpell(_E) == READY and LastE < GetTickCount() then
-		for i, enemy in ipairs(GetEnemyHeroes()) do
-			if 	(SVMainMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and ShadowVayneAutoCarry) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."MixedMode"] and ShadowVayneMixedMode) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."LaneClear"] and ShadowVayneLaneClear) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."LastHit"] and ShadowVayneLastHit) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
-				if AutoCarryOrbText == "SOW" and ShadowVayneAutoCarry then LastAttackedEnemy = NewSOWTarget end
-				if not (SVMainMenu.autostunn.target and LastAttackedEnemy ~= enemy) then
-					if GetDistance(enemy, myHero) <= 1500 and not enemy.dead and enemy.visible then
-						EnemyStunnPos = ProdE:GetPrediction(enemy, myHero)
-						if EnemyStunnPos ~= nil and GetDistance(enemy,EnemyStunnPos) < 300 and GetDistance(EnemyStunnPos) < 650 then
-							local BushFound, Bushpos = false, nil
-							for i = 1, SVMainMenu.autostunn.pushDistance, 10  do
-								local CheckWallPos = Vector(EnemyStunnPos) + (Vector(EnemyStunnPos) - myHero):normalized()*(i)
-								if IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) and not BushFound then
-									BushFound = true
-									BushPos = CheckWallPos
-								end
-								if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) and GetDistance(EnemyStunnPos) < 650 then
-									if UnderTurret(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z), true) then
-										if SVMainMenu.autostunn.towerstunn then
-											CastSpell(_E, enemy)
-											LastE = GetTickCount() + 500
-											DrawCirclePos = CheckWallPos
-											_ScriptDebugMsg("Target: "..(enemy.charName)..", Reason: Autostunn, Field: UnderTower, Bush: "..(tostring(BushFound)), "stunndebug")
-											break
-										end
-									else
-										CastSpell(_E, enemy)
-										DrawCirclePos = CheckWallPos
-										LastE = GetTickCount() + 500
-										if BushFound and SVMainMenu.autostunn.trinket and myHero:CanUseSpell(ITEM_7) == 0 then
-											CastSpell(ITEM_7, BushPos.x, BushPos.z)
-										end
-										_ScriptDebugMsg("Target: "..(enemy.charName)..", Reason: Autostunn, Field: NoTower, Bush: "..(tostring(BushFound)), "stunndebug")
-										break
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-		end
-	end
 end
 
 ---------------------------------
