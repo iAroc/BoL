@@ -1,53 +1,39 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.13
+	Version: 3.15
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
-
-	If anything is not working or u wish a new Function, let me know it
-
-	Thx to Jus & Hellsing for minor helping, Manciuszz for his Gapcloserlist and Klokje for his Interruptlist
 	]]
+
 if myHero.charName ~= "Vayne" then return end
-if not VIP_USER then
-	rawset(_G, "LoadVIPScript", function() return end)
-end
 
-local informationTable,CastedLastE  = {}, 0
-local spellExpired  =  nil
-local ScriptOnLoadDone, LastAttackedEnemy = false, nil
-
-_SC = { init = true, initDraw = true, menuKey = 16, useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _changeKeyInstance = false, _sliceInstance = false, _listInstance = false }
-if not GetSave("scriptConfig")["Master"] then GetSave("scriptConfig")["Master"] = {} end
-_SC.master = GetSave("scriptConfig")["Master"]
-_SC.masterIndex = 0
-
-_G.scriptConfig.CustomaddParam = _G.scriptConfig.addParam
-_G.scriptConfig.addParam = function(self, pVar, pText, pType, defaultValue, a, b, c, d)
-if pVar == "scriptActive" or pVar == "lastHitting" or pVar == "laneClear" or pVar == "hybridMode" then
-pVar = "ShadowHijacked"
---~ pText = "ShadowVayne found. Set the Keysettings there!"
---~ pType = 5
-
-end
-if (self.name == "sidasacsetup_sidasacautocarrysub" and (pText == "Hotkey" or pText == "Auto Carry"))
-	or (self.name == "sidasacsetup_sidasacmixedmodesub" and (pText == "Hotkey" or pText == "Mixed Mode"))
-	or (self.name == "sidasacsetup_sidasaclaneclearsub" and (pText == "Hotkey" or pText == "Lane Clear"))
-	or (self.name == "sidasacsetup_sidasaclasthitsub" and (pText == "Hotkey" or pText == "Last Hit")) then
-pText = "ShadowVayne found. Set the Keysettings there!"
-pType = 5
-end
---~ if pType:lower():find("hotkey") then print(pText, " ", pType, " ", defaultValue," ", a," ",b," ",pVar.name) end
- _G.scriptConfig.CustomaddParam(self, pVar, pText, pType, defaultValue, a, b, c, d)
- end
-
----------------------------------
----------  Auto Updates ---------
----------------------------------
- function _GetLibs()
+------------------------
+------ AutoUpdate ------
+------------------------
+ function _AutoUpdate()
 	if not GetLibsStarted then
+		SVVersion =  tonumber(_GetLocalVersion("ShadowVayne"))
+
+		SVUpdateMenu = scriptConfig("[ShadowVayne] UpdateSettings", "SV_UPDATE")
+		SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
+		SVSOWMenu = scriptConfig("[ShadowVayne] SimpleOrbWalker Settings", "SV_SOW")
+		SVTSMenu = scriptConfig("[ShadowVayne] TargetSelector Settings", "SV_TS")
+
+		SVUpdateMenu:addParam("UseAutoCheck","Check for Updates", SCRIPT_PARAM_ONOFF, true)
+		SVUpdateMenu:addParam("UseAutoLoad","Automatic Download Updates", SCRIPT_PARAM_ONOFF, true)
+
+		SVUpdateMenu:addParam("version","ShadowVayne Version:", SCRIPT_PARAM_INFO, "v"..SVVersion)
+
+		_AutoUpdates = {
+			{["Name"] = "VPrediction", 		["Version"] = "/Hellsing/BoL/master/version/VPrediction.version", 		["Script"] = "/Hellsing/BoL/master/common/VPrediction.lua"},
+			{["Name"] = "SOW", 				["Version"] = "/Hellsing/BoL/master/version/SOW.version", 				["Script"] = "/Hellsing/BoL/master/common/SOW.lua"},
+			{["Name"] = "CustomPermaShow", 	["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version", 	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua"},
+			{["Name"] = "SourceLib", 		["Version"] = "/TheRealSource/public/master/common/SourceLib.version", 	["Script"] = "/TheRealSource/public/master/common/SourceLib.lua"},
+			{["Name"] = "Selector", 		["Version"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision", 	["Script"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.lua"},
+			{["Name"] = "ShadowVayne", 		["Version"] = "/Superx321/BoL/master/ShadowVayne.Version", 				["Script"] = "/Superx321/BoL/master/ShadowVayne.lua"},
+		}
 		GetLibsStarted = true
 		socket = require("socket")
 		LibsDone = 0
@@ -102,7 +88,12 @@ end
 	if SocketsClosed == #_AutoUpdates and not WroteIt then
 		WroteIt = true
 		for i=1,#_AutoUpdates do
-			if tonumber(_AutoUpdates[i]["ServerVersion"]) > tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"])) then
+			if tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"])) == nil then
+				LocalVersion = 0
+			else
+				LocalVersion = tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"]))
+			end
+			if tonumber(_AutoUpdates[i]["ServerVersion"]) > LocalVersion then
 				if _AutoUpdates[i]["Name"] == "ShadowVayne" then
 					if SVUpdateMenu.UseAutoCheck then
 						if SVUpdateMenu.UseAutoLoad then
@@ -134,9 +125,9 @@ end
 	end
 
 	if LibsDone == #_AutoUpdates then
-		AllLibsLoaded = true
+		AutoUpdateDone = true
 	else
-		_GetLibs()
+		_AutoUpdate()
 	end
 end
 
@@ -172,6 +163,7 @@ function _GetLocalVersion(LibName)
 			end
 		end
 		FileVersion = string.sub(LibNameString, VersionNumberStartPos, VersionNumberEndPos)
+		if tonumber(FileVersion) == nil then FileVersion = 0 end
 		if FileVersion == "2.431" then
 			return 5
 		else
@@ -190,193 +182,13 @@ function _PrintUpdateMsg(Msg, LibName)
 	end
 end
 
-LibNameFile = io.open(SCRIPT_PATH.."/".. GetCurrentEnv().FILE_NAME, "r")
-LibNameString = LibNameFile:read("*a")
-LibNameFile:close()
-SV_Version =  tonumber(_GetLocalVersion("ShadowVayne"))
-
-SVUpdateMenu = scriptConfig("[ShadowVayne] UpdateSettings", "SV_UPDATE")
-SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
-SVSOWMenu = scriptConfig("[ShadowVayne] SimpleOrbWalker Settings", "SV_SOW")
-SVSTSMenu = scriptConfig("[ShadowVayne] SimpleTargetSelector Settings", "SV_STS")
-
-SVMainMenu:addParam("nil","Waiting for the Script to load", SCRIPT_PARAM_INFO, "")
-SVSOWMenu:addParam("nil","Waiting for the Script to load", SCRIPT_PARAM_INFO, "")
-
-SVUpdateMenu:addParam("UseAutoCheck","Check for Updates", SCRIPT_PARAM_ONOFF, true)
-SVUpdateMenu:addParam("UseAutoLoad","Automatic Download Updates", SCRIPT_PARAM_ONOFF, true)
-
-SVUpdateMenu:addParam("version","ShadowVayne Version:", SCRIPT_PARAM_INFO, "v"..SV_Version)
- _AutoUpdates = {
-			{["Name"] = "VPrediction", 		["Version"] = "/Hellsing/BoL/master/version/VPrediction.version", 		["Script"] = "/Hellsing/BoL/master/common/VPrediction.lua"},
-			{["Name"] = "SOW", 				["Version"] = "/Hellsing/BoL/master/version/SOW.version", 				["Script"] = "/Hellsing/BoL/master/common/SOW.lua"},
-			{["Name"] = "CustomPermaShow", 	["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version", 	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua"},
-			{["Name"] = "SourceLib", 		["Version"] = "/TheRealSource/public/master/common/SourceLib.version", 	["Script"] = "/TheRealSource/public/master/common/SourceLib.lua"},
-		--	{["Name"] = "Selector", 		["Version"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision", 	["Script"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.lua"},
-			{["Name"] = "ShadowVayne", 		["Version"] = "/Superx321/BoL/master/ShadowVayne.Version", 				["Script"] = "/Superx321/BoL/master/ShadowVayne.lua"},
-		}
-_GetLibs()
-
----------------------------------
----------  Cast E Spell ---------
----------------------------------
-function _CastESpell(Target, Reason, Delay)
-	if VIP_USER and SVMainMenu.vip.EPackets then
-		DelayAction(function() Packet('S_CAST', { spellId = _E, targetNetworkId = Target.networkID }):send(true) end, Delay)
-	else
-		DelayAction(function() CastSpell(_E, Target) end, Delay)
-	end
-	CastedLastE = GetTickCount() + 500
+------------------------
+------ MainScript ------
+------------------------
+function _PrintScriptMsg(Msg)
+	PrintChat("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
 end
 
-function _CastPacketSpell(SpellToCast, TargetToCast)
-	if VIP_USER and SVMainMenu.vip.EPackets then
-		Packet('S_CAST', { spellId = SpellToCast, targetNetworkId = TargetToCast.networkID }):send(true)
-		CastedLastE = GetTickCount() + 500
-	else
-		CastSpell(_E, TargetToCast)
-		CastedLastE = GetTickCount() + 500
-	end
-
-end
-
-----------------------------------
---------- Anti Gapcloser ---------
-----------------------------------
-function OnProcessSpell(unit, spell)
-	if not myHero.dead and ScriptOnLoadDone then
-		-- AntiGapCloser Targeted Spells
-		if isAGapcloserUnitTarget[unit.charName] and spell.name == isAGapcloserUnitTarget[unit.charName].spell and unit.team ~= myHero.team then
-			if spell.target ~= nil and spell.target.hash == myHero.hash then
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then _CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / AutoCarry Mode") end
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then _CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Lasthit Mode") end
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then _CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Mixed Mode") end
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then _CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Laneclear Mode") end
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."Always"] then _CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / Always") end
-				if SVMainMenu.autostunn.OverwriteAutoCarry and ShadowVayneAutoCarry then  _CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / AutoCarry Mode") end
-				if SVMainMenu.autostunn.OverwriteMixedMode and ShadowVayneMixedMode then  _CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / AutoCarry Mode") end
-				if SVMainMenu.autostunn.OverwriteLaneClear and ShadowVayneLaneClear then  _CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / AutoCarry Mode") end
-				if SVMainMenu.autostunn.OverwriteLastHit and ShadowVayneLastHit then  _CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / AutoCarry Mode") end
-				if SVMainMenu.autostunn.Overwritealways then  _CastESpell(unit, "Gapcloser Targeted ("..(spell.name)..") / AutoCarry Mode") end
-			end
-		end
-
-		-- AntiGapCloser Interrupt Spells
-		if isAChampToInterrupt[spell.name] and unit.charName == isAChampToInterrupt[spell.name].champ and GetDistance(unit) <= 715 and unit.team ~= myHero.team then
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then _CastESpell(unit, "Interrupt ("..(spell.name)..") / AutoCarry Mode") end
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then _CastESpell(unit, "Interrupt ("..(spell.name)..") / Lasthit Mode") end
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then _CastESpell(unit, "Interrupt ("..(spell.name)..") / Mixed Mode") end
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then _CastESpell(unit, "Interrupt ("..(spell.name)..") / Laneclear Mode") end
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."Always"] then _CastESpell(unit, "Interrupt ("..(spell.name)..") / Always") end
-		end
-
-		if unit.isMe then
-			if spell.name:find("Attack") then
-				LastAttackedEnemy = spell.target
-				DelayAction(function() IsAttacking = false;_CallBackAfterAA() end, spell.windUpTime - GetLatency() / 2000)
-			end
-
-			if spell.name == "Recall" then
-				RecallCast = true
-				DelayAction(function() RecallCast = false end, 0.75)
-			end
-		end
-
- 			if spell.name:find("VayneCondemn") then -- E detected, cooldown for next E 500 ticks
-				LastSpellTarget = spell.target
-				DelayAction(function() myHero:Attack(LastSpellTarget) end, spell.windUpTime - GetLatency() / 2000)
-				ShootRengar = false
-			end
-
-		if isAGapcloserUnitNoTarget[spell.name] and GetDistance(unit) <= 2000 and (spell.target == nil or spell.target.isMe) and unit.team ~= myHero.team then
-			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then spellExpired = false end
-			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then spellExpired = false end
-			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then spellExpired = false end
-			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then spellExpired = false end
-			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."Always"] then spellExpired = false end
-			if SVMainMenu.autostunn.OverwriteAutoCarry and ShadowVayneAutoCarry then spellExpired = false end
-			if SVMainMenu.autostunn.OverwriteMixedMode and ShadowVayneMixedMode then spellExpired = false end
-			if SVMainMenu.autostunn.OverwriteLaneClear and ShadowVayneLaneClear then spellExpired = false end
-			if SVMainMenu.autostunn.OverwriteLastHit and ShadowVayneLastHit then spellExpired = false end
-			if SVMainMenu.autostunn.Overwritealways then spellExpired = false end
-			informationTable = {
-				spellSource = unit,
-				spellCastedTick = GetTickCount(),
-				spellStartPos = Point(spell.startPos.x, spell.startPos.z),
-				spellEndPos = Point(spell.endPos.x, spell.endPos.z),
-				spellRange = isAGapcloserUnitNoTarget[spell.name].range,
-				spellSpeed = isAGapcloserUnitNoTarget[spell.name].projSpeed,
-				spellName = spell.name
-			}
-		end
-	end
-end
-
-function _CheckRengarGapcloser()
-	if ShootRengar then
-		if RengarHero.dead or RengarHero.health < 1 then ShootRengar = false end
-		if not StartResetTimer then StartResetTimer=true;DelayAction(function() StartResetTimer, ShootRengar = false,false end, 2) end
-		CastSpell(_E, RengarHero)
-	end
-end
-
-function _NonTargetGapCloserAfterCast()
-	if not myHero.dead and myHero:CanUseSpell(_E) == READY then
-		if spellExpired == false and (GetTickCount() - informationTable.spellCastedTick) <= (informationTable.spellRange/informationTable.spellSpeed)*1000 then
-			local spellDirection     = (informationTable.spellEndPos - informationTable.spellStartPos):normalized()
-			local spellStartPosition = informationTable.spellStartPos + spellDirection
-			local spellEndPosition   = informationTable.spellStartPos + spellDirection * informationTable.spellRange
-			local heroPosition = Point(myHero.x, myHero.z)
-			local SkillShot = LineSegment(Point(spellStartPosition.x, spellStartPosition.y), Point(spellEndPosition.x, spellEndPosition.y))
-			if heroPosition:distance(SkillShot) <= 250 then
-				if SVMainMenu.vip.EPackets then _CastESpell(informationTable.spellSource, "Gapcloser NonTargeted ("..(informationTable.spellName)..")") end
-			end
-		else
-			spellExpired = true
-			informationTable = {}
-		end
-	end
-end
-
-function _RengarLeapObj(Obj)
-	if Obj.name == "Rengar_LeapSound.troy" and myHero:CanUseSpell(_E) == READY and GetDistanceSqr(RengarHero) < 1000*1000 then
-		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."AutoCarry"] and ShadowVayneAutoCarry then ShootRengar = true end
-		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."LastHit"] and ShadowVayneMixedMode then ShootRengar = true end
-		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."MixedMode"] and ShadowVayneLaneClear then ShootRengar = true end
-		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."LaneClear"] and ShadowVayneLastHit then ShootRengar = true end
-		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."Always"] then ShootRengar = true end
-		if SVMainMenu.autostunn.OverwriteAutoCarry and ShadowVayneAutoCarry then  ShootRengar = true end
-		if SVMainMenu.autostunn.OverwriteMixedMode and ShadowVayneMixedMode then  ShootRengar = true end
-		if SVMainMenu.autostunn.OverwriteLaneClear and ShadowVayneLaneClear then  ShootRengar = true end
-		if SVMainMenu.autostunn.OverwriteLastHit and ShadowVayneLastHit then  ShootRengar = true end
-		if SVMainMenu.autostunn.Overwritealways then  ShootRengar = true end
-	end
-end
-
-----------------------------------
----------- Recall Break ----------
-----------------------------------
-function OnRecall(hero, channelTimeInMs)
-  if hero.isMe then
-    Recalling = true
-  end
-end
-
-function OnAbortRecall(hero)
-  if hero.isMe then
-    Recalling = false
-  end
-end
-
-function OnFinishRecall(hero)
-  if hero.isMe then
-    Recalling = false
-  end
-end
-
-----------------------------------
----------- Script Start ----------
-----------------------------------
 function _SwapAutoUpdate(SwapState, LibName)
 	LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
 	LibNameString = LibNameFile:read("*a")
@@ -426,65 +238,38 @@ require (LibName)
 _SwapAutoUpdate(true, LibName)
 end
 
-function OnTick()
-	if not ScriptStartOver and AllLibsLoaded then
-		_RequireWithoutUpdate("VPrediction")
-		_RequireWithoutUpdate("SourceLib")
-		_RequireWithoutUpdate("SOW")
-		if VIP_USER and FileExist(LIB_PATH.."Selector.lua") then _RequireWithoutUpdate("Selector") end
-		_RequireWithoutUpdate("CustomPermaShow")
-		_CheckSACMMASOW()
-		if SAC_V84 and not SACLoaded then
-			if not AuthWaitPrint then _PrintScriptMsg("Waiting for SAC:Reborn Auth");AuthWaitPrint=true end
-			SACWait = true
-		end
-
-		if SAC_V84 and SACLoaded then
-			SACWait = false
-		end
-
-		if not SACWait then
-			ScriptStartOver = true
-			VP = VPrediction(true)
-			_LoadTables()
-			_LoadMenu()
-			_ArrangeEnemies()
-			AddTickCallback(_GetRunningModes)
-			AddTickCallback(_CheckStunn)
-			AddTickCallback(_NonTargetGapCloserAfterCast)
-			AddTickCallback(_ClickThreshLantern)
-			AddTickCallback(_UsePermaShows)
---~ 			AddTickCallback(_UseSelector)
-			AddTickCallback(_UseTumble)
-			AddTickCallback(_UseBotRK)
-			AddTickCallback(_UseBilgeWater)
-			AddTickCallback(_SetToggleMode)
-			AddTickCallback(_WallTumble)
-			AddDrawCallback(_WallTumbleDraw)
-			AddCreateObjCallback(_GenerateThreshLanter)
-			AddCreateObjCallback(_RengarLeapObj)
-			autoLevelSetFunction(_AutoLevelSpell)
-			autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
-			ScriptOnLoadDone = true
-			_G.HidePermaShow = {["LaneClear OnHold:"] = true,["Orbwalk OnHold:"] = true, ["LastHit OnHold:"] = true, ["HybridMode OnHold:"] = true,}
-			_G.HidePermaShow["Condemn on next BasicAttack:"] = true
-			_G.HidePermaShow["              Sida's Auto Carry: Reborn"] = true
-			_G.HidePermaShow["Auto Carry"] = true
-			_G.HidePermaShow["Last Hit"] = true
-			_G.HidePermaShow["Mixed Mode"] = true
-			_G.HidePermaShow["Lane Clear"] = true
-			_G.HidePermaShow["Auto-Condemn"] = true
-			_G.HidePermaShow["No mode active"] = true
-			_G.HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
-			for i, enemy in ipairs(GetEnemyHeroes()) do
-				if enemy.charName == "Rengar" then
-					RengarHero = enemy
-					AddTickCallback(_CheckRengarGapcloser)
-				end
+function _CheckOrbWalkers()
+	if _G.AutoCarry ~= nil then
+		if _G.AutoCarry.Helper ~= nil then
+			Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
+			SACLoaded = true
+		else
+			if _G.AutoCarry.AutoCarry ~= nil then
+				REVLoaded = true
+				REVMenu = _G.AutoCarry.AutoCarry.MainMenu
 			end
-
 		end
 	end
+
+	if _G.Reborn_Loaded then
+		SACLoaded = true
+	end
+
+	if _G.MMA_Loaded then
+		MMALoaded = true
+	end
+
+	if _G.SOWLoaded then
+		SOWLoaded = true
+	end
+end
+
+function _LoadSOWSTS()
+	VP = VPrediction(true)
+	STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
+	SOWi = SOW(VP, STS)
+	SOWi:LoadToMenu(SVSOWMenu)
+	STS:AddToMenu(SVTSMenu)
 end
 
 function _LoadMenu()
@@ -519,7 +304,7 @@ function _LoadMenu()
 	SVMainMenu.keysetting:addParam("lasthit","Last Hit Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "N" ))
 	SVMainMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
 
-	if SOWLoaded then SVMainMenu.keysetting:addParam("nil","SimpleOrbWalker found", SCRIPT_PARAM_INFO, "") end
+	if SOWLoaded then SVMainMenu.keysetting:addParam("nil","SOW found", SCRIPT_PARAM_INFO, "") end
 	if SACLoaded then SVMainMenu.keysetting:addParam("nil","Sida's Auto Carry: Reborn found", SCRIPT_PARAM_INFO, "") end
 	if REVLoaded then SVMainMenu.keysetting:addParam("nil","Sida's Auto Carry: Revamped found", SCRIPT_PARAM_INFO, "") end
 	if MMALoaded then SVMainMenu.keysetting:addParam("nil","Marksmen Mighty Assistant found", SCRIPT_PARAM_INFO, "") end
@@ -556,16 +341,23 @@ function _LoadMenu()
 	SVMainMenu.keysetting:addParam("MixedModeOrb", "Orbwalker in MixedMode: ", SCRIPT_PARAM_LIST, 1, OrbWalkerTable)
 	SVMainMenu.keysetting:addParam("LaneClearOrb", "Orbwalker in LaneClear: ", SCRIPT_PARAM_LIST, 1, OrbWalkerTable)
 	SVMainMenu.keysetting:addParam("LastHitOrb", "Orbwalker in LastHit: ", SCRIPT_PARAM_LIST, 1, OrbWalkerTable)
-	if SAC_V84 and SACLoaded then
-	SVMainMenu.keysetting:addParam("SACAutoCarry","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.keysetting:addParam("SACMixedMode","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.keysetting:addParam("SACLaneClear","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.keysetting:addParam("SACLastHit","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
-	Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACAutoCarry", AutoCarry.MODE_AUTOCARRY)
-	Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACMixedMode", AutoCarry.MODE_MIXEDMODE)
-	Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLaneClear", AutoCarry.MODE_LANECLEAR)
-	Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLastHit", AutoCarry.MODE_LASTHIT)
+
+--~ SAC R84 FIX
+		SVMainMenu.keysetting:addParam("SACAutoCarry","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+		SVMainMenu.keysetting:addParam("SACMixedMode","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+		SVMainMenu.keysetting:addParam("SACLaneClear","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+		SVMainMenu.keysetting:addParam("SACLastHit","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+	if SACLoaded then
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACAutoCarry", AutoCarry.MODE_AUTOCARRY)
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACMixedMode", AutoCarry.MODE_MIXEDMODE)
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLaneClear", AutoCarry.MODE_LANECLEAR)
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLastHit", AutoCarry.MODE_LASTHIT)
 	end
+
+	if SVMainMenu.keysetting._param[StartParam+0].listTable[SVMainMenu.keysetting.AutoCarryOrb] == nil then SVMainMenu.keysetting.AutoCarryOrb = 1 end
+	if SVMainMenu.keysetting._param[StartParam+1].listTable[SVMainMenu.keysetting.MixedModeOrb] == nil then SVMainMenu.keysetting.MixedModeOrb = 1 end
+	if SVMainMenu.keysetting._param[StartParam+2].listTable[SVMainMenu.keysetting.LaneClearOrb] == nil then SVMainMenu.keysetting.LaneClearOrb = 1 end
+	if SVMainMenu.keysetting._param[StartParam+3].listTable[SVMainMenu.keysetting.LastHitOrb] == nil then SVMainMenu.keysetting.LastHitOrb = 1 end
 
 	for i, enemy in ipairs(GetEnemyHeroes()) do
 --~ 	Gapcloser Menu Targeted Skills
@@ -699,29 +491,6 @@ function _LoadMenu()
 --~ 	Walltumble Settings Menu
 		SVMainMenu.walltumble:addParam("spot1", "Draw & Use Spot 1 (Drake-Spot)", SCRIPT_PARAM_ONOFF, true)
 		SVMainMenu.walltumble:addParam("spot2", "Draw & Use Spot 2 (Min-Spot)", SCRIPT_PARAM_ONOFF, true)
-
-
-
-	STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
-	SOWi = SOW(VP, STS)
-	SOWi:LoadToMenu(SVSOWMenu)
-	SOWi:RegisterBeforeAttackCallback(_PreAttack)
-	SOWi:RegisterAfterAttackCallback(_AfterAttack)
-	if VIP_USER and SVMainMenu.vip.pr0diction then
-		require "Prodiction"
-		Prod = ProdictManager.GetInstance()
-		ProdE = Prod:AddProdictionObject(_E, 650, 2300, 0.311, 90)
-	end
-
---~ 	if VIP_USER and SVMainMenu.vip.selector and FileExist(LIB_PATH.."Selector.lua") and 1==2 then
---~ 		Selector.Instance()
---~ 	else
---~ 		TSSMenu = scriptConfig("[SV] SimpleTargetSelector Settings", "SV_TSS")
-		STS:AddToMenu(SVSTSMenu)
---~ 	end
-		_PrintScriptMsg("Version "..SV_Version.." loaded")
-		SVMainMenu._param[1].text = "HideParam"
-		SVSOWMenu._param[1].text = "Set the Keysettings in the MainScript Menu!"
 end
 
 function _LoadTables()
@@ -777,7 +546,9 @@ function _LoadTables()
                 ["VarusQ"]						= {true, champ = "Varus",		spellKey = "Q"},
                 ["CaitlynAceintheHole"]			= {true, champ = "Caitlyn",		spellKey = "R"},
                 ["MissFortuneBulletTime"]		= {true, champ = "MissFortune",	spellKey = "R"},
-                ["InfiniteDuress"]				= {true, champ = "Warwick",		spellKey = "R"}
+                ["InfiniteDuress"]				= {true, champ = "Warwick",		spellKey = "R"},
+                ["LucianR"]						= {true, champ = "Lucian",		spellKey = "R"}
+
 	}
 
 	AutoLevelSpellTable = {
@@ -894,185 +665,139 @@ function _ArrangeEnemies()
 	end
 end
 
----------------------------------
---------- Message Funcs ---------
----------------------------------
-function _PrintScriptMsg(Msg)
-	PrintChat("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
+function _GetRunningModes()
+	--~ Get the Keysettings from SVMainMenu
+	ShadowVayneAutoCarry = SVMainMenu.keysetting.autocarry
+	ShadowVayneMixedMode = SVMainMenu.keysetting.mixedmode
+	ShadowVayneLaneClear = SVMainMenu.keysetting.laneclear
+	ShadowVayneLastHit = SVMainMenu.keysetting.lasthit
+
+	--~ Recall-Check when ToggleMode is on
+	if (Recalling or RecallCast) and SVMainMenu.keysetting.togglemode then
+		ShadowVayneAutoCarry = false
+		ShadowVayneMixedMode = false
+		ShadowVayneLaneClear = false
+		ShadowVayneLastHit = false
+	end
+
+	--~ Reset All Modes
+	if SACLoaded then Keys.AutoCarry,Keys.MixedMode,Keys.LaneClear,Keys.LastHit = false,false,false,false end
+	if RevampedLoaded then REVMenu.AutoCarry,REVMenu.MixedMode,REVMenu.LaneClear,REVMenu.LastHit = false,false,false,false end
+	if SOWLoaded then SVSOWMenu.Mode0,SVSOWMenu.Mode1,SVSOWMenu.Mode2,SVSOWMenu.Mode3 = false,false,false,false end
+	if MMALoaded then _G.MMA_Orbwalker,_G.MMA_HybridMode,_G.MMA_LaneClear,_G.MMA_LastHit = false,false,false,false end
+
+	--~ Get The Selected Orbwalker
+	AutoCarryOrbText = SVMainMenu.keysetting._param[StartParam].listTable[SVMainMenu.keysetting.AutoCarryOrb]
+	MixedModeOrbText = SVMainMenu.keysetting._param[StartParam+1].listTable[SVMainMenu.keysetting.MixedModeOrb]
+	LaneClearOrbText = SVMainMenu.keysetting._param[StartParam+2].listTable[SVMainMenu.keysetting.LaneClearOrb]
+	LastHitOrbText = SVMainMenu.keysetting._param[StartParam+3].listTable[SVMainMenu.keysetting.LastHitOrb]
+
+	--~ Activate MMA
+	if AutoCarryOrbText == "MMA" then _G.MMA_Orbwalker = ShadowVayneAutoCarry end
+	if MixedModeOrbText == "MMA" then _G.MMA_HybridMode = ShadowVayneMixedMode end
+	if LaneClearOrbText == "MMA" then _G.MMA_LaneClear = ShadowVayneLaneClear end
+	if LastHitOrbText == "MMA" then _G.MMA_LastHit = ShadowVayneLastHit end
+
+	--~ Activate SAC:Reborn
+	if AutoCarryOrbText == "Reborn" then Keys.AutoCarry = ShadowVayneAutoCarry end
+	if MixedModeOrbText == "Reborn" then Keys.MixedMode = ShadowVayneMixedMode end
+	if LaneClearOrbText == "Reborn" then Keys.LaneClear = ShadowVayneLaneClear end
+	if LastHitOrbText == "Reborn" then Keys.LastHit = ShadowVayneLastHit end
+
+	--~ Activate SAC:Reborn R84 FIX
+	if AutoCarryOrbText == "Reborn" then SVMainMenu.keysetting.SACAutoCarry = ShadowVayneAutoCarry end
+	if MixedModeOrbText == "Reborn" then SVMainMenu.keysetting.SACMixedMode = ShadowVayneMixedMode end
+	if LaneClearOrbText == "Reborn" then SVMainMenu.keysetting.SACLaneClear = ShadowVayneLaneClear end
+	if LastHitOrbText == "Reborn" then SVMainMenu.keysetting.SACLastHit = ShadowVayneLastHit end
+
+	--~ Activate SAC:Revamped
+	if AutoCarryOrbText == "Revamped" then REVMenu.AutoCarry = ShadowVayneAutoCarry end
+	if MixedModeOrbText == "Revamped" then REVMenu.MixedMode = ShadowVayneMixedMode end
+	if LaneClearOrbText == "Revamped" then REVMenu.LaneClear = ShadowVayneLaneClear end
+	if LastHitOrbText == "Revamped" then REVMenu.LastHit = ShadowVayneLastHit end
+
+	--~ Activate SOW
+	if AutoCarryOrbText == "SOW" then SVSOWMenu.Mode0 = ShadowVayneAutoCarry end
+	if MixedModeOrbText == "SOW" then SVSOWMenu.Mode1 = ShadowVayneMixedMode end
+	if LaneClearOrbText == "SOW" then SVSOWMenu.Mode2 = ShadowVayneLaneClear end
+	if LastHitOrbText == "SOW" then SVSOWMenu.Mode3 = ShadowVayneLastHit end
 end
 
-function _ScriptDebugMsg(Msg, DebugMode)
-	if SVMainMenu.debug[DebugMode] then
-		print("<font color=\"#F0Ff8d\"><b>ShadowVayne Debug:</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
+function _AutoLevelSpell()
+	if GetGame().map.index ~= 4 and myHero.level < 4 then
+		LevelSpell(_Q)
+		LevelSpell(_W)
+		LevelSpell(_E)
+	end
+
+	if SVMainMenu.autolevel.UseAutoLevelfirst and myHero.level < 4 then
+		return AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.first3level]][myHero.level]
+	end
+
+	if SVMainMenu.autolevel.UseAutoLevelrest and myHero.level > 3 then
+		return AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.restlevel]][myHero.level]
 	end
 end
 
---------------------------------
----------- WallTumble ----------
---------------------------------
-function RoundNumber(num, idp)
-  return tonumber(string.format("%." .. (idp or 0) .. "f", num))
+function _UsePermaShows()
+	CustomPermaShow("AutoCarry (Using "..AutoCarryOrbText..")", SVMainMenu.keysetting.autocarry, SVMainMenu.permashowsettings.carrypermashow, nil, 1426521024, nil, 1)
+	CustomPermaShow("MixedMode (Using "..MixedModeOrbText..")", SVMainMenu.keysetting.mixedmode, SVMainMenu.permashowsettings.mixedpermashow, nil, 1426521024, nil, 2)
+	CustomPermaShow("LaneClear (Using "..LaneClearOrbText..")", SVMainMenu.keysetting.laneclear, SVMainMenu.permashowsettings.laneclearpermashow, nil, 1426521024, nil, 3)
+	CustomPermaShow("LastHit (Using "..LastHitOrbText..")", SVMainMenu.keysetting.lasthit, SVMainMenu.permashowsettings.lasthitpermashow, nil, 1426521024, nil, 4)
+	CustomPermaShow("Auto-E after next BasicAttack", SVMainMenu.keysetting.basiccondemn, SVMainMenu.permashowsettings.epermashow, nil, 1426521024, nil,  5)
 end
 
-function _WallTumble()
-	if VIP_USER then
-		if myHero:CanUseSpell(_Q) ~= READY then TumbleOverWall_1, TumbleOverWall_2 = false,false end
-		if TumbleOverWall_1 and SVMainMenu.walltumble.spot1 then
-			if GetDistance(TumbleSpots.StandPos_1) <= 25 then
-				TumbleOverWall_1 = false
-				CastSpell(_Q, TumbleSpots.CastPos_1.x,  TumbleSpots.CastPos_1.y)
-				myHero:HoldPosition()
-			else
-				if GetDistance(TumbleSpots.StandPos_1) > 25 then myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y) end
-			end
-		end
-		if TumbleOverWall_2 and SVMainMenu.walltumble.spot2 then
-			if GetDistance(TumbleSpots.StandPos_2) <= 25 then
-				TumbleOverWall_2 = false
-				CastSpell(_Q, TumbleSpots.CastPos_2.x,  TumbleSpots.CastPos_2.y)
-				myHero:HoldPosition()
-			else
-				if GetDistance(TumbleSpots.StandPos_2) > 25 then myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y) end
-			end
-		end
-	end
+function _GetSTSTarget()
+	STSTarget = STS:GetTarget(myHero.range)
 end
 
-function _WallTumbleDraw()
-	if VIP_USER then
-		if SVMainMenu.walltumble.spot1 then
-			if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
-				DrawCircle(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x107458)
-			else
-				DrawCircle(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x80FFFF)
-			end
-		end
-		if SVMainMenu.walltumble.spot2 then
-			if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
-				DrawCircle(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x107458)
-			else
-				DrawCircle(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x80FFFF)
-			end
-		end
-	end
-end
-
-function OnSendPacket(p)
-	if VIP_USER and ScriptStartOver then
-		if p.header == 153 and p.size == 26 then
-			if SVMainMenu.walltumble.spot1 then
-				if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
-					p.pos = 1
-					P_NetworkID = p:DecodeF()
-					P_SpellID = p:Decode1()
-					if P_NetworkID == myHero.networkID and P_SpellID == _Q then
-						if DontBlockNext then
-							DontBlockNext = false
-						else
-							p:Block()
-							DontBlockNext = true
-							TumbleOverWall_1 = true
-						end
-					end
-				end
-			end
-
-			if SVMainMenu.walltumble.spot2 then
-				if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
-					p.pos = 1
-					P_NetworkID = p:DecodeF()
-					P_SpellID = p:Decode1()
-					if P_NetworkID == myHero.networkID and P_SpellID == _Q then
-						if DontBlockNext then
-							DontBlockNext = false
-						else
-							p:Block()
-							DontBlockNext = true
-							TumbleOverWall_2 = true
-						end
-					end
-				end
-			end
-		end
-
-		if p.header == 113 then
-			p.pos = 1
-			P_NetworkID = p:DecodeF()
-			p:Decode1()
-			P_X = p:DecodeF()
-			P_X2 = RoundNumber(P_X, 2)
-			P_Y = p:DecodeF()
-			P_Y2 = RoundNumber(P_Y, 2)
-			if TumbleOverWall_1 == true and SVMainMenu.walltumble.spot1 then
-				RunToX, RunToY = TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y
-				if not (P_X2 == RunToX and P_Y2 == RunToY) then
-					p:Block()
-					myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y)
-				end
-			end
-			if TumbleOverWall_2 == true and SVMainMenu.walltumble.spot2 then
-				RunToX, RunToY = TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y
-				if not (P_X2 == RunToX and P_Y2 == RunToY) then
-					p:Block()
-					myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y)
+function _UseBotRK()
+	local BladeSlot = GetInventorySlotItem(3153)
+	if STSTarget ~= nil and GetDistance(STSTarget) < 450 and not STSTarget.dead and STSTarget.visible and BladeSlot ~= nil and myHero:CanUseSpell(BladeSlot) == 0 then
+		if (SVMainMenu.botrksettings.botrkautocarry and ShadowVayneAutoCarry) or
+		 (SVMainMenu.botrksettings.botrkmixedmode and ShadowVayneMixedMode) or
+		 (SVMainMenu.botrksettings.botrklaneclear and ShadowVayneLaneClear) or
+		 (SVMainMenu.botrksettings.botrklasthit and ShadowVayneLastHit) or
+		 (SVMainMenu.botrksettings.botrkalways) then
+			if (math.floor(myHero.health / myHero.maxHealth * 100)) <= SVMainMenu.botrksettings.botrkmaxheal then
+				if (math.floor(STSTarget.health / STSTarget.maxHealth * 100)) >= SVMainMenu.botrksettings.botrkminheal then
+					CastSpell(BladeSlot, STSTarget)
 				end
 			end
 		end
 	end
 end
 
---------------------------------
----------- Misc Funcs ----------
---------------------------------
-function OnDraw()
-	if ScriptOnLoadDone then
-		if SVMainMenu.draw.DrawNeededAutohits then
-			for i, enemy in ipairs(GetEnemyHeroes()) do
-				DrawText(tostring(_GetNeededAutoHits(enemy)),16,GetUnitHPBarPos(enemy).x,GetUnitHPBarPos(enemy).y,0xFF80FF00)
-			end
-		end
-
-		if SVMainMenu.draw.DrawERange then
-			if SVMainMenu.draw.DrawEColor == 1 then
-				DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0x80FFFF)
-			elseif SVMainMenu.draw.DrawEColor == 2 then
-				DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0x0080FF)
-			elseif SVMainMenu.draw.DrawEColor == 3 then
-				DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0x5555FF)
-			elseif SVMainMenu.draw.DrawEColor == 4 then
-				DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0xFF2D2D)
-			elseif SVMainMenu.draw.DrawEColor == 5 then
-				DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0x8B42B3)
-			end
-		end
-
-		if SVMainMenu.draw.DrawAARange then
-			if SVMainMenu.draw.DrawAAColor == 1 then
-				DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0x80FFFF)
-			elseif SVMainMenu.draw.DrawAAColor == 2 then
-				DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0x0080FF)
-			elseif SVMainMenu.draw.DrawAAColor == 3 then
-				DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0x5555FF)
-			elseif SVMainMenu.draw.DrawAAColor == 4 then
-				DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0xFF2D2D)
-			elseif SVMainMenu.draw.DrawAAColor == 5 then
-				DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0x8B42B3)
-			end
-		end
-
-		for i, enemy in ipairs(GetEnemyHeroes()) do
-			if not _DrawStunnCircles then _DrawStunnCircles = {} end
-			if SVMainMenu.condemndraw[enemy.charName] and _DrawStunnCircles[enemy.charName] ~= nil and myHero:CanUseSpell(_E) == READY and GetDistance(enemy) < 700 and not enemy.dead and enemy.visible then
-				DrawCircle(_DrawStunnCircles[enemy.charName].x, _DrawStunnCircles[enemy.charName].y, _DrawStunnCircles[enemy.charName].z, 100, 0x8B42B3)
+function _UseBilgeWater()
+	local BilgeSlot = GetInventorySlotItem(3144)
+	if STSTarget ~= nil and GetDistance(STSTarget) < 500 and not STSTarget.dead and STSTarget.visible and BilgeSlot ~= nil and myHero:CanUseSpell(BilgeSlot) == 0 then
+		if (SVMainMenu.bilgesettings.bilgeautocarry and ShadowVayneAutoCarry) or
+		 (SVMainMenu.bilgesettings.bilgemixedmode and ShadowVayneMixedMode) or
+		 (SVMainMenu.bilgesettings.bilgelaneclear and ShadowVayneLaneClear) or
+		 (SVMainMenu.bilgesettings.bilgelasthit and ShadowVayneLastHit) or
+		 (SVMainMenu.bilgesettings.bilgealways) then
+			if (math.floor(myHero.health / myHero.maxHealth * 100)) <= SVMainMenu.bilgesettings.bilgemaxheal then
+				if (math.floor(STSTarget.health / STSTarget.maxHealth * 100)) >= SVMainMenu.bilgesettings.bilgeminheal then
+					CastSpell(BilgeSlot, STSTarget)
+				end
 			end
 		end
 	end
 end
 
-function _CallBackAfterAA()
-	if SVMainMenu.keysetting.basiccondemn and LastAttackedEnemy.type == myHero.type then -- Auto-E after AA
-		CastSpell(_E, LastAttackedEnemy)
-		SVMainMenu.keysetting.basiccondemn = false
+function _NonTargetGapCloserAfterCast()
+	if spellExpired == false and (GetTickCount() - informationTable.spellCastedTick) <= (informationTable.spellRange/informationTable.spellSpeed)*1000 then
+		local spellDirection     = (informationTable.spellEndPos - informationTable.spellStartPos):normalized()
+		local spellStartPosition = informationTable.spellStartPos + spellDirection
+		local spellEndPosition   = informationTable.spellStartPos + spellDirection * informationTable.spellRange
+		local heroPosition = Point(myHero.x, myHero.z)
+		local SkillShot = LineSegment(Point(spellStartPosition.x, spellStartPosition.y), Point(spellEndPosition.x, spellEndPosition.y))
+		if heroPosition:distance(SkillShot) <= 300 then
+			CastSpell(_E, informationTable.spellSource)
+		end
+	else
+		spellExpired = true
+		informationTable = {}
 	end
 end
 
@@ -1093,230 +818,6 @@ function _SetToggleMode()
 	end
 end
 
-function _GetRunningModes()
-	if SVMainMenu.keysetting.autocarry and not ShadowVayneAutoCarry then
-		SVMainMenu.keysetting.mixedmode = false
-		SVMainMenu.keysetting.laneclear = false
-		SVMainMenu.keysetting.lasthit = false
-	end
-
-	if SVMainMenu.keysetting.mixedmode and not ShadowVayneMixedMode then
-		SVMainMenu.keysetting.autocarry = false
-		SVMainMenu.keysetting.laneclear = false
-		SVMainMenu.keysetting.lasthit = false
-	end
-
-	if SVMainMenu.keysetting.laneclear then
-		SVMainMenu.keysetting.autocarry = false
-		SVMainMenu.keysetting.mixedmode = false
-		SVMainMenu.keysetting.lasthit = false
-	end
-
-	if SVMainMenu.keysetting.lasthit then
-		SVMainMenu.keysetting.mixedmode = false
-		SVMainMenu.keysetting.laneclear = false
-		SVMainMenu.keysetting.autocarry = false
-	end
-
-	--~ Get the Keysettings from SV
-	ShadowVayneAutoCarry = SVMainMenu.keysetting.autocarry
-	ShadowVayneMixedMode = SVMainMenu.keysetting.mixedmode
-	ShadowVayneLaneClear = SVMainMenu.keysetting.laneclear
-	ShadowVayneLastHit = SVMainMenu.keysetting.lasthit
-
-	if Recalling or RecallCast then
-		ShadowVayneAutoCarry = false
-		ShadowVayneMixedMode = false
-		ShadowVayneLaneClear = false
-		ShadowVayneLastHit = false
-	end
-	if SACLoaded then Keys.AutoCarry,Keys.MixedMode,Keys.LaneClear,Keys.LastHit = false,false,false,false end
-	if RevampedLoaded then REVMenu.AutoCarry,REVMenu.MixedMode,REVMenu.LaneClear,REVMenu.LastHit = false,false,false,false end
-	--if SOWLoaded then SVSOWMenu._param[7].key,SVSOWMenu._param[8].key,SVSOWMenu._param[9].key,SVSOWMenu._param[10].key = 5,5,5,5 end
-	if SOWLoaded then SVSOWMenu.Mode0,SVSOWMenu.Mode1,SVSOWMenu.Mode2,SVSOWMenu.Mode3 = false,false,false,false end
-	if MMALoaded then _G.MMA_Orbwalker,_G.MMA_HybridMode,_G.MMA_LaneClear,_G.MMA_LastHit = false,false,false,false end
-
-	--~ Check if one List is Empty
-	if SVMainMenu.keysetting._param[StartParam].listTable[SVMainMenu.keysetting.AutoCarryOrb] == nil then SVMainMenu.keysetting.AutoCarryOrb = 1 end
-	if SVMainMenu.keysetting._param[StartParam+1].listTable[SVMainMenu.keysetting.MixedModeOrb] == nil then SVMainMenu.keysetting.MixedModeOrb = 1 end
-	if SVMainMenu.keysetting._param[StartParam+2].listTable[SVMainMenu.keysetting.LaneClearOrb] == nil then SVMainMenu.keysetting.LaneClearOrb = 1 end
-	if SVMainMenu.keysetting._param[StartParam+3].listTable[SVMainMenu.keysetting.LastHitOrb] == nil then SVMainMenu.keysetting.LastHitOrb = 1 end
-
-	--~ Get what is Selected
-	AutoCarryOrbText = SVMainMenu.keysetting._param[StartParam].listTable[SVMainMenu.keysetting.AutoCarryOrb]
-	MixedModeOrbText = SVMainMenu.keysetting._param[StartParam+1].listTable[SVMainMenu.keysetting.MixedModeOrb]
-	LaneClearOrbText = SVMainMenu.keysetting._param[StartParam+2].listTable[SVMainMenu.keysetting.LaneClearOrb]
-	LastHitOrbText = SVMainMenu.keysetting._param[StartParam+3].listTable[SVMainMenu.keysetting.LastHitOrb]
-
-	--~ Set the Modes
-	if AutoCarryOrbText == "MMA" then _G.MMA_Orbwalker = ShadowVayneAutoCarry end
-	if AutoCarryOrbText == "Reborn" then Keys.AutoCarry = ShadowVayneAutoCarry end
-	if AutoCarryOrbText == "SOW" then SVSOWMenu.Mode0 = ShadowVayneAutoCarry end
-	if AutoCarryOrbText == "Revamped" then REVMenu.AutoCarry = ShadowVayneAutoCarry end
-
-	if MixedModeOrbText == "MMA" then _G.MMA_HybridMode = ShadowVayneMixedMode end
-	if MixedModeOrbText == "Reborn" then Keys.MixedMode = ShadowVayneMixedMode end
-	if MixedModeOrbText == "SOW" then SVSOWMenu.Mode1 = ShadowVayneMixedMode end
-	if MixedModeOrbText == "Revamped" then REVMenu.MixedMode = ShadowVayneMixedMode end
-
-	if LaneClearOrbText == "MMA" then _G.MMA_LaneClear = ShadowVayneLaneClear end
-	if LaneClearOrbText == "Reborn" then Keys.LaneClear = ShadowVayneLaneClear end
-	if LaneClearOrbText == "SOW" then SVSOWMenu.Mode2 = ShadowVayneLaneClear end
-	if LaneClearOrbText == "Revamped" then REVMenu.LaneClear = ShadowVayneLaneClear end
-
-	if LastHitOrbText == "MMA" then _G.MMA_LastHit = ShadowVayneLastHit end
-	if LastHitOrbText == "Reborn" then Keys.LastHit = ShadowVayneLastHit end
-	if LastHitOrbText == "SOW" then SVSOWMenu.Mode3 = ShadowVayneLastHit end
-	if LastHitOrbText == "Revamped" then REVMenu.LastHit = ShadowVayneLastHit end
-
-	if SAC_V84 and SACLoaded then
-		if AutoCarryOrbText == "Reborn" then
-			SVMainMenu.keysetting.SACAutoCarry = Keys.AutoCarry
-		else
-			SVMainMenu.keysetting.SACAutoCarry = false
-		end
-		if MixedModeOrbText == "Reborn" then
-			SVMainMenu.keysetting.SACMixedMode = Keys.MixedMode
-		else
-			SVMainMenu.keysetting.SACMixedMode = false
-		end
-		if LaneClearOrbText == "Reborn" then
-			SVMainMenu.keysetting.SACLaneClear = Keys.LaneClear
-		else
-			SVMainMenu.keysetting.SACLaneClear = false
-		end
-		if LastHitOrbText == "Reborn" then
-			SVMainMenu.keysetting.SACLastHit = Keys.LastHit
-		else
-			SVMainMenu.keysetting.SACLastHit = false
-		end
-	end
-end
-
-function _CheckSACMMASOW()
-	if _G.AutoCarry ~= nil then
-		if _G.AutoCarry.Helper ~= nil then
-			Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
-			SACLoaded = true
-		else
-			if _G.AutoCarry.AutoCarry ~= nil then
-				REVLoaded = true
-				REVMenu = _G.AutoCarry.AutoCarry.MainMenu
-			end
-		end
-	end
-
-	if _G.Reborn_Loaded then
-		SAC_V84 = true
-	end
-
-	if _G.MMA_Loaded then
-		MMALoaded = true
-	end
-
-	if FileExist(SCRIPT_PATH.."/Common/SOW.lua") then
-		SOWLoaded = true
-	end
-end
-
-function _UseTumble()
-	if IsAttacking == false and not myHero.dead and myHero:CanUseSpell(_Q) == READY and LastAttackedEnemy ~= nil and not LastAttackedEnemy.dead and LastAttackedEnemy.visible and not ShootRengar then
-		if  (SVMainMenu.tumble.Qautocarry and ShadowVayneAutoCarry and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaAutoCarry)) or
-			(SVMainMenu.tumble.Qmixedmode and ShadowVayneMixedMode and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaMixedMode)) or
-			(SVMainMenu.tumble.Qlaneclear and ShadowVayneLaneClear and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLaneClear)) or
-			(SVMainMenu.tumble.Qlasthit and  ShadowVayneLastHit and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLastHit)) or
-			(SVMainMenu.tumble.Qalways) then
-			local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
-			if GetDistance(AfterTumblePos, LastAttackedEnemy) < 600 then
-				CastSpell(_Q, mousePos.x, mousePos.z)
-			end
-		end
-	end
-end
-
-function _UseSelector()
-	if VIP_USER and SVMainMenu.vip.selector and _G.Selector_Enabled and ShadowVayneAutoCarry and FileExist(LIB_PATH.."Selector.lua") then
-		local currentTarget = GetTarget()
-		if currentTarget ~= nil and currentTarget.type == "obj_AI_Hero" and ValidTarget(currentTarget, 650, true) then
-			selected = currentTarget
-		else
-			selected = nil
-		end
-		if selected ~= nil then
-			SOW:ForceTarget(selected)
-		else
-			GetVIPSelectorTarget = Selector.GetTarget()
-			if GetVIPSelectorTarget ~= nil and ValidTarget(GetVIPSelectorTarget) and GetDistance(GetVIPSelectorTarget) < 1000 then
-				NewSOWTarget = GetVIPSelectorTarget
-			else
-				NewSOWTarget = LastAttackedEnemy
-			end
-			SOW:ForceTarget(NewSOWTarget)
-		end
-	end
-end
-
-function _UsePermaShows()
-	CustomPermaShow("AutoCarry (Using "..AutoCarryOrbText..")", SVMainMenu.keysetting.autocarry, SVMainMenu.permashowsettings.carrypermashow, nil, 1426521024, nil, 1)
-	CustomPermaShow("MixedMode (Using "..MixedModeOrbText..")", SVMainMenu.keysetting.mixedmode, SVMainMenu.permashowsettings.mixedpermashow, nil, 1426521024, nil, 2)
-	CustomPermaShow("LaneClear (Using "..LaneClearOrbText..")", SVMainMenu.keysetting.laneclear, SVMainMenu.permashowsettings.laneclearpermashow, nil, 1426521024, nil, 3)
-	CustomPermaShow("LastHit (Using "..LastHitOrbText..")", SVMainMenu.keysetting.lasthit, SVMainMenu.permashowsettings.lasthitpermashow, nil, 1426521024, nil, 4)
-	CustomPermaShow("Auto-E after next BasicAttack", SVMainMenu.keysetting.basiccondemn, SVMainMenu.permashowsettings.epermashow, nil, 1426521024, nil,  5)
-end
-
-function _AutoLevelSpell()
-	if GetGame().map.index == 8 and myHero.level < 4 then
-		LevelSpell(_Q)
-		LevelSpell(_W)
-		LevelSpell(_E)
-	end
-
-	if SVMainMenu.autolevel.UseAutoLevelfirst and myHero.level < 4 then
-		return AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.first3level]][myHero.level]
-	end
-
-	if SVMainMenu.autolevel.UseAutoLevelrest and myHero.level > 3 then
-		return AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.restlevel]][myHero.level]
-	end
-end
-
-function _GetNeededAutoHits(enemy)
-		local PredictHP = math.ceil(enemy.health)
-		local ThisAA = 0
-		local BladeSlot = GetInventorySlotItem(3153)
-		local TrueDMGPercent = ((enemy.maxHealth/100))*(3+(myHero:GetSpellData(_W).level))
-		if myHero:GetSpellData(_W).level > 0 then TargetTrueDmg = math.floor((((enemy.maxHealth/100)*(3+(myHero:GetSpellData(_W).level)))+(10+(myHero:GetSpellData(_W).level)*10))/3) else	TargetTrueDmg = 0 end
-		while PredictHP > 0 do
-			ThisAA = ThisAA + 1
-			DMGThisAA = math.floor((math.floor(myHero.totalDamage)) * 100 / (100 + enemy.armor))
-			if BladeSlot ~= nil then BladeDMG = math.floor(math.floor(PredictHP)*5 / (100 + enemy.armor)) else BladeDMG = 0 end
-			MyDMG = DMGThisAA + BladeDMG + TargetTrueDmg
-			PredictHP = PredictHP - MyDMG
-		end
-
-		if ThisAA ~= math.floor(ThisAA/3)*3 then
-			local PredictHP = math.ceil(enemy.health)
-			for i = 1,math.floor(ThisAA/3)*3,1 do
-				DMGThisAA = math.floor((math.floor(myHero.totalDamage)) * 100 / (100 + enemy.armor))
-				if BladeSlot ~= nil then BladeDMG = math.floor(math.floor(PredictHP)*5 / (100 + enemy.armor)) else BladeDMG = 0 end
-				MyDMG = DMGThisAA + BladeDMG + TargetTrueDmg
-				PredictHP = PredictHP - MyDMG
-			end
-
-			for i = 1,2,1 do
-				DMGThisAA = math.floor((math.floor(myHero.totalDamage)) * 100 / (100 + enemy.armor))
-				if BladeSlot ~= nil then BladeDMG = math.floor(math.floor(PredictHP)*5 / (100 + enemy.armor)) else BladeDMG = 0 end
-				MyDMG = DMGThisAA + BladeDMG
-				PredictHP = PredictHP - MyDMG
-			end
-
-			if PredictHP > 0 then
-				ThisAA = (math.ceil(ThisAA/3)*3)
-			end
-		end
-	return ThisAA
-end
-
 function _ClickThreshLantern()
 	if VIP_USER and SVMainMenu.keysetting.threshlantern and LanternObj then
 		LanternPacket = CLoLPacket(0x39)
@@ -1328,9 +829,284 @@ function _ClickThreshLantern()
 	end
 end
 
-function _GenerateThreshLanter(Obj)
+function _CheckRengarExist()
+	for i, enemy in ipairs(GetEnemyHeroes()) do
+		if enemy.charName == "Rengar" then
+			RengarHero = enemy
+		end
+	end
+end
+
+function _CheckRengarGapcloser()
+	if ShootRengar and not RengarHero.dead and RengarHero.health > 0 and GetDistanceSqr(RengarHero) < 1000*1000 then
+		CastSpell(_E, RengarHero)
+	else
+		ShootRengar = false
+	end
+end
+
+function _UseTumble()
+	if IsAttacking then return end
+	if myHero.dead then return end
+	if myHero:CanUseSpell(_Q) ~= READY then return end
+	if ShootRengar then return end
+	if not LastAttackedEnemy then return end
+	if LastAttackedEnemy.dead then return end
+	if LastAttackedEnemy.health < 1 then return end
+	if ShadowVayneAutoCarry and STSTarget then
+		TumbleTarget = STSTarget
+	else
+		TumbleTarget = LastAttackedEnemy
+	end
+
+	if  (SVMainMenu.tumble.Qautocarry and ShadowVayneAutoCarry and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaAutoCarry)) or
+		(SVMainMenu.tumble.Qmixedmode and ShadowVayneMixedMode and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaMixedMode)) or
+		(SVMainMenu.tumble.Qlaneclear and ShadowVayneLaneClear and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLaneClear)) or
+		(SVMainMenu.tumble.Qlasthit and  ShadowVayneLastHit and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLastHit)) or
+		(SVMainMenu.tumble.Qalways) then
+		local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
+		if GetDistance(AfterTumblePos, TumbleTarget) < 600 then
+			if NextAA > GetTickCount() then
+				CastSpell(_Q, mousePos.x, mousePos.z)
+			end
+		end
+	end
+end
+
+function OnProcessSpell(unit, spell)
+	if not ScriptLoaded then return end
+	if myHero.dead then return end
+	if unit.team ~= myHero.team then
+		-- AntiGapCloser Targeted Spells
+		if isAGapcloserUnitTarget[unit.charName] and spell.name == isAGapcloserUnitTarget[unit.charName].spell then
+			if spell.target ~= nil and spell.target.hash == myHero.hash then
+				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then CastSpell(_E, unit) end
+				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then CastSpell(_E, unit) end
+				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then CastSpell(_E, unit) end
+				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then CastSpell(_E, unit) end
+				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."Always"] then CastSpell(_E, unit) end
+				if SVMainMenu.autostunn.OverwriteAutoCarry and ShadowVayneAutoCarry then  CastSpell(_E, unit) end
+				if SVMainMenu.autostunn.OverwriteMixedMode and ShadowVayneMixedMode then  CastSpell(_E, unit) end
+				if SVMainMenu.autostunn.OverwriteLaneClear and ShadowVayneLaneClear then  CastSpell(_E, unit) end
+				if SVMainMenu.autostunn.OverwriteLastHit and ShadowVayneLastHit then  CastSpell(_E, unit) end
+				if SVMainMenu.autostunn.Overwritealways then  CastSpell(_E, unit) end
+			end
+		end
+
+		-- AntiGapCloser Interrupt Spells
+		if isAChampToInterrupt[spell.name] and unit.charName == isAChampToInterrupt[spell.name].champ and GetDistanceSqr(unit) <= 715*715 then
+			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then CastSpell(_E, unit) end
+			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then CastSpell(_E, unit) end
+			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then CastSpell(_E, unit) end
+			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then CastSpell(_E, unit) end
+			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."Always"] then CastSpell(_E, unit) end
+		end
+
+		if isAGapcloserUnitNoTarget[spell.name] and GetDistanceSqr(unit) <= 2000*2000 and (spell.target == nil or spell.target.isMe) then
+			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then spellExpired = false end
+			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then spellExpired = false end
+			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then spellExpired = false end
+			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then spellExpired = false end
+			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."Always"] then spellExpired = false end
+			if SVMainMenu.autostunn.OverwriteAutoCarry and ShadowVayneAutoCarry then spellExpired = false end
+			if SVMainMenu.autostunn.OverwriteMixedMode and ShadowVayneMixedMode then spellExpired = false end
+			if SVMainMenu.autostunn.OverwriteLaneClear and ShadowVayneLaneClear then spellExpired = false end
+			if SVMainMenu.autostunn.OverwriteLastHit and ShadowVayneLastHit then spellExpired = false end
+			if SVMainMenu.autostunn.Overwritealways then spellExpired = false end
+			informationTable = {
+				spellSource = unit,
+				spellCastedTick = GetTickCount(),
+				spellStartPos = Point(spell.startPos.x, spell.startPos.z),
+				spellEndPos = Point(spell.endPos.x, spell.endPos.z),
+				spellRange = isAGapcloserUnitNoTarget[spell.name].range,
+				spellSpeed = isAGapcloserUnitNoTarget[spell.name].projSpeed,
+				spellName = spell.name
+			}
+		end
+	end
+
+	if unit.isMe then
+		if spell.name:lower():find("attack") then
+			LastAttackedEnemy = spell.target
+			TimeToNextAA = math.floor((spell.animationTime - (GetLatency() / 2000))*1000)
+			WindUpTime = math.floor((spell.windUpTime - (GetLatency() / 2000))*1000)
+			NextAA = GetTickCount() + TimeToNextAA - WindUpTime - WindUpTime
+			IsAttacking = true
+			DelayAction(function() IsAttacking = false end, spell.windUpTime - (GetLatency() / 2000))
+			if SVMainMenu.keysetting.basiccondemn and spell.target.type == myHero.type then
+				SVMainMenu.keysetting.basiccondemn = false
+				DelayAction(function() CastSpell(_E, LastAttackedEnemy) end, spell.windUpTime - GetLatency() / 2000)
+			else
+				SVMainMenu.keysetting.basiccondemn = false
+			end
+		end
+
+		if spell.name == "Recall" then
+			RecallCast = true
+			DelayAction(function() RecallCast = false end, 0.75)
+		end
+
+		if spell.name:find("VayneCondemn") then
+			ShootRengar = false
+		end
+	end
+end
+
+function OnCreateObj(Obj)
+	if not AutoUpdateDone then return end
+	if not ScriptLoaded then return end
+	if myHero.dead then  return end
+
 	if Obj.name == "ThreshLantern" then
 		LanternObj = Obj
+	end
+
+	if RengarHero ~= nil and Obj.name == "Rengar_LeapSound.troy" and GetDistanceSqr(RengarHero) < 1000*1000 then
+		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."AutoCarry"] and ShadowVayneAutoCarry then ShootRengar = true end
+		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."LastHit"] and ShadowVayneMixedMode then ShootRengar = true end
+		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."MixedMode"] and ShadowVayneLaneClear then ShootRengar = true end
+		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."LaneClear"] and ShadowVayneLastHit then ShootRengar = true end
+		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."Always"] then ShootRengar = true end
+		if SVMainMenu.autostunn.OverwriteAutoCarry and ShadowVayneAutoCarry then  ShootRengar = true end
+		if SVMainMenu.autostunn.OverwriteMixedMode and ShadowVayneMixedMode then  ShootRengar = true end
+		if SVMainMenu.autostunn.OverwriteLaneClear and ShadowVayneLaneClear then  ShootRengar = true end
+		if SVMainMenu.autostunn.OverwriteLastHit and ShadowVayneLastHit then  ShootRengar = true end
+		if SVMainMenu.autostunn.Overwritealways then  ShootRengar = true end
+	end
+end
+
+function OnWndMsg(msg, key)
+	if not ScriptLoaded then return end
+
+	if not SVMainMenu.keysetting.togglemode then return end
+
+	if key == SVMainMenu.keysetting._param[7].key then -- AutoCarry
+		  SVMainMenu.keysetting.mixedmode,SVMainMenu.keysetting.laneclear,SVMainMenu.keysetting.lasthit = false,false,false
+	end
+
+	if key == SVMainMenu.keysetting._param[8].key then -- MixedMode
+		  SVMainMenu.keysetting.autocarry,SVMainMenu.keysetting.laneclear,SVMainMenu.keysetting.lasthit = false,false,false
+	end
+
+	if key == SVMainMenu.keysetting._param[9].key then -- LaneClear
+		  SVMainMenu.keysetting.autocarry,SVMainMenu.keysetting.mixedmode,SVMainMenu.keysetting.lasthit = false,false,false
+	end
+
+	if key == SVMainMenu.keysetting._param[10].key then -- LastHit
+		  SVMainMenu.keysetting.autocarry,SVMainMenu.keysetting.mixedmode,SVMainMenu.keysetting.laneclear = false,false,false
+	end
+end
+
+function OnDraw()
+	if not ScriptLoaded then return end
+
+	if VIP_USER then
+		if SVMainMenu.walltumble.spot1 then
+			if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
+				DrawCircle(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x107458)
+			else
+				DrawCircle(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x80FFFF)
+			end
+		end
+		if SVMainMenu.walltumble.spot2 then
+			if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
+				DrawCircle(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x107458)
+			else
+				DrawCircle(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x80FFFF)
+			end
+		end
+	end
+
+	if SVMainMenu.draw.DrawERange then
+		if SVMainMenu.draw.DrawEColor == 1 then
+			DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0x80FFFF)
+		elseif SVMainMenu.draw.DrawEColor == 2 then
+			DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0x0080FF)
+		elseif SVMainMenu.draw.DrawEColor == 3 then
+			DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0x5555FF)
+		elseif SVMainMenu.draw.DrawEColor == 4 then
+			DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0xFF2D2D)
+		elseif SVMainMenu.draw.DrawEColor == 5 then
+			DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0x8B42B3)
+		end
+	end
+
+	if SVMainMenu.draw.DrawAARange then
+		if SVMainMenu.draw.DrawAAColor == 1 then
+			DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0x80FFFF)
+		elseif SVMainMenu.draw.DrawAAColor == 2 then
+			DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0x0080FF)
+		elseif SVMainMenu.draw.DrawAAColor == 3 then
+			DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0x5555FF)
+		elseif SVMainMenu.draw.DrawAAColor == 4 then
+			DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0xFF2D2D)
+		elseif SVMainMenu.draw.DrawAAColor == 5 then
+			DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0x8B42B3)
+		end
+	end
+
+	for i, enemy in ipairs(GetEnemyHeroes()) do
+		if not _DrawStunnCircles then _DrawStunnCircles = {} end
+		if SVMainMenu.condemndraw[enemy.charName] and _DrawStunnCircles[enemy.charName] ~= nil and myHero:CanUseSpell(_E) == READY and GetDistance(enemy) < 700 and not enemy.dead and enemy.visible then
+			DrawCircle(_DrawStunnCircles[enemy.charName].x, _DrawStunnCircles[enemy.charName].y, _DrawStunnCircles[enemy.charName].z, 100, 0x8B42B3)
+		end
+	end
+
+end
+
+function OnLoad()
+	_AutoUpdate()
+end
+
+function OnTick()
+	if not AutoUpdateDone then return end
+	if myHero.dead then return end
+
+	if not ScriptLoaded then
+		ScriptLoaded = true
+		_RequireWithoutUpdate("VPrediction")
+		_RequireWithoutUpdate("SourceLib")
+		_RequireWithoutUpdate("SOW")
+		_RequireWithoutUpdate("CustomPermaShow")
+		if FileExist(LIB_PATH.."Prodiction.lua") then require "Prodiction" end
+		if VIP_USER then _RequireWithoutUpdate("Selector") end
+		_PrintScriptMsg("Version "..SVVersion.." loaded")
+		_CheckOrbWalkers()
+		_CheckRengarExist()
+		_LoadSOWSTS()
+		_LoadTables()
+		_LoadMenu()
+		autoLevelSetFunction(_AutoLevelSpell)
+		autoLevelSetSequence({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+		_G.HidePermaShow["LaneClear OnHold:"] = true
+		_G.HidePermaShow["Orbwalk OnHold:"] = true
+		_G.HidePermaShow["LastHit OnHold:"] = true
+		_G.HidePermaShow["HybridMode OnHold:"] = true
+		_G.HidePermaShow["Condemn on next BasicAttack:"] = true
+		_G.HidePermaShow["              Sida's Auto Carry: Reborn"] = true
+		_G.HidePermaShow["Auto Carry"] = true
+		_G.HidePermaShow["Last Hit"] = true
+		_G.HidePermaShow["Mixed Mode"] = true
+		_G.HidePermaShow["Lane Clear"] = true
+		_G.HidePermaShow["Auto-Condemn"] = true
+		_G.HidePermaShow["No mode active"] = true
+		_G.HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
+	else
+		_GetRunningModes()
+		_UsePermaShows()
+		_GetSTSTarget()
+		_UseBotRK()
+		_UseBilgeWater()
+		_SetToggleMode()
+		_ClickThreshLantern()
+		_WallTumble()
+		_UseTumble()
+
+		if myHero:CanUseSpell(_E) == READY then
+			_NonTargetGapCloserAfterCast()
+			_CheckRengarGapcloser()
+			_CheckStunn()
+		end
 	end
 end
 
@@ -1338,67 +1114,68 @@ end
 ---------- Stunn Logic ----------
 ---------------------------------
 function _CheckStunn()
-	if not myHero.dead and myHero:CanUseSpell(_E) == READY and CastedLastE < GetTickCount() then
-		for i, enemy in ipairs(GetEnemyHeroes()) do
-			if GetDistance(enemy, myHero) <= 1000 and not enemy.dead and enemy.visible then
-				if not VIP_USER then -- FREEUSER
-					local CurrentDirection = (Vector(enemy) - ChampInfoTable[enemy.charName].CurrentVector)
-					if CurrentDirection ~= Vector(0,0,0) then
-						CurrentDirection = CurrentDirection:normalized()
-					end
-					ChampInfoTable[enemy.charName].CurrentAngle = ChampInfoTable[enemy.charName].CurrentDirection:dotP( CurrentDirection )
-					ChampInfoTable[enemy.charName].CurrentDirection = CurrentDirection
-					ChampInfoTable[enemy.charName].CurrentVector = Vector(enemy)
-					if ChampInfoTable[enemy.charName].CurrentDirection ~= Vector(0,0,0) then
-						if ChampInfoTable[enemy.charName].CurrentAngle and ChampInfoTable[enemy.charName].CurrentAngle > 0.8 then
-							local AfterCastPos = Vector(enemy) + ChampInfoTable[enemy.charName].CurrentDirection * (enemy.ms * 0.0005)
-							local timeElapsed = _GetCollisionTime(AfterCastPos, ChampInfoTable[enemy.charName].CurrentDirection, enemy.ms, myHero, 2200 )
-							if timeElapsed ~= nil then
-								StunnPos =  Vector(enemy) + ChampInfoTable[enemy.charName].CurrentDirection * enemy.ms * (timeElapsed + 0.5)/2
-							end
+	if myHero.dead then return end
+	if not CastedLastE then CastedLastE = 0 end
+	if CastedLastE > GetTickCount() then return end
+	for i, enemy in ipairs(GetEnemyHeroes()) do
+		if GetDistance(enemy) <= 1000 and not enemy.dead and enemy.visible then
+			if not VIP_USER then -- FREEUSER
+				local CurrentDirection = (Vector(enemy) - ChampInfoTable[enemy.charName].CurrentVector)
+				if CurrentDirection ~= Vector(0,0,0) then
+					CurrentDirection = CurrentDirection:normalized()
+				end
+				ChampInfoTable[enemy.charName].CurrentAngle = ChampInfoTable[enemy.charName].CurrentDirection:dotP( CurrentDirection )
+				ChampInfoTable[enemy.charName].CurrentDirection = CurrentDirection
+				ChampInfoTable[enemy.charName].CurrentVector = Vector(enemy)
+				if ChampInfoTable[enemy.charName].CurrentDirection ~= Vector(0,0,0) then
+					if ChampInfoTable[enemy.charName].CurrentAngle and ChampInfoTable[enemy.charName].CurrentAngle > 0.8 then
+						local AfterCastPos = Vector(enemy) + ChampInfoTable[enemy.charName].CurrentDirection * (enemy.ms * 0.0005)
+						local timeElapsed = _GetCollisionTime(AfterCastPos, ChampInfoTable[enemy.charName].CurrentDirection, enemy.ms, myHero, 2200 )
+						if timeElapsed ~= nil then
+							StunnPos =  Vector(enemy) + ChampInfoTable[enemy.charName].CurrentDirection * enemy.ms * (timeElapsed + 0.5)/2
 						end
-					else
-						StunnPos = Vector(enemy)
 					end
+				else
+					StunnPos = Vector(enemy)
 				end
+			end
 
-				if VIP_USER and not SVMainMenu.vip.pr0diction then -- VPRED
-					GroundDelay = 0.32
-					EnemyPos = VP:GetPredictedPos(enemy, GroundDelay, enemy.ms, myHero, false)
-					if EnemyPos ~= nil then
-						EnemyDistance = GetDistance(EnemyPos)
-						FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
-						for i=1,10 do
-							EnemyPos = VP:GetPredictedPos(enemy, GroundDelay+FlyTimeDelay, enemy.ms, EnemyPos, false)
-							if EnemyPos~= nil then
-								EnemyDistance = GetDistance(EnemyPos)
-								FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
-							end
+			if VIP_USER and not SVMainMenu.vip.pr0diction then -- VPRED
+				GroundDelay = 0.32
+				EnemyPos = VP:GetPredictedPos(enemy, GroundDelay, enemy.ms, myHero, false)
+				if EnemyPos ~= nil then
+					EnemyDistance = GetDistance(EnemyPos)
+					FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
+					for i=1,10 do
+						EnemyPos = VP:GetPredictedPos(enemy, GroundDelay+FlyTimeDelay, enemy.ms, EnemyPos, false)
+						if EnemyPos~= nil then
+							EnemyDistance = GetDistance(EnemyPos)
+							FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
 						end
-						StunnPos = VP:GetPredictedPos(enemy, GroundDelay+FlyTimeDelay, enemy.ms, EnemyPos, false)
 					end
+					StunnPos = VP:GetPredictedPos(enemy, GroundDelay+FlyTimeDelay, enemy.ms, EnemyPos, false)
 				end
+			end
 
-				if VIP_USER and SVMainMenu.vip.pr0diction then -- PR0D
-					GroundDelay = 0.32
-					EnemyPos = Prodiction.GetTimePrediction(enemy, GroundDelay)
-					if EnemyPos ~= nil then
-						EnemyDistance = GetDistance(EnemyPos)
-						FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
-						for i=1,10 do
-							EnemyPos = Prodiction.GetTimePrediction(enemy, GroundDelay+FlyTimeDelay)
-							if EnemyPos~= nil then
-								EnemyDistance = GetDistance(EnemyPos)
-								FlyTimeDelay = _GetFlyTime(EnemyDistance)
-							end
+			if VIP_USER and SVMainMenu.vip.pr0diction then -- PR0D
+				GroundDelay = 0.32
+				EnemyPos = Prodiction.GetTimePrediction(enemy, GroundDelay)
+				if EnemyPos ~= nil then
+					EnemyDistance = GetDistance(EnemyPos)
+					FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
+					for i=1,10 do
+						EnemyPos = Prodiction.GetTimePrediction(enemy, GroundDelay+FlyTimeDelay)
+						if EnemyPos~= nil then
+							EnemyDistance = GetDistance(EnemyPos)
+							FlyTimeDelay = _GetFlyTime(EnemyDistance)
 						end
-
-						StunnPos = Prodiction.GetTimePrediction(enemy, GroundDelay+FlyTimeDelay)
 					end
+
+					StunnPos = Prodiction.GetTimePrediction(enemy, GroundDelay+FlyTimeDelay)
 				end
-				if StunnPos ~= nil and GetDistance(StunnPos) < 710 then
-					_CheckWallStunn(StunnPos, enemy)
-				end
+			end
+			if StunnPos ~= nil and GetDistance(StunnPos) < 710 then
+				_CheckWallStunn(StunnPos, enemy)
 			end
 		end
 	end
@@ -1423,21 +1200,21 @@ function _CheckWallStunn(StunnPos, enemy)
 				(SVMainMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
 				if UnderTurret(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z), true) then
 					if SVMainMenu.autostunn.towerstunn then
-					if SVMainMenu.autostunn.target then
-						if STS:GetTarget(720) == enemy then
+						if SVMainMenu.autostunn.target and STSTarget then
+							if STSTarget == enemy then
+								CastSpell(_E, enemy)
+								CastedLastE = GetTickCount() + 500
+								break
+							end
+						else
 							CastSpell(_E, enemy)
 							CastedLastE = GetTickCount() + 500
 							break
 						end
-					else
-						CastSpell(_E, enemy)
-						CastedLastE = GetTickCount() + 500
-						break
-					end
 					end
 				else
-					if SVMainMenu.autostunn.target then
-						if STS:GetTarget(720) == enemy then
+					if SVMainMenu.autostunn.target and STSTarget then
+						if STSTarget == enemy then
 							CastSpell(_E, enemy)
 							CastedLastE = GetTickCount() + 500
 							if BushFound and SVMainMenu.autostunn.trinket and myHero:CanUseSpell(ITEM_7) == 0 then
@@ -1453,7 +1230,6 @@ function _CheckWallStunn(StunnPos, enemy)
 						end
 						break
 					end
-					break
 				end
 			end
 		end
@@ -1521,176 +1297,225 @@ function _GetFlyTime(EnemyDistance)
 		return FlyTimeDelay
 end
 
----------------------------------
------------ Callbacks -----------
----------------------------------
-function _PreAttack()
-	IsAttacking = true
+--------------------------------
+---------- WallTumble ----------
+--------------------------------
+function RoundNumber(num, idp)
+  return tonumber(string.format("%." .. (idp or 0) .. "f", num))
 end
 
-function _AfterAttack()
-	IsAttacking = false
-end
-
---------------------------------
----------- Item Usage ----------
---------------------------------
-function _UseBotRK()
-	local BladeSlot = GetInventorySlotItem(3153)
-	if LastAttackedEnemy ~= nil and GetDistance(LastAttackedEnemy) < 450 and not LastAttackedEnemy.dead and LastAttackedEnemy.visible and BladeSlot ~= nil and myHero:CanUseSpell(BladeSlot) == 0 then
-		if (SVMainMenu.botrksettings.botrkautocarry and ShadowVayneAutoCarry) or
-		 (SVMainMenu.botrksettings.botrkmixedmode and ShadowVayneMixedMode) or
-		 (SVMainMenu.botrksettings.botrklaneclear and ShadowVayneLaneClear) or
-		 (SVMainMenu.botrksettings.botrklasthit and ShadowVayneLastHit) or
-		 (SVMainMenu.botrksettings.botrkalways) then
-			if (math.floor(myHero.health / myHero.maxHealth * 100)) <= SVMainMenu.botrksettings.botrkmaxheal then
-				if (math.floor(LastAttackedEnemy.health / LastAttackedEnemy.maxHealth * 100)) >= SVMainMenu.botrksettings.botrkminheal then
-					CastSpell(BladeSlot, LastAttackedEnemy)
-				end
+function _WallTumble()
+	if VIP_USER then
+		if myHero:CanUseSpell(_Q) ~= READY then TumbleOverWall_1, TumbleOverWall_2 = false,false end
+		if TumbleOverWall_1 and SVMainMenu.walltumble.spot1 then
+			if GetDistance(TumbleSpots.StandPos_1) <= 25 then
+				TumbleOverWall_1 = false
+				CastSpell(_Q, TumbleSpots.CastPos_1.x,  TumbleSpots.CastPos_1.y)
+				myHero:HoldPosition()
+			else
+				if GetDistance(TumbleSpots.StandPos_1) > 25 then myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y) end
+			end
+		end
+		if TumbleOverWall_2 and SVMainMenu.walltumble.spot2 then
+			if GetDistance(TumbleSpots.StandPos_2) <= 25 then
+				TumbleOverWall_2 = false
+				CastSpell(_Q, TumbleSpots.CastPos_2.x,  TumbleSpots.CastPos_2.y)
+				myHero:HoldPosition()
+			else
+				if GetDistance(TumbleSpots.StandPos_2) > 25 then myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y) end
 			end
 		end
 	end
 end
 
-function _UseBilgeWater()
-	local BilgeSlot = GetInventorySlotItem(3144)
-	if LastAttackedEnemy ~= nil and GetDistance(LastAttackedEnemy) < 500 and not LastAttackedEnemy.dead and LastAttackedEnemy.visible and BilgeSlot ~= nil and myHero:CanUseSpell(BilgeSlot) == 0 then
-		if (SVMainMenu.bilgesettings.bilgeautocarry and ShadowVayneAutoCarry) or
-		 (SVMainMenu.bilgesettings.bilgemixedmode and ShadowVayneMixedMode) or
-		 (SVMainMenu.bilgesettings.bilgelaneclear and ShadowVayneLaneClear) or
-		 (SVMainMenu.bilgesettings.bilgelasthit and ShadowVayneLastHit) or
-		 (SVMainMenu.bilgesettings.bilgealways) then
-			if (math.floor(myHero.health / myHero.maxHealth * 100)) <= SVMainMenu.bilgesettings.bilgemaxheal then
-				if (math.floor(LastAttackedEnemy.health / LastAttackedEnemy.maxHealth * 100)) >= SVMainMenu.bilgesettings.bilgeminheal then
-					CastSpell(BilgeSlot, LastAttackedEnemy)
+function OnSendPacket(p)
+	if not VIP_USER then return end
+	if not ScriptLoaded then return end
+	if myHero.dead then return end
+
+	if p.header == 153 and p.size == 26 then
+		if SVMainMenu.walltumble.spot1 then
+			if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
+				p.pos = 1
+				P_NetworkID = p:DecodeF()
+				P_SpellID = p:Decode1()
+				if P_NetworkID == myHero.networkID and P_SpellID == _Q then
+					if DontBlockNext then
+						DontBlockNext = false
+					else
+						p:Block()
+						DontBlockNext = true
+						TumbleOverWall_1 = true
+					end
 				end
+			end
+		end
+
+		if SVMainMenu.walltumble.spot2 then
+			if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
+				p.pos = 1
+				P_NetworkID = p:DecodeF()
+				P_SpellID = p:Decode1()
+				if P_NetworkID == myHero.networkID and P_SpellID == _Q then
+					if DontBlockNext then
+						DontBlockNext = false
+					else
+						p:Block()
+						DontBlockNext = true
+						TumbleOverWall_2 = true
+					end
+				end
+			end
+		end
+	end
+
+	if p.header == 113 then
+		p.pos = 1
+		P_NetworkID = p:DecodeF()
+		p:Decode1()
+		P_X = p:DecodeF()
+		P_X2 = RoundNumber(P_X, 2)
+		P_Y = p:DecodeF()
+		P_Y2 = RoundNumber(P_Y, 2)
+		if TumbleOverWall_1 == true and SVMainMenu.walltumble.spot1 then
+			RunToX, RunToY = TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y
+			if not (P_X2 == RunToX and P_Y2 == RunToY) then
+				p:Block()
+				myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y)
+			end
+		end
+		if TumbleOverWall_2 == true and SVMainMenu.walltumble.spot2 then
+			RunToX, RunToY = TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y
+			if not (P_X2 == RunToX and P_Y2 == RunToY) then
+				p:Block()
+				myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y)
 			end
 		end
 	end
 end
 
---------------------------------
----------- Menu Hooks ----------
---------------------------------
-function scriptConfig:_DrawParam(varIndex)
-	_CPS_Master = GetSave("scriptConfig")["Master"]
-	_CPS_Master.py1 = 0
-	_CPS_Master.py2 = _CPS_Master.py
-	_CPS_Master.color = { lgrey = 1413167931, grey = 4290427578, green = 1409321728}
-	_CPS_Master.fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14
-	_CPS_Master.midSize = _CPS_Master.fontSize / 2
-	_CPS_Master.cellSize = _CPS_Master.fontSize + 2
-	_CPS_Master.width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213
-	_CPS_Master.row = _CPS_Master.width * 0.7
-	_CPS_Master.row4 = _CPS_Master.width * 0.9
-	_CPS_Master.row3 = _CPS_Master.width * 0.8
-	_CPS_Master.row2 = _CPS_Master.width * 0.7
-	_CPS_Master.row1 = _CPS_Master.width * 0.6
+------------------------
+---- AddParam Hooks ----
+------------------------
+_G.scriptConfig.CustomaddParam = _G.scriptConfig.addParam
+_G.scriptConfig.addParam = function(self, pVar, pText, pType, defaultValue, a, b, c, d)
 
-    local pVar = self._param[varIndex].var
-	local pText = self._param[varIndex].text
-	if self.name == "sidasacvayne" or self.name == "sidasacvayne_sidasacvaynesub" then
-		self._param[varIndex].pType = 5
-		self._param[varIndex].text = "ShadowVayne found. Set the Keysettings there!"
+ -- MMA Hook
+if self.name == "MMA2013" and pText:find("OnHold") then	pType = 5 end
+
+-- SAC:Reborn r83 Hook
+if self.name:find("sidasacsetup_sidasac") and (pText == "Auto Carry" or pText == "Mixed Mode" or pText == "Lane Clear" or pText == "Last Hit") then
+	pVar = "sep"
+	pText = "ShadowVayne found. Set the Keysettings there!"
+	pType=5
+end
+
+-- SAC:Reborn r84 Hook
+if self.name:find("sidasacsetup_sidasac") and (pText == "Hotkey") then
+	pVar = "sep"
+	pText = "ShadowVayne found. Set the Keysettings there!"
+	pType=5
+end
+
+-- SAC:Reborn VayneMenu Hook
+if self.name:find("sidasacvayne") then
+	pVar = "sep"
+	pType=5
+end
+
+-- SOW Hook
+if self.name == "SV_SOW" and pVar:find("Mode") then
+	pType=5
+end
+
+ _G.scriptConfig.CustomaddParam(self, pVar, pText, pType, defaultValue, a, b, c, d)
+end
+
+-------------------------
+---- DrawParam Hooks ----
+-------------------------
+_G.scriptConfig.CustomDrawParam = _G.scriptConfig._DrawParam
+_G.scriptConfig._DrawParam = function(self, varIndex)
+	local HideParam = false
+	if self.name == "MMA2013" and (self._param[varIndex].text:find("Spells on") or self._param[varIndex].text:find("Version")) then
+	HideParam = true
+		if not MMAParams then
+			MMAParams = true
+			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
+			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
+			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
+			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
+			self:addParam(self._param[varIndex].var, "Use Spells On", SCRIPT_PARAM_LIST,1, {"None","All Units","Heroes Only","Minion Only"})
+			self:addParam("mmaVersion","MMA - version:", SCRIPT_PARAM_INFO, "0.1408")
+		end
 	end
-	if (self.name == "sidasacsetup_sidasacautocarrysub" and pText == "Hotkey")
-	or (self.name == "sidasacsetup_sidasacmixedmodesub" and pText == "Hotkey")
-	or (self.name == "sidasacsetup_sidasaclaneclearsub" and pText == "Hotkey")
-	or (self.name == "sidasacsetup_sidasaclasthitsub" and pText == "Hotkey")
-	or (pVar == "ShadowHijacked")
-	then
-		self._param[varIndex].pType = 5
-		self._param[varIndex].text = "ShadowVayne found. Set the Keysettings there!"
+
+	if self.name:find("sidasacvayne") and not self._param[varIndex].text:find("ShadowVayne") then
+		if not SACVayneParam then
+			SACVayneParam = true
+			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
+		end
+		HideParam = true
 	end
 
-	if not ((self.name == "SV_SOW" and pVar == "Mode1" and pText == "Mixed Mode!") -- SOW MixedMode
-	or (self.name == "SV_SOW" and pVar == "Mode3" and pText == "Last hit!") -- SOW LastHit
-	or (self.name == "SV_SOW" and pVar == "Mode2" and pText == "Laneclear!") -- SOW LaneClear
-	or (self.name == "SV_SOW" and pVar == "Mode0" and pText == "Carry me!") -- SOW AutoCarry
-	or (self.name == "SV_SOW" and pVar == "Hotkeys" and pText == "")
-	or (self.name == "SV_MAIN_keysetting" and pVar == "SACAutoCarry")
-	or (self.name == "SV_MAIN_keysetting" and pVar == "SACMixedMode")
-	or (self.name == "SV_MAIN_keysetting" and pVar == "SACLaneClear")
-	or (self.name == "SV_MAIN_keysetting" and pVar == "SACLastHit")
-	or (self.name == "sidasacvayne" and pVar ~= "toggleMode")
-	or (self.name == "sidasacvayne_sidasacvaynesub")
-	or (pText == "HideParam")
-	)
-	then
+	if self.name == "SV_MAIN_keysetting" and self._param[varIndex].text:find("Hidden") then
+		HideParam = true
+	end
 
---~ 		if string.find(pText, "Auto Carry") and self.name == "sidasacsetup_sidasacautocarrysub" then
---~ 			print(pVar)
---~ 		end
-		DrawLine(self._x - 2, self._y + _CPS_Master.midSize, self._x + _CPS_Master.row3 - 2, self._y + _CPS_Master.midSize, _CPS_Master.cellSize, _CPS_Master.color.lgrey)
-		DrawText(self._param[varIndex].text, _CPS_Master.fontSize, self._x, self._y, _CPS_Master.color.grey)
-		if self._param[varIndex].pType == SCRIPT_PARAM_SLICE then
-			DrawText(tostring(self[pVar]), _CPS_Master.fontSize, self._x + _CPS_Master.row2, self._y, _CPS_Master.color.grey)
-			DrawLine(self._x + _CPS_Master.row3, self._y + _CPS_Master.midSize, self._x + _CPS_Master.width + 2, self._y + _CPS_Master.midSize, _CPS_Master.cellSize, _CPS_Master.color.lgrey)
-			-- cursor
-			self._param[varIndex].cursor = (self[pVar] - self._param[varIndex].min) / (self._param[varIndex].max - self._param[varIndex].min) * (_CPS_Master.width - _CPS_Master.row3)
-			DrawLine(self._x + _CPS_Master.row3 + self._param[varIndex].cursor - 2, self._y + _CPS_Master.midSize, self._x + _CPS_Master.row3 + self._param[varIndex].cursor + 2, self._y + _CPS_Master.midSize, _CPS_Master.cellSize, 4292598640)
-		elseif self._param[varIndex].pType == SCRIPT_PARAM_LIST then
-			local text = tostring(self._param[varIndex].listTable[self[pVar]])
-			local maxWidth = (_CPS_Master.width - _CPS_Master.row3) * 0.8
-			local textWidth = GetTextArea(text, _CPS_Master.fontSize).x
-			if textWidth > maxWidth then
-				text = text:sub(1, math.floor(text:len() * maxWidth / textWidth)) .. ".."
-			end
-			DrawText(text, _CPS_Master.fontSize, self._x + _CPS_Master.row3, self._y, _CPS_Master.color.grey)
-			if self._list then self._listY = self._y + _CPS_Master.cellSize end
-		elseif self._param[varIndex].pType == SCRIPT_PARAM_INFO then
-			if not (
-			(self.name == "sidasacvayne")
-			or (self.name == "sidasacsetup_sidasacautocarrysub" and pVar == "Active")
-			or (self.name == "sidasacsetup_sidasacmixedmodesub" and pVar == "Active")
-			or (self.name == "sidasacsetup_sidasaclaneclearsub" and pVar == "Active")
-			or (self.name == "sidasacsetup_sidasaclasthitsub" and pVar == "Active")
-			or (self.name == "MMA2013" and pVar == "ShadowHijacked")
-			) then
-				DrawText(tostring(self[pVar]), _CPS_Master.fontSize, self._x + _CPS_Master.row3 + 2, self._y, _CPS_Master.color.grey)
-			end
-		elseif self._param[varIndex].pType == SCRIPT_PARAM_COLOR then
-			DrawRectangle(self._x + _CPS_Master.row3 + 2, self._y, 80, _CPS_Master.cellSize, ARGB(self[pVar][1], self[pVar][2], self[pVar][3], self[pVar][4]))
-		else
+	if self.name == "SV_SOW" and (self._param[varIndex].var == "Hotkeys" or self._param[varIndex].var:find("Mode")) then HideParam = true end
 
-
-			if (self._param[varIndex].pType == SCRIPT_PARAM_ONKEYDOWN or self._param[varIndex].pType == SCRIPT_PARAM_ONKEYTOGGLE) then
-				DrawText(self:_txtKey(self._param[varIndex].key), _CPS_Master.fontSize, self._x + _CPS_Master.row2, self._y, _CPS_Master.color.grey)
-			end
-			DrawLine(self._x + _CPS_Master.row3, self._y + _CPS_Master.midSize, self._x + _CPS_Master.width + 2, self._y + _CPS_Master.midSize, _CPS_Master.cellSize, (self[pVar] and _CPS_Master.color.green or _CPS_Master.color.lgrey))
-			DrawText((self[pVar] and "        ON" or "        OFF"), _CPS_Master.fontSize, self._x + _CPS_Master.row3 + 2, self._y, _CPS_Master.color.grey)
-			end
-		self._y = self._y + _CPS_Master.cellSize
-	else
-		self._param[varIndex].pType = 5
+	if (self.name == "MMA2013" and self._param[varIndex].text:find("OnHold")) then HideParam = true end
+	if not HideParam then
+		_G.scriptConfig.CustomDrawParam(self, varIndex)
 	end
 end
 
-function scriptConfig:_DrawSubInstance(index)
- 	_CPS_Master = GetSave("scriptConfig")["Master"]
-	_CPS_Master.py1 = 0
-	_CPS_Master.py2 = _CPS_Master.py
-	_CPS_Master.color = { lgrey = 1413167931, grey = 4290427578, red = 1422721024, green = 1409321728, ivory = 4294967280 }
-	_CPS_Master.fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14
-	_CPS_Master.midSize = _CPS_Master.fontSize / 2
-	_CPS_Master.cellSize = _CPS_Master.fontSize + 2
-	_CPS_Master.width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213
-	_CPS_Master.row = _CPS_Master.width * 0.7
-	_CPS_Master.row4 = _CPS_Master.width * 0.9
-	_CPS_Master.row3 = _CPS_Master.width * 0.8
-	_CPS_Master.row2 = _CPS_Master.width * 0.7
-	_CPS_Master.row1 = _CPS_Master.width * 0.6
-	if (self._subInstances[index].name == "sidasacvayne_sidasacvaynesub") then
-		self._subInstances[index].header = ""
-		self._subMenuIndex = 0
+-------------------------
+----- SubMenu Hooks -----
+-------------------------
+_G.scriptConfig.CustomDrawSubInstance = _G.scriptConfig._DrawSubInstance
+_G.scriptConfig._DrawSubInstance = function(self, index)
+	if not self.name:find("sidasacvayne") then
+		_G.scriptConfig.CustomDrawSubInstance(self, index)
 	end
-	if not ((self._subInstances[index].name == "sidasacvayne_sidasacvaynesub") or (self._subInstances[index].name == "sidasacvayne_sidasacvayneallowed")) then
-		local pVar = self._subInstances[index].name
-		local selected = self._subMenuIndex == index
-		DrawLine(self._x - 2, self._y + _CPS_Master.midSize, self._x + _CPS_Master.width + 2, self._y + _CPS_Master.midSize, _CPS_Master.cellSize, (selected and _CPS_Master.color.red or _CPS_Master.color.lgrey))
-		DrawText(self._subInstances[index].header, _CPS_Master.fontSize, self._x, self._y, (selected and _CPS_Master.color.ivory or _CPS_Master.color.grey))
-		DrawText("        >>", _CPS_Master.fontSize, self._x + _CPS_Master.row3 + 2, self._y, (selected and _CPS_Master.color.ivory or _CPS_Master.color.grey))
-		--_SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
-		self._y = self._y + _CPS_Master.cellSize
-	end
+end
+
+------------------------
+----- Unused Funcs -----
+------------------------
+function _GetNeededAutoHits(enemy)
+		local PredictHP = math.ceil(enemy.health)
+		local ThisAA = 0
+		local BladeSlot = GetInventorySlotItem(3153)
+		local TrueDMGPercent = ((enemy.maxHealth/100))*(3+(myHero:GetSpellData(_W).level))
+		if myHero:GetSpellData(_W).level > 0 then TargetTrueDmg = math.floor((((enemy.maxHealth/100)*(3+(myHero:GetSpellData(_W).level)))+(10+(myHero:GetSpellData(_W).level)*10))/3) else	TargetTrueDmg = 0 end
+		while PredictHP > 0 do
+			ThisAA = ThisAA + 1
+			DMGThisAA = math.floor((math.floor(myHero.totalDamage)) * 100 / (100 + enemy.armor))
+			if BladeSlot ~= nil then BladeDMG = math.floor(math.floor(PredictHP)*5 / (100 + enemy.armor)) else BladeDMG = 0 end
+			MyDMG = DMGThisAA + BladeDMG + TargetTrueDmg
+			PredictHP = PredictHP - MyDMG
+		end
+
+		if ThisAA ~= math.floor(ThisAA/3)*3 then
+			local PredictHP = math.ceil(enemy.health)
+			for i = 1,math.floor(ThisAA/3)*3,1 do
+				DMGThisAA = math.floor((math.floor(myHero.totalDamage)) * 100 / (100 + enemy.armor))
+				if BladeSlot ~= nil then BladeDMG = math.floor(math.floor(PredictHP)*5 / (100 + enemy.armor)) else BladeDMG = 0 end
+				MyDMG = DMGThisAA + BladeDMG + TargetTrueDmg
+				PredictHP = PredictHP - MyDMG
+			end
+
+			for i = 1,2,1 do
+				DMGThisAA = math.floor((math.floor(myHero.totalDamage)) * 100 / (100 + enemy.armor))
+				if BladeSlot ~= nil then BladeDMG = math.floor(math.floor(PredictHP)*5 / (100 + enemy.armor)) else BladeDMG = 0 end
+				MyDMG = DMGThisAA + BladeDMG
+				PredictHP = PredictHP - MyDMG
+			end
+
+			if PredictHP > 0 then
+				ThisAA = (math.ceil(ThisAA/3)*3)
+			end
+		end
+	return ThisAA
 end
