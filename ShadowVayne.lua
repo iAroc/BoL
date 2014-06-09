@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.17
+	Version: 3.18
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -27,12 +27,12 @@ if myHero.charName ~= "Vayne" then return end
 		SVUpdateMenu:addParam("version","ShadowVayne Version:", SCRIPT_PARAM_INFO, "v"..SVVersion)
 
 		_AutoUpdates = {
-			{["Name"] = "VPrediction", 		["Version"] = "/Hellsing/BoL/master/version/VPrediction.version", 		["Script"] = "/Hellsing/BoL/master/common/VPrediction.lua"},
-			{["Name"] = "SOW", 				["Version"] = "/Hellsing/BoL/master/version/SOW.version", 				["Script"] = "/Hellsing/BoL/master/common/SOW.lua"},
-			{["Name"] = "CustomPermaShow", 	["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version", 	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua"},
-			{["Name"] = "SourceLib", 		["Version"] = "/TheRealSource/public/master/common/SourceLib.version", 	["Script"] = "/TheRealSource/public/master/common/SourceLib.lua"},
-			{["Name"] = "Selector", 		["Version"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision", 	["Script"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.lua"},
-			{["Name"] = "ShadowVayne", 		["Version"] = "/Superx321/BoL/master/ShadowVayne.Version", 				["Script"] = "/Superx321/BoL/master/ShadowVayne.lua"},
+			{["Name"] = "VPrediction", 		["Version"] = "/Hellsing/BoL/master/version/VPrediction.version", 		["Script"] = "/Hellsing/BoL/master/common/VPrediction.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
+			{["Name"] = "SOW", 				["Version"] = "/Hellsing/BoL/master/version/SOW.version", 				["Script"] = "/Hellsing/BoL/master/common/SOW.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
+			{["Name"] = "CustomPermaShow", 	["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version", 	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
+			{["Name"] = "SourceLib", 		["Version"] = "/TheRealSource/public/master/common/SourceLib.version", 	["Script"] = "/TheRealSource/public/master/common/SourceLib.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
+			{["Name"] = "Selector", 		["Version"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision", 	["Script"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
+			{["Name"] = "ShadowVayne", 		["Version"] = "/Superx321/BoL/master/ShadowVayne.Version", 				["Script"] = "/Superx321/BoL/master/ShadowVayne.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
 		}
 		GetLibsStarted = true
 		socket = require("socket")
@@ -1062,15 +1062,14 @@ end
 function OnTick()
 	if not AutoUpdateDone then return end
 	if myHero.dead then return end
-
 	if not ScriptLoaded then
 		ScriptLoaded = true
 		_RequireWithoutUpdate("VPrediction")
 		_RequireWithoutUpdate("SourceLib")
 		_RequireWithoutUpdate("SOW")
 		_RequireWithoutUpdate("CustomPermaShow")
-		if FileExist(LIB_PATH.."Prodiction.lua") then require "Prodiction" end
-		if VIP_USER then _RequireWithoutUpdate("Selector") end
+		if VIP_USER and FileExist(LIB_PATH.."Prodiction.lua") then require "Prodiction" end
+--~ 		if VIP_USER then _RequireWithoutUpdate("Selector") end
 		_PrintScriptMsg("Version "..SVVersion.." loaded")
 		_CheckOrbWalkers()
 		_CheckRengarExist()
@@ -1160,19 +1159,24 @@ function _CheckStunn()
 
 			if VIP_USER and SVMainMenu.vip.pr0diction then -- PR0D
 				GroundDelay = 0.32
-				EnemyPos = Prodiction.GetTimePrediction(enemy, GroundDelay)
-				if EnemyPos ~= nil then
-					EnemyDistance = GetDistance(EnemyPos)
-					FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
-					for i=1,10 do
-						EnemyPos = Prodiction.GetTimePrediction(enemy, GroundDelay+FlyTimeDelay)
-						if EnemyPos~= nil then
-							EnemyDistance = GetDistance(EnemyPos)
-							FlyTimeDelay = _GetFlyTime(EnemyDistance)
+				if enemy ~= nil and GroundDelay ~= nil then
+					EnemyPos = Prodiction.GetTimePrediction(enemy, GroundDelay)
+					if EnemyPos ~= nil then
+						EnemyDistance = GetDistance(EnemyPos)
+						FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
+						for i=1,10 do
+							if enemy ~= nil and GroundDelay ~= nil and FlyTimeDelay ~= nil then
+								EnemyPos = Prodiction.GetTimePrediction(enemy, GroundDelay+FlyTimeDelay)
+								if EnemyPos~= nil then
+									EnemyDistance = GetDistance(EnemyPos)
+									FlyTimeDelay = _GetFlyTime(EnemyDistance)
+								end
+							end
+						end
+						if enemy ~= nil and GroundDelay ~= nil and FlyTimeDelay ~= nil then
+							StunnPos = Prodiction.GetTimePrediction(enemy, GroundDelay+FlyTimeDelay)
 						end
 					end
-
-					StunnPos = Prodiction.GetTimePrediction(enemy, GroundDelay+FlyTimeDelay)
 				end
 			end
 			if StunnPos ~= nil and GetDistance(StunnPos) < 710 then
@@ -1406,21 +1410,21 @@ if self.name == "MMA2013" and pText:find("OnHold") then	pType = 5 end
 
 -- SAC:Reborn r83 Hook
 if self.name:find("sidasacsetup_sidasac") and (pText == "Auto Carry" or pText == "Mixed Mode" or pText == "Lane Clear" or pText == "Last Hit") then
-	pVar = "sep"
-	pText = "ShadowVayne found. Set the Keysettings there!"
+--~ 	pVar = "sep"
+--~ 	pText = "ShadowVayne found. Set the Keysettings there!"
 	pType=5
 end
 
 -- SAC:Reborn r84 Hook
 if self.name:find("sidasacsetup_sidasac") and (pText == "Hotkey") then
-	pVar = "sep"
-	pText = "ShadowVayne found. Set the Keysettings there!"
+--~ 	pVar = "sep"
+--~ 	pText = "ShadowVayne found. Set the Keysettings there!"
 	pType=5
 end
 
 -- SAC:Reborn VayneMenu Hook
 if self.name:find("sidasacvayne") then
-	pVar = "sep"
+--~ 	pVar = "sep"
 	pType=5
 end
 
@@ -1438,6 +1442,12 @@ end
 _G.scriptConfig.CustomDrawParam = _G.scriptConfig._DrawParam
 _G.scriptConfig._DrawParam = function(self, varIndex)
 	local HideParam = false
+
+	if self.name:find("sidasacsetup_sidasac") and (self._param[varIndex].text == "Hotkey") then
+		self._param[varIndex].text = "ShadowVayne found. Set the Keysettings there!"
+		self._param[varIndex].var = "sep"
+	end
+
 	if self.name == "MMA2013" and (self._param[varIndex].text:find("Spells on") or self._param[varIndex].text:find("Version")) then
 	HideParam = true
 		if not MMAParams then
