@@ -1,7 +1,7 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.15
+	Version: 3.16
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
@@ -44,12 +44,12 @@ if myHero.charName ~= "Vayne" then return end
 
 		for i=1,#_AutoUpdates do
 		clientversion[i] = socket.connect("reddi-ts.de", 80)
-		clientversion[i]:send("GET /BoL/Scripts.php?path=".._AutoUpdates[i]["Version"].." HTTP/1.0\r\n\r\n")
+		clientversion[i]:send("GET /BoL/Scripts.php?path=".._AutoUpdates[i]["Version"].."&rand="..tonumber(math.random(10000)).." HTTP/1.0\r\n\r\n")
 		end
 
 		for i=1,#_AutoUpdates do
 		clientscript[i] = socket.connect("reddi-ts.de", 80)
-		clientscript[i]:send("GET /BoL/Scripts.php?path=".._AutoUpdates[i]["Script"].." HTTP/1.0\r\n\r\n")
+		clientscript[i]:send("GET /BoL/Scripts.php?path=".._AutoUpdates[i]["Script"].."&rand="..tonumber(math.random(10000)).." HTTP/1.0\r\n\r\n")
 		end
 	end
 
