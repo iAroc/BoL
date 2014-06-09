@@ -94,6 +94,7 @@ if myHero.charName ~= "Vayne" then return end
 				LocalVersion = tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"]))
 			end
 			if tonumber(_AutoUpdates[i]["ServerVersion"]) > LocalVersion then
+				_AutoUpdates[i]["OldVersion"] = LocalVersion
 				if _AutoUpdates[i]["Name"] == "ShadowVayne" then
 					if SVUpdateMenu.UseAutoCheck then
 						if SVUpdateMenu.UseAutoLoad then
@@ -103,7 +104,7 @@ if myHero.charName ~= "Vayne" then return end
 							LibNameStringSub = string.sub(LibNameString, LibNameFindCache+13)
 							LibNameFile:write(LibNameStringSub)
 							LibNameFile:close()
-							_PrintUpdateMsg("Updated Version "..tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"])).." => "..tonumber(_AutoUpdates[i]["ServerVersion"]).."", _AutoUpdates[i]["Name"])
+							_PrintUpdateMsg("Updated Version ".._AutoUpdates[i]["OldVersion"].." => "..tonumber(_AutoUpdates[i]["ServerVersion"]).."", _AutoUpdates[i]["Name"])
 							_PrintUpdateMsg("Please Reload with F9!", _AutoUpdates[i]["Name"])
 						else
 							_PrintUpdateMsg("New Update available: Version "..tonumber(_AutoUpdates[i]["ServerVersion"]), _AutoUpdates[i]["Name"])
