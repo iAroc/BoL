@@ -1,14 +1,13 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.18
+	Version: 3.19
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
 	]]
 
 if myHero.charName ~= "Vayne" then return end
-
 ------------------------
 ------ AutoUpdate ------
 ------------------------
@@ -117,7 +116,13 @@ if myHero.charName ~= "Vayne" then return end
 					LibNameString = _AutoUpdates[i]["ScriptRaw"]
 					LibNameFindCache = string.find(LibNameString, "text/html")
 					LibNameStringSub = string.sub(LibNameString, LibNameFindCache+13)
-					LibNameFile:write(LibNameStringSub)
+					LibNameFindCache2 = string.find(LibNameStringSub, "Connection: close")
+					if LibNameFindCache2 then
+						LibNameStringSub2 = string.sub(LibNameStringSub, LibNameFindCache2+18)
+						LibNameFile:write(LibNameStringSub2)
+					else
+						LibNameFile:write(LibNameStringSub)
+					end
 					LibNameFile:close()
 				end
 			end
