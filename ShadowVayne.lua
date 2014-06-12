@@ -1,140 +1,55 @@
 --[[
 
 	Shadow Vayne Script by Superx321
-	Version: 3.19
 
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
 	]]
-
 if myHero.charName ~= "Vayne" then return end
+SVVersion = 3.20
 ------------------------
 ------ AutoUpdate ------
 ------------------------
  function _AutoUpdate()
-	if not GetLibsStarted then
-		SVVersion =  tonumber(_GetLocalVersion("ShadowVayne"))
+	SVUpdateMenu = scriptConfig("[ShadowVayne] UpdateSettings", "SV_UPDATE")
+	SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
+	SVSOWMenu = scriptConfig("[ShadowVayne] SimpleOrbWalker Settings", "SV_SOW")
+	SVTSMenu = scriptConfig("[ShadowVayne] TargetSelector Settings", "SV_TS")
 
-		SVUpdateMenu = scriptConfig("[ShadowVayne] UpdateSettings", "SV_UPDATE")
-		SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
-		SVSOWMenu = scriptConfig("[ShadowVayne] SimpleOrbWalker Settings", "SV_SOW")
-		SVTSMenu = scriptConfig("[ShadowVayne] TargetSelector Settings", "SV_TS")
+	SVUpdateMenu:addParam("UseAutoCheck","Check for Updates", SCRIPT_PARAM_ONOFF, true)
+	SVUpdateMenu:addParam("UseAutoLoad","Automatic Download Updates", SCRIPT_PARAM_ONOFF, true)
 
-		SVUpdateMenu:addParam("UseAutoCheck","Check for Updates", SCRIPT_PARAM_ONOFF, true)
-		SVUpdateMenu:addParam("UseAutoLoad","Automatic Download Updates", SCRIPT_PARAM_ONOFF, true)
+	SVUpdateMenu:addParam("version","ShadowVayne Version:", SCRIPT_PARAM_INFO, "v"..SVVersion)
 
-		SVUpdateMenu:addParam("version","ShadowVayne Version:", SCRIPT_PARAM_INFO, "v"..SVVersion)
+	_AutoUpdates = {
+		{["Name"] = "VPrediction", 		["Version"] = "/Hellsing/BoL/master/version/VPrediction.version", 		["Script"] = "/Hellsing/BoL/master/common/VPrediction.lua"},
+		{["Name"] = "SOW", 				["Version"] = "/Hellsing/BoL/master/version/SOW.version", 				["Script"] = "/Hellsing/BoL/master/common/SOW.lua"},
+		{["Name"] = "CustomPermaShow", 	["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version", 	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
+		{["Name"] = "SourceLib", 		["Version"] = "/TheRealSource/public/master/common/SourceLib.version", 	["Script"] = "/TheRealSource/public/master/common/SourceLib.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
+	--	{["Name"] = "Selector", 		["Version"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision", 	["Script"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
+		{["Name"] = "ShadowVayne", 		["Version"] = "/Superx321/BoL/master/ShadowVayne.Version", 				["Script"] = "/Superx321/BoL/master/ShadowVayne.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
+	}
+	socket = require("socket")
 
-		_AutoUpdates = {
-			{["Name"] = "VPrediction", 		["Version"] = "/Hellsing/BoL/master/version/VPrediction.version", 		["Script"] = "/Hellsing/BoL/master/common/VPrediction.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
-			{["Name"] = "SOW", 				["Version"] = "/Hellsing/BoL/master/version/SOW.version", 				["Script"] = "/Hellsing/BoL/master/common/SOW.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
-			{["Name"] = "CustomPermaShow", 	["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version", 	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
-			{["Name"] = "SourceLib", 		["Version"] = "/TheRealSource/public/master/common/SourceLib.version", 	["Script"] = "/TheRealSource/public/master/common/SourceLib.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
-			{["Name"] = "Selector", 		["Version"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision", 	["Script"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
-			{["Name"] = "ShadowVayne", 		["Version"] = "/Superx321/BoL/master/ShadowVayne.Version", 				["Script"] = "/Superx321/BoL/master/ShadowVayne.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
-		}
-		GetLibsStarted = true
-		socket = require("socket")
-		LibsDone = 0
-		SocketsClosed = 0
-		GotVersions = 0
-		clientversion = {}
-		clientscript = {}
-
-		for i=1,#_AutoUpdates do
-		clientversion[i] = socket.connect("reddi-ts.de", 80)
-		clientversion[i]:send("GET /BoL/Scripts.php?path=".._AutoUpdates[i]["Version"].."&rand="..tonumber(math.random(10000)).." HTTP/1.0\r\n\r\n")
-		end
-
-		for i=1,#_AutoUpdates do
-		clientscript[i] = socket.connect("reddi-ts.de", 80)
-		clientscript[i]:send("GET /BoL/Scripts.php?path=".._AutoUpdates[i]["Script"].."&rand="..tonumber(math.random(10000)).." HTTP/1.0\r\n\r\n")
-		end
-	end
-
-	if GotVersions ~= #_AutoUpdates then
-		for i=1,#_AutoUpdates do
-			if _AutoUpdates[i]["VersionClosed"] ~= true then
-				s, status, partial = clientversion[i]:receive(1024)
-				if not _AutoUpdates[i]["VersionRaw"] then _AutoUpdates[i]["VersionRaw"] = "" end
-				_AutoUpdates[i]["VersionRaw"] = _AutoUpdates[i]["VersionRaw"]..(s or partial)
-				if status == "closed" then
-					clientversion[i]:close()
-					_AutoUpdates[i]["VersionClosed"] = true
-					GotVersions = GotVersions + 1
-					_AutoUpdates[i]["ServerVersion"] = tonumber(string.sub(_AutoUpdates[i]["VersionRaw"], -8))
-				end
-			end
+	for i=1,#_AutoUpdates do
+		TcpSocket = socket.connect("reddi-ts.de", 80)
+		TcpSocket:send("GET /BoL/Scripts.php?path=".._AutoUpdates[i]["Version"].."&rand="..tonumber(math.random(10000)).." HTTP/1.0\r\n\r\n")
+		VersionReceive = TcpSocket:receive('*a')
+		_AutoUpdates[i]["ServerVersion"] = tonumber(string.sub(VersionReceive, string.find(VersionReceive, "<script>")+8, string.find(VersionReceive, "</script>")-1))
+		_AutoUpdates[i]["LocalVersion"] = tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"])) or 0
+		if _AutoUpdates[i]["ServerVersion"] > _AutoUpdates[i]["LocalVersion"] then
+			TcpSocket = socket.connect("reddi-ts.de", 80)
+			TcpSocket:send("GET /BoL/Scripts.php?path=".._AutoUpdates[i]["Script"].."&rand="..tonumber(math.random(10000)).." HTTP/1.0\r\n\r\n")
+			ScriptReceive = TcpSocket:receive('*a')
+			_AutoUpdates[i]["ServerScript"] = string.sub(ScriptReceive, string.find(ScriptReceive, "<script>")+8, string.find(ScriptReceive, "</script>")-1)
+			_PrintUpdateMsg("Updated Version ".._AutoUpdates[i]["LocalVersion"].." => ".._AutoUpdates[i]["ServerVersion"].."", _AutoUpdates[i]["Name"])
+			LibNameFile = io.open(LIB_PATH.._AutoUpdates[i]["Name"]..".lua", "w+")
+			LibNameString = _AutoUpdates[i]["ServerScript"]
+			LibNameFile:write(LibNameString)
+			LibNameFile:close()
 		end
 	end
-
-
-	if SocketsClosed ~= #_AutoUpdates then
-		for i=1,#_AutoUpdates do
-			if _AutoUpdates[i]["ScriptClosed"] ~= true then
-				s, status, partial = clientscript[i]:receive(1024)
-				if not _AutoUpdates[i]["ScriptRaw"] then _AutoUpdates[i]["ScriptRaw"] = "" end
-				_AutoUpdates[i]["ScriptRaw"] = _AutoUpdates[i]["ScriptRaw"]..(s or partial)
-				if status == "closed" then
-					clientscript[i]:close()
-					_AutoUpdates[i]["ScriptClosed"] = true
-					SocketsClosed = SocketsClosed + 1
-				end
-			end
-		end
-	end
-
-	if SocketsClosed == #_AutoUpdates and not WroteIt then
-		WroteIt = true
-		for i=1,#_AutoUpdates do
-			if tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"])) == nil then
-				LocalVersion = 0
-			else
-				LocalVersion = tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"]))
-			end
-			if tonumber(_AutoUpdates[i]["ServerVersion"]) > LocalVersion then
-				_AutoUpdates[i]["OldVersion"] = LocalVersion
-				if _AutoUpdates[i]["Name"] == "ShadowVayne" then
-					if SVUpdateMenu.UseAutoCheck then
-						if SVUpdateMenu.UseAutoLoad then
-							LibNameFile = io.open(SCRIPT_PATH.. GetCurrentEnv().FILE_NAME, "w+")
-							LibNameString = _AutoUpdates[i]["ScriptRaw"]
-							LibNameFindCache = string.find(LibNameString, "text/html")
-							LibNameStringSub = string.sub(LibNameString, LibNameFindCache+13)
-							LibNameFile:write(LibNameStringSub)
-							LibNameFile:close()
-							_PrintUpdateMsg("Updated Version ".._AutoUpdates[i]["OldVersion"].." => "..tonumber(_AutoUpdates[i]["ServerVersion"]).."", _AutoUpdates[i]["Name"])
-							_PrintUpdateMsg("Please Reload with F9!", _AutoUpdates[i]["Name"])
-						else
-							_PrintUpdateMsg("New Update available: Version "..tonumber(_AutoUpdates[i]["ServerVersion"]), _AutoUpdates[i]["Name"])
-							_PrintUpdateMsg("AutoDownload is set to off", _AutoUpdates[i]["Name"])
-						end
-					end
-				else
-					_PrintUpdateMsg("Updated Version "..tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"])).." => "..tonumber(_AutoUpdates[i]["ServerVersion"]).."", _AutoUpdates[i]["Name"])
-					LibNameFile = io.open(LIB_PATH.._AutoUpdates[i]["Name"]..".lua", "w+")
-					LibNameString = _AutoUpdates[i]["ScriptRaw"]
-					LibNameFindCache = string.find(LibNameString, "text/html")
-					LibNameStringSub = string.sub(LibNameString, LibNameFindCache+13)
-					LibNameFindCache2 = string.find(LibNameStringSub, "Connection: close")
-					if LibNameFindCache2 then
-						LibNameStringSub2 = string.sub(LibNameStringSub, LibNameFindCache2+18)
-						LibNameFile:write(LibNameStringSub2)
-					else
-						LibNameFile:write(LibNameStringSub)
-					end
-					LibNameFile:close()
-				end
-			end
-			LibsDone = LibsDone + 1
-		end
-	end
-
-	if LibsDone == #_AutoUpdates then
-		AutoUpdateDone = true
-	else
-		_AutoUpdate()
-	end
+	AutoUpdateDone = true
 end
 
 function _GetLocalVersion(LibName)
@@ -730,7 +645,7 @@ function _GetRunningModes()
 end
 
 function _AutoLevelSpell()
-	if GetGame().map.index ~= 4 and myHero.level < 4 then
+	if GetGame().map.index == 8 and myHero.level < 4 and SVMainMenu.autolevel.UseAutoLevelfirst then
 		LevelSpell(_Q)
 		LevelSpell(_W)
 		LevelSpell(_E)
@@ -1065,10 +980,10 @@ function OnLoad()
 end
 
 function OnTick()
+	if LoadError then return end
 	if not AutoUpdateDone then return end
 	if myHero.dead then return end
 	if not ScriptLoaded then
-		ScriptLoaded = true
 		_RequireWithoutUpdate("VPrediction")
 		_RequireWithoutUpdate("SourceLib")
 		_RequireWithoutUpdate("SOW")
@@ -1096,6 +1011,7 @@ function OnTick()
 		_G.HidePermaShow["Auto-Condemn"] = true
 		_G.HidePermaShow["No mode active"] = true
 		_G.HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
+		ScriptLoaded = true
 	else
 		_GetRunningModes()
 		_UsePermaShows()
