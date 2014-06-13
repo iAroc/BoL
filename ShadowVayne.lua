@@ -140,11 +140,11 @@ function OnLoad()
 end
 
 function OnTick() if type(_OnTick) == "function" then _OnTick() end end
-function OnProcessSpell() if type(_OnProcessSpell) == "function" then _OnProcessSpell() end  end
-function OnCreateObj() if type(_OnCreateObj) == "function" then _OnCreateObj() end  end
-function OnWndMsg() if type(_OnWndMsg) == "function" then _OnWndMsg() end  end
+function OnProcessSpell(unit, spell) if type(_OnProcessSpell) == "function" then _OnProcessSpell(unit, spell) end  end
+function OnCreateObj(Obj) if type(_OnCreateObj) == "function" then _OnCreateObj(Obj) end  end
+function OnWndMsg(msg, key) if type(_OnWndMsg) == "function" then _OnWndMsg(msg, key) end  end
 function OnDraw() if type(_OnDraw) == "function" then _OnDraw() end  end
-function OnCreateObj() if type(_OnCreateObj) == "function" then _OnCreateObj() end  end
+function OnCreateObj(Obj) if type(_OnCreateObj) == "function" then _OnCreateObj(Obj) end  end
 
 ------------------------
 ---- AddParam Hooks ----
