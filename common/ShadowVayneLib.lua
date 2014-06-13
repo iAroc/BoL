@@ -5,167 +5,15 @@
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
 	]]
-if myHero.charName ~= "Vayne" then return end
-version = 3.21
-
---~ 	SVUpdateMenu = scriptConfig("[ShadowVayne] UpdateSettings", "SV_UPDATE")
---~ 	SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
---~ 	SVSOWMenu = scriptConfig("[ShadowVayne] SimpleOrbWalker Settings", "SV_SOW")
---~ 	SVTSMenu = scriptConfig("[ShadowVayne] TargetSelector Settings", "SV_TS")
-
---~ 	SVUpdateMenu:addParam("UseAutoCheck","Check for Updates", SCRIPT_PARAM_ONOFF, true)
---~ 	SVUpdateMenu:addParam("UseAutoLoad","Automatic Download Updates", SCRIPT_PARAM_ONOFF, true)
-
-------------------------
------- AutoUpdate ------
-------------------------
- function _AutoUpdate()
-	SVUpdateMenu = scriptConfig("[ShadowVayne] UpdateSettings", "SV_UPDATE")
+	version = 3.21
 	SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
 	SVSOWMenu = scriptConfig("[ShadowVayne] SimpleOrbWalker Settings", "SV_SOW")
 	SVTSMenu = scriptConfig("[ShadowVayne] TargetSelector Settings", "SV_TS")
-
-	SVUpdateMenu:addParam("UseAutoCheck","Check for Updates", SCRIPT_PARAM_ONOFF, true)
-	SVUpdateMenu:addParam("UseAutoLoad","Automatic Download Updates", SCRIPT_PARAM_ONOFF, true)
-
-	SVUpdateMenu:addParam("version","ShadowVayne Version:", SCRIPT_PARAM_INFO, "v"..SVVersion)
-
-	_AutoUpdates = {
-		{["Name"] = "VPrediction", 		["Version"] = "/Hellsing/BoL/master/version/VPrediction.version", 		["Script"] = "/Hellsing/BoL/master/common/VPrediction.lua"},
-		{["Name"] = "SOW", 				["Version"] = "/Hellsing/BoL/master/version/SOW.version", 				["Script"] = "/Hellsing/BoL/master/common/SOW.lua"},
-		{["Name"] = "CustomPermaShow", 	["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version", 	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
-		{["Name"] = "SourceLib", 		["Version"] = "/TheRealSource/public/master/common/SourceLib.version", 	["Script"] = "/TheRealSource/public/master/common/SourceLib.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
-	--	{["Name"] = "Selector", 		["Version"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision", 	["Script"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
-		{["Name"] = "ShadowVayne", 		["Version"] = "/Superx321/BoL/master/ShadowVayne.Version", 				["Script"] = "/Superx321/BoL/master/ShadowVayne.lua",["VersionRaw"]="",["VersionClosed"]=false,["ServerVersion"]=0},
-	}
-	socket = require("socket")
-
-	for i=1,#_AutoUpdates do
-		TcpSocket = socket.connect("reddi-ts.de", 80)
-		TcpSocket:send("GET /BoL/Scripts.php?path=".._AutoUpdates[i]["Version"].."&rand="..tonumber(math.random(10000)).." HTTP/1.0\r\n\r\n")
-		VersionReceive = TcpSocket:receive('*a')
-		_AutoUpdates[i]["ServerVersion"] = tonumber(string.sub(VersionReceive, string.find(VersionReceive, "<script>")+8, string.find(VersionReceive, "</script>")-1))
-		_AutoUpdates[i]["LocalVersion"] = tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"])) or 0
-		if _AutoUpdates[i]["ServerVersion"] > _AutoUpdates[i]["LocalVersion"] then
-			TcpSocket = socket.connect("reddi-ts.de", 80)
-			TcpSocket:send("GET /BoL/Scripts.php?path=".._AutoUpdates[i]["Script"].."&rand="..tonumber(math.random(10000)).." HTTP/1.0\r\n\r\n")
-			ScriptReceive = TcpSocket:receive('*a')
-			_AutoUpdates[i]["ServerScript"] = string.sub(ScriptReceive, string.find(ScriptReceive, "<script>")+8, string.find(ScriptReceive, "</script>")-1)
-			_PrintUpdateMsg("Updated Version ".._AutoUpdates[i]["LocalVersion"].." => ".._AutoUpdates[i]["ServerVersion"].."", _AutoUpdates[i]["Name"])
-			LibNameFile = io.open(LIB_PATH.._AutoUpdates[i]["Name"]..".lua", "w+")
-			LibNameString = _AutoUpdates[i]["ServerScript"]
-			LibNameFile:write(LibNameString)
-			LibNameFile:close()
-		end
-	end
-	AutoUpdateDone = true
-end
-
-function _GetLocalVersion(LibName)
-	if LibName == "ShadowVayne" then
-		FilePath = SCRIPT_PATH.. GetCurrentEnv().FILE_NAME
-	else
-		FilePath = LIB_PATH..LibName..".lua"
-	end
-	if not FileExist(FilePath) then
-		LibNameFile = io.open(FilePath, "w+")
-		LibNameFile:write("version = 0")
-		LibNameFile:close()
-	end
-	LibNameFile = io.open(FilePath, "r")
-	LibNameString = LibNameFile:read("*a")
-	LibNameFile:close()
-	LibNameVersionPos = LibNameString:lower():find("version")
-	if type(LibNameVersionPos) == "number" then
-		for i = 1,20 do
-			GetCurrentChar = string.sub(LibNameString, LibNameVersionPos+i, LibNameVersionPos+i)
-			if type(tonumber(GetCurrentChar)) == "number" then
-				VersionNumberStartPos = LibNameVersionPos+i
-				break
-			end
-		end
-
-		for i = 0,20 do
-			GetCurrentChar = string.sub(LibNameString, VersionNumberStartPos+i, VersionNumberStartPos+i)
-			if type(tonumber(GetCurrentChar)) ~= "number" and GetCurrentChar ~= "." then
-				VersionNumberEndPos = VersionNumberStartPos+i-1
-				break
-			end
-		end
-		FileVersion = string.sub(LibNameString, VersionNumberStartPos, VersionNumberEndPos)
-		if tonumber(FileVersion) == nil then FileVersion = 0 end
-		if FileVersion == "2.431" then
-			return 5
-		else
-			return FileVersion
-		end
-	else
-		return 0.01
-	end
-end
-
-function _PrintUpdateMsg(Msg, LibName)
-	if LibName == nil or LibName == "ShadowVayne" then
-		print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
-	else
-		print("<font color=\"#F0Ff8d\"><b>ShadowVayne("..LibName.."):</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
-	end
-end
-
 ------------------------
 ------ MainScript ------
 ------------------------
 function _PrintScriptMsg(Msg)
 	PrintChat("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
-end
-
-function _SwapAutoUpdate(SwapState, LibName)
-	LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
-	LibNameString = LibNameFile:read("*a")
-	LibNameCutString = LibNameString
-	GroundPos = 0
-	LibNameFile:close()
-	for i = 1,10 do
-		LibNameUpdatePos = LibNameCutString:lower():find("autoupdate")
-		if type(LibNameUpdatePos) == "number" then
-			if string.find(string.sub(LibNameCutString, LibNameUpdatePos, LibNameUpdatePos+20), "= true") then
-				StartString = string.sub(LibNameString, 0, GroundPos+LibNameUpdatePos-1)
-				if SwapState == false then
-					ReplaceString = string.gsub(string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20), "= true", "= false")
-				else
-					ReplaceString = string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20)
-				end
-				EndString = string.sub(LibNameString, GroundPos+LibNameUpdatePos+21)
-				break
-			elseif string.find(string.sub(LibNameCutString, LibNameUpdatePos, LibNameUpdatePos+20), "= false") then
-				StartString = string.sub(LibNameString, 0, GroundPos+LibNameUpdatePos-1)
-				if SwapState == true then
-					ReplaceString = string.gsub(string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20), "= false", "= true")
-				else
-					ReplaceString = string.sub(LibNameString, GroundPos+LibNameUpdatePos, GroundPos+LibNameUpdatePos+20)
-				end
-				EndString = string.sub(LibNameString, GroundPos+LibNameUpdatePos+21)
-				break
-			else
-				LibNameCutString = string.sub(LibNameCutString, 20)
-				GroundPos = GroundPos + 20
-			end
-		else
-
-		StartString = LibNameString
-		ReplaceString = ""
-		EndString = ""
-		end
-	end
-	LibNameFile = io.open(LIB_PATH..LibName..".lua", "w+")
-	LibNameFile:write(StartString..ReplaceString..EndString)
-	LibNameFile:close()
-end
-
-function _RequireWithoutUpdate(LibName)
-_SwapAutoUpdate(false, LibName)
-require (LibName)
-_SwapAutoUpdate(true, LibName)
 end
 
 function _CheckOrbWalkers()
@@ -659,7 +507,6 @@ function _AutoLevelSpell()
 		LevelSpell(_W)
 		LevelSpell(_E)
 	end
-
 	if SVMainMenu.autolevel.UseAutoLevelfirst and myHero.level < 4 then
 		return AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.first3level]][myHero.level]
 	end
@@ -803,7 +650,7 @@ function _UseTumble()
 	end
 end
 
-function OnProcessSpell(unit, spell)
+function _OnProcessSpell(unit, spell)
 	if not ScriptLoaded then return end
 	if myHero.dead then return end
 	if unit.team ~= myHero.team then
@@ -882,7 +729,7 @@ function OnProcessSpell(unit, spell)
 	end
 end
 
-function OnCreateObj(Obj)
+function _OnCreateObj(Obj)
 	if not AutoUpdateDone then return end
 	if not ScriptLoaded then return end
 	if myHero.dead then  return end
@@ -905,7 +752,7 @@ function OnCreateObj(Obj)
 	end
 end
 
-function OnWndMsg(msg, key)
+function _OnWndMsg(msg, key)
 	if not ScriptLoaded then return end
 
 	if not SVMainMenu.keysetting.togglemode then return end
@@ -927,7 +774,7 @@ function OnWndMsg(msg, key)
 	end
 end
 
-function OnDraw()
+function _OnDraw()
 	if not ScriptLoaded then return end
 
 	if VIP_USER then
@@ -984,22 +831,12 @@ function OnDraw()
 
 end
 
-function OnLoad()
-	_AutoUpdate()
-end
-
-function OnTick()
-	if LoadError then return end
-	if not AutoUpdateDone then return end
+function _OnTick()
 	if myHero.dead then return end
 	if not ScriptLoaded then
-		_RequireWithoutUpdate("VPrediction")
-		_RequireWithoutUpdate("SourceLib")
-		_RequireWithoutUpdate("SOW")
-		_RequireWithoutUpdate("CustomPermaShow")
 		if VIP_USER and FileExist(LIB_PATH.."Prodiction.lua") then require "Prodiction" end
 --~ 		if VIP_USER then _RequireWithoutUpdate("Selector") end
-		_PrintScriptMsg("Version "..SVVersion.." loaded")
+		_PrintScriptMsg("Version "..version.." loaded")
 		_CheckOrbWalkers()
 		_CheckRengarExist()
 		_LoadSOWSTS()
@@ -1329,97 +1166,7 @@ function OnSendPacket(p)
 	end
 end
 
-------------------------
----- AddParam Hooks ----
-------------------------
-_G.scriptConfig.CustomaddParam = _G.scriptConfig.addParam
-_G.scriptConfig.addParam = function(self, pVar, pText, pType, defaultValue, a, b, c, d)
 
- -- MMA Hook
-if self.name == "MMA2013" and pText:find("OnHold") then	pType = 5 end
-
--- SAC:Reborn r83 Hook
-if self.name:find("sidasacsetup_sidasac") and (pText == "Auto Carry" or pText == "Mixed Mode" or pText == "Lane Clear" or pText == "Last Hit") then
---~ 	pVar = "sep"
---~ 	pText = "ShadowVayne found. Set the Keysettings there!"
-	pType=5
-end
-
--- SAC:Reborn r84 Hook
-if self.name:find("sidasacsetup_sidasac") and (pText == "Hotkey") then
---~ 	pVar = "sep"
---~ 	pText = "ShadowVayne found. Set the Keysettings there!"
-	pType=5
-end
-
--- SAC:Reborn VayneMenu Hook
-if self.name:find("sidasacvayne") then
---~ 	pVar = "sep"
-	pType=5
-end
-
--- SOW Hook
-if self.name == "SV_SOW" and pVar:find("Mode") then
-	pType=5
-end
-
- _G.scriptConfig.CustomaddParam(self, pVar, pText, pType, defaultValue, a, b, c, d)
-end
-
--------------------------
----- DrawParam Hooks ----
--------------------------
-_G.scriptConfig.CustomDrawParam = _G.scriptConfig._DrawParam
-_G.scriptConfig._DrawParam = function(self, varIndex)
-	local HideParam = false
-
-	if self.name:find("sidasacsetup_sidasac") and (self._param[varIndex].text == "Hotkey") then
-		self._param[varIndex].text = "ShadowVayne found. Set the Keysettings there!"
-		self._param[varIndex].var = "sep"
-	end
-
-	if self.name == "MMA2013" and (self._param[varIndex].text:find("Spells on") or self._param[varIndex].text:find("Version")) then
-	HideParam = true
-		if not MMAParams then
-			MMAParams = true
-			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
-			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
-			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
-			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
-			self:addParam(self._param[varIndex].var, "Use Spells On", SCRIPT_PARAM_LIST,1, {"None","All Units","Heroes Only","Minion Only"})
-			self:addParam("mmaVersion","MMA - version:", SCRIPT_PARAM_INFO, "0.1408")
-		end
-	end
-
-	if self.name:find("sidasacvayne") and not self._param[varIndex].text:find("ShadowVayne") then
-		if not SACVayneParam then
-			SACVayneParam = true
-			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
-		end
-		HideParam = true
-	end
-
-	if self.name == "SV_MAIN_keysetting" and self._param[varIndex].text:find("Hidden") then
-		HideParam = true
-	end
-
-	if self.name == "SV_SOW" and (self._param[varIndex].var == "Hotkeys" or self._param[varIndex].var:find("Mode")) then HideParam = true end
-
-	if (self.name == "MMA2013" and self._param[varIndex].text:find("OnHold")) then HideParam = true end
-	if not HideParam then
-		_G.scriptConfig.CustomDrawParam(self, varIndex)
-	end
-end
-
--------------------------
------ SubMenu Hooks -----
--------------------------
-_G.scriptConfig.CustomDrawSubInstance = _G.scriptConfig._DrawSubInstance
-_G.scriptConfig._DrawSubInstance = function(self, index)
-	if not self.name:find("sidasacvayne") then
-		_G.scriptConfig.CustomDrawSubInstance(self, index)
-	end
-end
 
 ------------------------
 ----- Unused Funcs -----
