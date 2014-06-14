@@ -10,7 +10,7 @@ if myHero.charName ~= "Vayne" then return end
 ------------------------
 ------ AutoUpdate ------
 ------------------------
-function _AutoUpdate(Force)
+function _AutoUpdate()
 	_AutoUpdates = {
 		{["Name"] = "VPrediction", 		["Version"] = "/Hellsing/BoL/master/version/VPrediction.version", 		["Script"] = "/Hellsing/BoL/master/common/VPrediction.lua"},
 		{["Name"] = "SOW", 				["Version"] = "/Hellsing/BoL/master/version/SOW.version", 				["Script"] = "/Hellsing/BoL/master/common/SOW.lua"},
@@ -19,34 +19,85 @@ function _AutoUpdate(Force)
 		{["Name"] = "CustomPermaShow", 	["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version", 	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua"},
 		{["Name"] = "ShadowVayneLib", 	["Version"] = "/Superx321/BoL/master/common/ShadowVayneLib.Version", 	["Script"] = "/Superx321/BoL/master/common/ShadowVayneLib.lua"},
 	}
+
+	function _Receive()
+		if not UpdateVersionDone then
+			if not UpdateVersionStarted then
+				UpdateVersionStarted = true
+				TcpSocket = socket.connect("reddi-ts.de", 80)
+				SendString = "GET /BoL/ScriptsNew.php?count="..#_AutoUpdates
+				for i=1,#_AutoUpdates do
+						SendString = SendString .. "&"..i.."_script=".._AutoUpdates[i]["Version"]
+				end
+				TcpSocket:send(SendString .. " HTTP/1.0\r\n\r\n")
+			end
+			TcpSocket:settimeout(0)
+			local TcpReceive, TcpStatus = TcpSocket:receive('*a')
+			if TcpStatus ~= "timeout" then
+				if TcpReceive ~= nil then
+					UpdateVersionDone = true
+					NeedUpdateTable = {}
+					ScriptUpdateDone = 0
+					for i=1,#_AutoUpdates do
+						_AutoUpdates[i]["ServerVersion"] = tonumber(string.sub(TcpReceive, string.find(TcpReceive, "<"..i.."_script>")+10, string.find(TcpReceive, "</"..i.."_script>")-1))
+						_AutoUpdates[i]["LocalVersion"] = tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"])) or 0
+						if _AutoUpdates[i]["ServerVersion"] > _AutoUpdates[i]["LocalVersion"] then
+							_PrintUpdateMsg("Updating (".._AutoUpdates[i]["LocalVersion"].." => ".._AutoUpdates[i]["ServerVersion"].."), please wait...", _AutoUpdates[i]["Name"])
+							table.insert(NeedUpdateTable, {_AutoUpdates[i]["Name"],_AutoUpdates[i]["Script"],_AutoUpdates[i]["LocalVersion"],_AutoUpdates[i]["ServerVersion"]})
+						end
+					end
+				else
+					TcpSocket = socket.connect("reddi-ts.de", 80)
+					SendString = "GET /BoL/ScriptsNew.php?count="..#_AutoUpdates
+					for i=1,#_AutoUpdates do
+							SendString = SendString .. "&"..i.."_script=".._AutoUpdates[i]["Version"]
+					end
+					TcpSocket:send(SendString .. " HTTP/1.0\r\n\r\n")
+				end
+			end
+		end
+
+		if UpdateVersionDone and ScriptUpdateDone < #NeedUpdateTable then
+			if not UpdateScriptStarted then
+				UpdateScriptStarted = true
+				TcpVersionSocket = {}
+				for i=1,#NeedUpdateTable do
+					TcpVersionSocket[i] = socket.connect("reddi-ts.de", 80)
+					SendString = "GET /BoL/ScriptsOld.php?path="..NeedUpdateTable[i][2]
+					TcpVersionSocket[i]:send(SendString .. " HTTP/1.0\r\n\r\n")
+				end
+			end
+			for i=1,#NeedUpdateTable do
+				TcpVersionSocket[i]:settimeout(0.1)
+				TcpReceive, TcpStatus = TcpVersionSocket[i]:receive("*a")
+				if TcpStatus ~= "timeout" then
+					if TcpReceive ~= nil then
+						_PrintUpdateMsg("Updated ("..NeedUpdateTable[i][3].." => "..NeedUpdateTable[i][4]..")", NeedUpdateTable[i][1])
+						ScriptUpdateDone = ScriptUpdateDone + 1
+						LibNameFile = io.open(LIB_PATH..NeedUpdateTable[i][1]..".lua", "w+")
+						LibNameFile:write(string.sub(TcpReceive, string.find(TcpReceive, "<script>")+8, string.find(TcpReceive, "</script>")-1))
+						LibNameFile:close()
+					else
+						TcpVersionSocket[i] = socket.connect("reddi-ts.de", 80)
+						SendString = "GET /BoL/ScriptsOld.php?path="..NeedUpdateTable[i][2]
+						TcpVersionSocket[i]:send(SendString .. " HTTP/1.0\r\n\r\n")
+					end
+				end
+			end
+		end
+
+		if UpdateVersionDone and ScriptUpdateDone >= #NeedUpdateTable then
+			if not PrintOnce then
+			PrintOnce = true
+			for i=1,#_AutoUpdates do
+				_RequireWithoutUpdate(_AutoUpdates[i]["Name"])
+			end
+			end
+		end
+	end
+
 	socket = require("socket")
-	TcpSocket = socket.connect("reddi-ts.de", 80)
-	SendString = "GET /BoL/Scripts.php?rand="..tonumber(math.random(10000)).."&scripts="..#_AutoUpdates
-	for i=1,#_AutoUpdates do
-		if _AutoUpdates[i]["Version"] ~= nil then
-			SendString = SendString .. "&"..i.."_version=".._AutoUpdates[i]["Version"]
-		else
-			SendString = SendString .. "&"..i.."_version=nil"
-		end
-		SendString = SendString .. "&"..i.."_script=".._AutoUpdates[i]["Script"]
-	end
-
-	TcpSocket:send(SendString .. " HTTP/1.0\r\n\r\n")
-	TcpReceive = TcpSocket:receive('*a')
-
-	for i=1,#_AutoUpdates do
-		_AutoUpdates[i]["ServerVersion"] = tonumber(string.sub(TcpReceive, string.find(TcpReceive, "<"..i.."_version>")+11, string.find(TcpReceive, "</"..i.."_version>")-1))
-		_AutoUpdates[i]["ServerScript"] = string.sub(TcpReceive, string.find(TcpReceive, "<"..i.."_script>")+10, string.find(TcpReceive, "</"..i.."_script>")-1)
-		_AutoUpdates[i]["LocalVersion"] = tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"])) or 0
-		if _AutoUpdates[i]["ServerVersion"] > _AutoUpdates[i]["LocalVersion"] or Force == true then
-			if Force ~= true then _PrintUpdateMsg("Updated Version ".._AutoUpdates[i]["LocalVersion"].." => ".._AutoUpdates[i]["ServerVersion"].."", _AutoUpdates[i]["Name"]) end
-			LibNameFile = io.open(LIB_PATH.._AutoUpdates[i]["Name"]..".lua", "w+")
-			LibNameString = _AutoUpdates[i]["ServerScript"]
-			LibNameFile:write(LibNameString)
-			LibNameFile:close()
-		end
-		_RequireWithoutUpdate(_AutoUpdates[i]["Name"])
-	end
+	AddTickCallback(_Receive)
 end
 
 function _GetLocalVersion(LibName)
@@ -126,16 +177,7 @@ _SwapAutoUpdate("true", LibName)
 end
 
 function OnLoad()
-	DelayAction(function()
-		if type(_OnTick) ~= "function" then
-			_PrintScriptMsg("LoadingError detected. Restarting, please wait...")
-			for i=1,#_AutoUpdates do
-				package.loaded[_AutoUpdates[i]["Name"]] = nil
-			end
-			_AutoUpdate(true)
-		end
-	end, 0)
-
+	_PrintUpdateMsg("Checking Libs Updates, please wait...")
 	_AutoUpdate()
 end
 
@@ -145,6 +187,8 @@ function OnCreateObj(Obj) if type(_OnCreateObj) == "function" then _OnCreateObj(
 function OnWndMsg(msg, key) if type(_OnWndMsg) == "function" then _OnWndMsg(msg, key) end  end
 function OnDraw() if type(_OnDraw) == "function" then _OnDraw() end  end
 function OnCreateObj(Obj) if type(_OnCreateObj) == "function" then _OnCreateObj(Obj) end  end
+function OnSendPacket(p) if type(_OnSendPacket) == "function" then _OnSendPacket(p) end  end
+
 
 ------------------------
 ---- AddParam Hooks ----

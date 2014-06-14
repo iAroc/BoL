@@ -5,7 +5,7 @@
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
 	]]
-	version = 3.21
+	version = 3.22
 	SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
 	SVSOWMenu = scriptConfig("[ShadowVayne] SimpleOrbWalker Settings", "SV_SOW")
 	SVTSMenu = scriptConfig("[ShadowVayne] TargetSelector Settings", "SV_TS")
@@ -1100,7 +1100,7 @@ function _WallTumble()
 	end
 end
 
-function OnSendPacket(p)
+function _OnSendPacket(p)
 	if not VIP_USER then return end
 	if not ScriptLoaded then return end
 	if myHero.dead then return end
