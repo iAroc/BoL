@@ -10,10 +10,10 @@ if myHero.charName ~= "Vayne" then return end
 ------------------------
 ------ AutoUpdate ------
 ------------------------
-ScriptName = "ShadowVayne"
-version = 0.4
+VayneScriptName = "ShadowVayne"
+shadowversion = 0.4
 _OwnEnv = GetCurrentEnv().FILE_NAME:gsub(".lua", "")
-_G.AutoUpdateDrawDone = false
+_G.DebugAutoUpdate = true
 DrawDoneDelay = 2
 
 function _ScriptAutoUpdate(StartMessage)
@@ -213,9 +213,9 @@ function _ScriptAutoUpdate(StartMessage)
 
 	function _PrintUpdateMsg(Msg, _ScriptName)
 		if _ScriptName == nil or _ScriptName == _OwnEnv then
-			print("<font color=\"#F0Ff8d\"><b>".._G.VayneScriptName..":</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
+			print("<font color=\"#F0Ff8d\"><b>"..VayneScriptName..":</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
 		else
-			print("<font color=\"#F0Ff8d\"><b>".._G.VayneScriptName.."(".._ScriptName.."):</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
+			print("<font color=\"#F0Ff8d\"><b>"..VayneScriptName.."(".._ScriptName.."):</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
 		end
 	end
 
