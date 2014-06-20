@@ -5,10 +5,11 @@
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
 	]]
-	version = 3.22
+	version = 3.23
 	SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
 	SVSOWMenu = scriptConfig("[ShadowVayne] SimpleOrbWalker Settings", "SV_SOW")
-	SVTSMenu = scriptConfig("[ShadowVayne] TargetSelector Settings", "SV_TS")
+	if not VIP_USER then SVTSMenu = scriptConfig("[ShadowVayne] TargetSelector Settings", "SV_TS") end
+--~ 	VIP_USER = false
 ------------------------
 ------ MainScript ------
 ------------------------
@@ -43,11 +44,11 @@ function _CheckOrbWalkers()
 end
 
 function _LoadSOWSTS()
-	VP = VPrediction(true)
-	STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
-	SOWi = SOW(VP, STS)
+--~ 	VP = VPrediction(true)
+--~ 	STS = SimpleTS(STS_LESS_CAST_PHYSICAL)
+	SOWi = SOW()
 	SOWi:LoadToMenu(SVSOWMenu)
-	STS:AddToMenu(SVTSMenu)
+--~ 	STS:AddToMenu(SVTSMenu)
 end
 
 function _LoadMenu()
@@ -224,7 +225,7 @@ function _LoadMenu()
 		SVMainMenu.vip:addParam("EPackets", "Use Packets for E Cast (VIP Only)", SCRIPT_PARAM_ONOFF, true)
 --~ 		SVMainMenu.vip:addParam("vpred", "Use VPrediction (VIP Only)", SCRIPT_PARAM_ONOFF, true)
 --~ 		SVMainMenu.vip:addParam("selector", "Use Selector (VIP Only) (Need Reload!)", SCRIPT_PARAM_ONOFF, false)
-		SVMainMenu.vip:addParam("pr0diction", "Use Pr0diction (VIP Only)", SCRIPT_PARAM_ONOFF, false)
+--~ 		SVMainMenu.vip:addParam("pr0diction", "Use Pr0diction (VIP Only)", SCRIPT_PARAM_ONOFF, false)
 
 --~ 	PermaShow Menu
 		SVMainMenu.permashowsettings:addParam("epermashow", "PermaShow \"E on Next BasicAttack\"", SCRIPT_PARAM_ONOFF, true)
@@ -524,21 +525,21 @@ function _UsePermaShows()
 	CustomPermaShow("Auto-E after next BasicAttack", SVMainMenu.keysetting.basiccondemn, SVMainMenu.permashowsettings.epermashow, nil, 1426521024, nil,  5)
 end
 
-function _GetSTSTarget()
-	STSTarget = STS:GetTarget(myHero.range)
+function _GetTarget()
+	if VIP_USER then TargetSelectorTarget = Selector.GetTarget(SelectorMenu.Get().mode, nil, {distance = 650}) end
 end
 
 function _UseBotRK()
 	local BladeSlot = GetInventorySlotItem(3153)
-	if STSTarget ~= nil and GetDistance(STSTarget) < 450 and not STSTarget.dead and STSTarget.visible and BladeSlot ~= nil and myHero:CanUseSpell(BladeSlot) == 0 then
+	if TargetSelectorTarget ~= nil and GetDistance(TargetSelectorTarget) < 450 and not TargetSelectorTarget.dead and TargetSelectorTarget.visible and BladeSlot ~= nil and myHero:CanUseSpell(BladeSlot) == 0 then
 		if (SVMainMenu.botrksettings.botrkautocarry and ShadowVayneAutoCarry) or
 		 (SVMainMenu.botrksettings.botrkmixedmode and ShadowVayneMixedMode) or
 		 (SVMainMenu.botrksettings.botrklaneclear and ShadowVayneLaneClear) or
 		 (SVMainMenu.botrksettings.botrklasthit and ShadowVayneLastHit) or
 		 (SVMainMenu.botrksettings.botrkalways) then
 			if (math.floor(myHero.health / myHero.maxHealth * 100)) <= SVMainMenu.botrksettings.botrkmaxheal then
-				if (math.floor(STSTarget.health / STSTarget.maxHealth * 100)) >= SVMainMenu.botrksettings.botrkminheal then
-					CastSpell(BladeSlot, STSTarget)
+				if (math.floor(TargetSelectorTarget.health / TargetSelectorTarget.maxHealth * 100)) >= SVMainMenu.botrksettings.botrkminheal then
+					CastSpell(BladeSlot, TargetSelectorTarget)
 				end
 			end
 		end
@@ -547,15 +548,15 @@ end
 
 function _UseBilgeWater()
 	local BilgeSlot = GetInventorySlotItem(3144)
-	if STSTarget ~= nil and GetDistance(STSTarget) < 500 and not STSTarget.dead and STSTarget.visible and BilgeSlot ~= nil and myHero:CanUseSpell(BilgeSlot) == 0 then
+	if TargetSelectorTarget ~= nil and GetDistance(TargetSelectorTarget) < 500 and not TargetSelectorTarget.dead and TargetSelectorTarget.visible and BilgeSlot ~= nil and myHero:CanUseSpell(BilgeSlot) == 0 then
 		if (SVMainMenu.bilgesettings.bilgeautocarry and ShadowVayneAutoCarry) or
 		 (SVMainMenu.bilgesettings.bilgemixedmode and ShadowVayneMixedMode) or
 		 (SVMainMenu.bilgesettings.bilgelaneclear and ShadowVayneLaneClear) or
 		 (SVMainMenu.bilgesettings.bilgelasthit and ShadowVayneLastHit) or
 		 (SVMainMenu.bilgesettings.bilgealways) then
 			if (math.floor(myHero.health / myHero.maxHealth * 100)) <= SVMainMenu.bilgesettings.bilgemaxheal then
-				if (math.floor(STSTarget.health / STSTarget.maxHealth * 100)) >= SVMainMenu.bilgesettings.bilgeminheal then
-					CastSpell(BilgeSlot, STSTarget)
+				if (math.floor(TargetSelectorTarget.health / TargetSelectorTarget.maxHealth * 100)) >= SVMainMenu.bilgesettings.bilgeminheal then
+					CastSpell(BilgeSlot, TargetSelectorTarget)
 				end
 			end
 		end
@@ -630,8 +631,8 @@ function _UseTumble()
 	if not LastAttackedEnemy then return end
 	if LastAttackedEnemy.dead then return end
 	if LastAttackedEnemy.health < 1 then return end
-	if ShadowVayneAutoCarry and STSTarget then
-		TumbleTarget = STSTarget
+	if ShadowVayneAutoCarry and TargetSelectorTarget then
+		TumbleTarget = TargetSelectorTarget
 	else
 		TumbleTarget = LastAttackedEnemy
 	end
@@ -645,9 +646,17 @@ function _UseTumble()
 		if GetDistance(AfterTumblePos, TumbleTarget) < 600 then
 			if NextAA > GetTickCount() then
 				CastSpell(_Q, mousePos.x, mousePos.z)
+				Casting = true
+				DelayAction(function() Casting = false end, 0.25)
 			end
 		end
 	end
+end
+
+function _CastSpell(Skill, Unit)
+	CastSpell(Skill, Unit)
+	Casting = true
+	DelayAction(function() Casting = false end, 0.25)
 end
 
 function _OnProcessSpell(unit, spell)
@@ -657,26 +666,26 @@ function _OnProcessSpell(unit, spell)
 		-- AntiGapCloser Targeted Spells
 		if isAGapcloserUnitTarget[unit.charName] and spell.name == isAGapcloserUnitTarget[unit.charName].spell then
 			if spell.target ~= nil and spell.target.hash == myHero.hash then
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then CastSpell(_E, unit) end
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then CastSpell(_E, unit) end
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then CastSpell(_E, unit) end
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then CastSpell(_E, unit) end
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."Always"] then CastSpell(_E, unit) end
-				if SVMainMenu.autostunn.OverwriteAutoCarry and ShadowVayneAutoCarry then  CastSpell(_E, unit) end
-				if SVMainMenu.autostunn.OverwriteMixedMode and ShadowVayneMixedMode then  CastSpell(_E, unit) end
-				if SVMainMenu.autostunn.OverwriteLaneClear and ShadowVayneLaneClear then  CastSpell(_E, unit) end
-				if SVMainMenu.autostunn.OverwriteLastHit and ShadowVayneLastHit then  CastSpell(_E, unit) end
-				if SVMainMenu.autostunn.Overwritealways then  CastSpell(_E, unit) end
+				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then _CastSpell(_E, unit) end
+				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then _CastSpell(_E, unit) end
+				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then _CastSpell(_E, unit) end
+				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then _CastSpell(_E, unit) end
+				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."Always"] then _CastSpell(_E, unit) end
+				if SVMainMenu.autostunn.OverwriteAutoCarry and ShadowVayneAutoCarry then  _CastSpell(_E, unit) end
+				if SVMainMenu.autostunn.OverwriteMixedMode and ShadowVayneMixedMode then  _CastSpell(_E, unit) end
+				if SVMainMenu.autostunn.OverwriteLaneClear and ShadowVayneLaneClear then  _CastSpell(_E, unit) end
+				if SVMainMenu.autostunn.OverwriteLastHit and ShadowVayneLastHit then  _CastSpell(_E, unit) end
+				if SVMainMenu.autostunn.Overwritealways then  _CastSpell(_E, unit) end
 			end
 		end
 
 		-- AntiGapCloser Interrupt Spells
 		if isAChampToInterrupt[spell.name] and unit.charName == isAChampToInterrupt[spell.name].champ and GetDistanceSqr(unit) <= 715*715 then
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then CastSpell(_E, unit) end
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then CastSpell(_E, unit) end
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then CastSpell(_E, unit) end
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then CastSpell(_E, unit) end
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."Always"] then CastSpell(_E, unit) end
+			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then _CastSpell(_E, unit) end
+			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then _CastSpell(_E, unit) end
+			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then _CastSpell(_E, unit) end
+			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then _CastSpell(_E, unit) end
+			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."Always"] then _CastSpell(_E, unit) end
 		end
 
 		if isAGapcloserUnitNoTarget[spell.name] and GetDistanceSqr(unit) <= 2000*2000 and (spell.target == nil or spell.target.isMe) then
@@ -705,6 +714,7 @@ function _OnProcessSpell(unit, spell)
 	if unit.isMe then
 		if spell.name:lower():find("attack") then
 			LastAttackedEnemy = spell.target
+			if not VIP_USER then TargetSelectorTarget = spell.target end
 			TimeToNextAA = math.floor((spell.animationTime - (GetLatency() / 2000))*1000)
 			WindUpTime = math.floor((spell.windUpTime - (GetLatency() / 2000))*1000)
 			NextAA = GetTickCount() + TimeToNextAA - WindUpTime - WindUpTime
@@ -712,7 +722,7 @@ function _OnProcessSpell(unit, spell)
 			DelayAction(function() IsAttacking = false end, spell.windUpTime - (GetLatency() / 2000))
 			if SVMainMenu.keysetting.basiccondemn and spell.target.type == myHero.type then
 				SVMainMenu.keysetting.basiccondemn = false
-				DelayAction(function() CastSpell(_E, LastAttackedEnemy) end, spell.windUpTime - GetLatency() / 2000)
+				DelayAction(function() _CastSpell(_E, LastAttackedEnemy) end, spell.windUpTime - GetLatency() / 2000)
 			else
 				SVMainMenu.keysetting.basiccondemn = false
 			end
@@ -834,9 +844,8 @@ end
 function _OnTick()
 	if myHero.dead then return end
 	if not ScriptLoaded then
-		if VIP_USER and FileExist(LIB_PATH.."Prodiction.lua") then require "Prodiction" end
---~ 		if VIP_USER then _RequireWithoutUpdate("Selector") end
-		_PrintScriptMsg("Version "..version.." loaded")
+		if VIP_USER then require "Prodiction" end
+		if VIP_USER then Selector.Instance() end
 		_CheckOrbWalkers()
 		_CheckRengarExist()
 		_LoadSOWSTS()
@@ -861,7 +870,7 @@ function _OnTick()
 	else
 		_GetRunningModes()
 		_UsePermaShows()
-		_GetSTSTarget()
+		_GetTarget()
 		_UseBotRK()
 		_UseBilgeWater()
 		_SetToggleMode()
@@ -885,129 +894,93 @@ function _CheckStunn()
 	if not CastedLastE then CastedLastE = 0 end
 	if CastedLastE > GetTickCount() then return end
 	for i, enemy in ipairs(GetEnemyHeroes()) do
-		if GetDistance(enemy) <= 1000 and not enemy.dead and enemy.visible then
-			if not VIP_USER then -- FREEUSER
-				local CurrentDirection = (Vector(enemy) - ChampInfoTable[enemy.charName].CurrentVector)
-				if CurrentDirection ~= Vector(0,0,0) then
-					CurrentDirection = CurrentDirection:normalized()
-				end
-				ChampInfoTable[enemy.charName].CurrentAngle = ChampInfoTable[enemy.charName].CurrentDirection:dotP( CurrentDirection )
-				ChampInfoTable[enemy.charName].CurrentDirection = CurrentDirection
-				ChampInfoTable[enemy.charName].CurrentVector = Vector(enemy)
-				if ChampInfoTable[enemy.charName].CurrentDirection ~= Vector(0,0,0) then
-					if ChampInfoTable[enemy.charName].CurrentAngle and ChampInfoTable[enemy.charName].CurrentAngle > 0.8 then
-						local AfterCastPos = Vector(enemy) + ChampInfoTable[enemy.charName].CurrentDirection * (enemy.ms * 0.0005)
-						local timeElapsed = _GetCollisionTime(AfterCastPos, ChampInfoTable[enemy.charName].CurrentDirection, enemy.ms, myHero, 2200 )
-						if timeElapsed ~= nil then
-							StunnPos =  Vector(enemy) + ChampInfoTable[enemy.charName].CurrentDirection * enemy.ms * (timeElapsed + 0.5)/2
+		if 	(SVMainMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and ShadowVayneAutoCarry) or
+		(SVMainMenu.targets[enemy.charName][(enemy.charName).."MixedMode"] and ShadowVayneMixedMode) or
+		(SVMainMenu.targets[enemy.charName][(enemy.charName).."LaneClear"] and ShadowVayneLaneClear) or
+		(SVMainMenu.targets[enemy.charName][(enemy.charName).."LastHit"]   and ShadowVayneLastHit) or
+		(SVMainMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
+			if not (SVMainMenu.autostunn.target and enemy ~= TargetSelectorTarget) then
+				if GetDistance(enemy) <= 1000 and not enemy.dead and enemy.visible then
+					if not VIP_USER then -- FREEUSER
+						local CurrentDirection = (Vector(enemy) - ChampInfoTable[enemy.charName].CurrentVector)
+						if CurrentDirection ~= Vector(0,0,0) then
+							CurrentDirection = CurrentDirection:normalized()
+						end
+						ChampInfoTable[enemy.charName].CurrentAngle = ChampInfoTable[enemy.charName].CurrentDirection:dotP( CurrentDirection )
+						ChampInfoTable[enemy.charName].CurrentDirection = CurrentDirection
+						ChampInfoTable[enemy.charName].CurrentVector = Vector(enemy)
+						if ChampInfoTable[enemy.charName].CurrentDirection ~= Vector(0,0,0) then
+							if ChampInfoTable[enemy.charName].CurrentAngle and ChampInfoTable[enemy.charName].CurrentAngle > 0.8 then
+								local AfterCastPos = Vector(enemy) + ChampInfoTable[enemy.charName].CurrentDirection * (enemy.ms * 0.0005)
+								local timeElapsed = _GetCollisionTime(AfterCastPos, ChampInfoTable[enemy.charName].CurrentDirection, enemy.ms, myHero, 2200 )
+								if timeElapsed ~= nil then
+									StunnPos =  Vector(enemy) + ChampInfoTable[enemy.charName].CurrentDirection * enemy.ms * (timeElapsed + 0.5)/2
+								end
+							end
+						else
+							StunnPos = Vector(enemy)
 						end
 					end
-				else
-					StunnPos = Vector(enemy)
-				end
-			end
 
-			if VIP_USER and not SVMainMenu.vip.pr0diction then -- VPRED
-				GroundDelay = 0.32
-				EnemyPos = VP:GetPredictedPos(enemy, GroundDelay, enemy.ms, myHero, false)
-				if EnemyPos ~= nil then
-					EnemyDistance = GetDistance(EnemyPos)
-					FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
-					for i=1,10 do
-						EnemyPos = VP:GetPredictedPos(enemy, GroundDelay+FlyTimeDelay, enemy.ms, EnemyPos, false)
-						if EnemyPos~= nil then
-							EnemyDistance = GetDistance(EnemyPos)
-							FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
-						end
-					end
-					StunnPos = VP:GetPredictedPos(enemy, GroundDelay+FlyTimeDelay, enemy.ms, EnemyPos, false)
-				end
-			end
-
-			if VIP_USER and SVMainMenu.vip.pr0diction then -- PR0D
-				GroundDelay = 0.32
-				if enemy ~= nil and GroundDelay ~= nil then
-					EnemyPos = Prodiction.GetTimePrediction(enemy, GroundDelay)
-					if EnemyPos ~= nil then
-						EnemyDistance = GetDistance(EnemyPos)
-						FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
-						for i=1,10 do
-							if enemy ~= nil and GroundDelay ~= nil and FlyTimeDelay ~= nil then
-								EnemyPos = Prodiction.GetTimePrediction(enemy, GroundDelay+FlyTimeDelay)
-								if EnemyPos~= nil then
-									EnemyDistance = GetDistance(EnemyPos)
-									FlyTimeDelay = _GetFlyTime(EnemyDistance)
+					if VIP_USER then -- PR0D
+						GroundDelay = 0.32
+						if enemy ~= nil and GroundDelay ~= nil then
+							EnemyPos = Prodiction.GetPredictionTime(enemy, GroundDelay)
+							if EnemyPos ~= nil then
+								EnemyDistance = GetDistance(EnemyPos)
+								FlyTimeDelay = _GetFlyTime(math.floor(EnemyDistance))
+								for i=1,10 do
+									if enemy ~= nil and GroundDelay ~= nil and FlyTimeDelay ~= nil then
+										EnemyPos = Prodiction.GetPredictionTime(enemy, GroundDelay+FlyTimeDelay)
+										if EnemyPos~= nil then
+											EnemyDistance = GetDistance(EnemyPos)
+											FlyTimeDelay = _GetFlyTime(EnemyDistance)
+										end
+									end
+								end
+								if enemy ~= nil and GroundDelay ~= nil and FlyTimeDelay ~= nil then
+									StunnPos = Prodiction.GetPredictionTime(enemy, GroundDelay+FlyTimeDelay)
 								end
 							end
 						end
-						if enemy ~= nil and GroundDelay ~= nil and FlyTimeDelay ~= nil then
-							StunnPos = Prodiction.GetTimePrediction(enemy, GroundDelay+FlyTimeDelay)
-						end
+					end
+					if StunnPos ~= nil and GetDistance(StunnPos) < 710 then
+						_CheckWallStunn(StunnPos, enemy)
 					end
 				end
-			end
-			if StunnPos ~= nil and GetDistance(StunnPos) < 710 then
-				_CheckWallStunn(StunnPos, enemy)
 			end
 		end
 	end
 end
 
 function _CheckWallStunn(StunnPos, enemy)
-	if not _DrawStunnCircles then _DrawStunnCircles = {} end
 	local BushFound, Bushpos = false, nil
-	local FoundWall = false
-	for i = 1, SVMainMenu.autostunn.pushDistance, 15  do
+	for i = 1, SVMainMenu.autostunn.pushDistance, 50  do
 		local CheckWallPos = Vector(StunnPos) + (Vector(StunnPos) - myHero):normalized()*(i)
 		if IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) and not BushFound then
 			BushFound = true
 			BushPos = CheckWallPos
 		end
 		if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
-			if not FoundWall then _DrawStunnCircles = { [enemy.charName] = CheckWallPos };FoundWall = true end
-			if 	(SVMainMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and ShadowVayneAutoCarry) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."MixedMode"] and ShadowVayneMixedMode) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."LaneClear"] and ShadowVayneLaneClear) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."LastHit"]   and ShadowVayneLastHit) or
-				(SVMainMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
-				if UnderTurret(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z), true) then
-					if SVMainMenu.autostunn.towerstunn then
-						if SVMainMenu.autostunn.target and STSTarget then
-							if STSTarget == enemy then
-								CastSpell(_E, enemy)
-								CastedLastE = GetTickCount() + 500
-								break
-							end
-						else
-							CastSpell(_E, enemy)
-							CastedLastE = GetTickCount() + 500
-							break
-						end
-					end
-				else
-					if SVMainMenu.autostunn.target and STSTarget then
-						if STSTarget == enemy then
-							CastSpell(_E, enemy)
-							CastedLastE = GetTickCount() + 500
-							if BushFound and SVMainMenu.autostunn.trinket and myHero:CanUseSpell(ITEM_7) == 0 then
-								CastSpell(ITEM_7, BushPos.x, BushPos.z)
-							end
-							break
-						end
-					else
-						CastSpell(_E, enemy)
-						CastedLastE = GetTickCount() + 500
-						if BushFound and SVMainMenu.autostunn.trinket and myHero:CanUseSpell(ITEM_7) == 0 then
-							CastSpell(ITEM_7, BushPos.x, BushPos.z)
-						end
-						break
-					end
+			if UnderTurret(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z), true) then
+				if SVMainMenu.autostunn.towerstunn then
+					CastSpell(_E, enemy)
+					CastedLastE = GetTickCount() + 500
+					Casting = true
+					DelayAction(function() Casting = false end, 0.25)
+					break
 				end
+			else
+				CastSpell(_E, enemy)
+				CastedLastE = GetTickCount() + 500
+				Casting = true
+				DelayAction(function() Casting = false end, 0.25)
+				if BushFound and SVMainMenu.autostunn.trinket and myHero:CanUseSpell(ITEM_7) == 0 then
+					CastSpell(ITEM_7, BushPos.x, BushPos.z)
+				end
+				break
 			end
 		end
-	end
-	if FoundWall == false then
-		_DrawStunnCircles = { [enemy.charName] = nil }
 	end
 end
 
@@ -1206,4 +1179,407 @@ function _GetNeededAutoHits(enemy)
 			end
 		end
 	return ThisAA
+end
+
+
+---------------------
+-------- SOW --------
+---------------------
+
+
+class "SOW"
+function SOW:__init()
+	_G.SOWLoaded = true
+	self.projectilespeeds = {["Velkoz"]= 2000,["TeemoMushroom"] = math.huge,["TestCubeRender"] = math.huge ,["Xerath"] = 2000.0000 ,["Kassadin"] = math.huge ,["Rengar"] = math.huge ,["Thresh"] = 1000.0000 ,["Ziggs"] = 1500.0000 ,["ZyraPassive"] = 1500.0000 ,["ZyraThornPlant"] = 1500.0000 ,["KogMaw"] = 1800.0000 ,["HeimerTBlue"] = 1599.3999 ,["EliseSpider"] = 500.0000 ,["Skarner"] = 500.0000 ,["ChaosNexus"] = 500.0000 ,["Katarina"] = 467.0000 ,["Riven"] = 347.79999 ,["SightWard"] = 347.79999 ,["HeimerTYellow"] = 1599.3999 ,["Ashe"] = 2000.0000 ,["VisionWard"] = 2000.0000 ,["TT_NGolem2"] = math.huge ,["ThreshLantern"] = math.huge ,["TT_Spiderboss"] = math.huge ,["OrderNexus"] = math.huge ,["Soraka"] = 1000.0000 ,["Jinx"] = 2750.0000 ,["TestCubeRenderwCollision"] = 2750.0000 ,["Red_Minion_Wizard"] = 650.0000 ,["JarvanIV"] = 20.0000 ,["Blue_Minion_Wizard"] = 650.0000 ,["TT_ChaosTurret2"] = 1200.0000 ,["TT_ChaosTurret3"] = 1200.0000 ,["TT_ChaosTurret1"] = 1200.0000 ,["ChaosTurretGiant"] = 1200.0000 ,["Dragon"] = 1200.0000 ,["LuluSnowman"] = 1200.0000 ,["Worm"] = 1200.0000 ,["ChaosTurretWorm"] = 1200.0000 ,["TT_ChaosInhibitor"] = 1200.0000 ,["ChaosTurretNormal"] = 1200.0000 ,["AncientGolem"] = 500.0000 ,["ZyraGraspingPlant"] = 500.0000 ,["HA_AP_OrderTurret3"] = 1200.0000 ,["HA_AP_OrderTurret2"] = 1200.0000 ,["Tryndamere"] = 347.79999 ,["OrderTurretNormal2"] = 1200.0000 ,["Singed"] = 700.0000 ,["OrderInhibitor"] = 700.0000 ,["Diana"] = 347.79999 ,["HA_FB_HealthRelic"] = 347.79999 ,["TT_OrderInhibitor"] = 347.79999 ,["GreatWraith"] = 750.0000 ,["Yasuo"] = 347.79999 ,["OrderTurretDragon"] = 1200.0000 ,["OrderTurretNormal"] = 1200.0000 ,["LizardElder"] = 500.0000 ,["HA_AP_ChaosTurret"] = 1200.0000 ,["Ahri"] = 1750.0000 ,["Lulu"] = 1450.0000 ,["ChaosInhibitor"] = 1450.0000 ,["HA_AP_ChaosTurret3"] = 1200.0000 ,["HA_AP_ChaosTurret2"] = 1200.0000 ,["ChaosTurretWorm2"] = 1200.0000 ,["TT_OrderTurret1"] = 1200.0000 ,["TT_OrderTurret2"] = 1200.0000 ,["TT_OrderTurret3"] = 1200.0000 ,["LuluFaerie"] = 1200.0000 ,["HA_AP_OrderTurret"] = 1200.0000 ,["OrderTurretAngel"] = 1200.0000 ,["YellowTrinketUpgrade"] = 1200.0000 ,["MasterYi"] = math.huge ,["Lissandra"] = 2000.0000 ,["ARAMOrderTurretNexus"] = 1200.0000 ,["Draven"] = 1700.0000 ,["FiddleSticks"] = 1750.0000 ,["SmallGolem"] = math.huge ,["ARAMOrderTurretFront"] = 1200.0000 ,["ChaosTurretTutorial"] = 1200.0000 ,["NasusUlt"] = 1200.0000 ,["Maokai"] = math.huge ,["Wraith"] = 750.0000 ,["Wolf"] = math.huge ,["Sivir"] = 1750.0000 ,["Corki"] = 2000.0000 ,["Janna"] = 1200.0000 ,["Nasus"] = math.huge ,["Golem"] = math.huge ,["ARAMChaosTurretFront"] = 1200.0000 ,["ARAMOrderTurretInhib"] = 1200.0000 ,["LeeSin"] = math.huge ,["HA_AP_ChaosTurretTutorial"] = 1200.0000 ,["GiantWolf"] = math.huge ,["HA_AP_OrderTurretTutorial"] = 1200.0000 ,["YoungLizard"] = 750.0000 ,["Jax"] = 400.0000 ,["LesserWraith"] = math.huge ,["Blitzcrank"] = math.huge ,["ARAMChaosTurretInhib"] = 1200.0000 ,["Shen"] = 400.0000 ,["Nocturne"] = math.huge ,["Sona"] = 1500.0000 ,["ARAMChaosTurretNexus"] = 1200.0000 ,["YellowTrinket"] = 1200.0000 ,["OrderTurretTutorial"] = 1200.0000 ,["Caitlyn"] = 2500.0000 ,["Trundle"] = 347.79999 ,["Malphite"] = 1000.0000 ,["Mordekaiser"] = math.huge ,["ZyraSeed"] = math.huge ,["Vi"] = 1000.0000 ,["Tutorial_Red_Minion_Wizard"] = 650.0000 ,["Renekton"] = math.huge ,["Anivia"] = 1400.0000 ,["Fizz"] = math.huge ,["Heimerdinger"] = 1500.0000 ,["Evelynn"] = 467.0000 ,["Rumble"] = 347.79999 ,["Leblanc"] = 1700.0000 ,["Darius"] = math.huge ,["OlafAxe"] = math.huge ,["Viktor"] = 2300.0000 ,["XinZhao"] = 20.0000 ,["Orianna"] = 1450.0000 ,["Vladimir"] = 1400.0000 ,["Nidalee"] = 1750.0000 ,["Tutorial_Red_Minion_Basic"] = math.huge ,["ZedShadow"] = 467.0000 ,["Syndra"] = 1800.0000 ,["Zac"] = 1000.0000 ,["Olaf"] = 347.79999 ,["Veigar"] = 1100.0000 ,["Twitch"] = 2500.0000 ,["Alistar"] = math.huge ,["Akali"] = 467.0000 ,["Urgot"] = 1300.0000 ,["Leona"] = 347.79999 ,["Talon"] = math.huge ,["Karma"] = 1500.0000 ,["Jayce"] = 347.79999 ,["Galio"] = 1000.0000 ,["Shaco"] = math.huge ,["Taric"] = math.huge ,["TwistedFate"] = 1500.0000 ,["Varus"] = 2000.0000 ,["Garen"] = 347.79999 ,["Swain"] = 1600.0000 ,["Vayne"] = 2000.0000 ,["Fiora"] = 467.0000 ,["Quinn"] = 2000.0000 ,["Kayle"] = math.huge ,["Blue_Minion_Basic"] = math.huge ,["Brand"] = 2000.0000 ,["Teemo"] = 1300.0000 ,["Amumu"] = 500.0000 ,["Annie"] = 1200.0000 ,["Odin_Blue_Minion_caster"] = 1200.0000 ,["Elise"] = 1600.0000 ,["Nami"] = 1500.0000 ,["Poppy"] = 500.0000 ,["AniviaEgg"] = 500.0000 ,["Tristana"] = 2250.0000 ,["Graves"] = 3000.0000 ,["Morgana"] = 1600.0000 ,["Gragas"] = math.huge ,["MissFortune"] = 2000.0000 ,["Warwick"] = math.huge ,["Cassiopeia"] = 1200.0000 ,["Tutorial_Blue_Minion_Wizard"] = 650.0000 ,["DrMundo"] = math.huge ,["Volibear"] = 467.0000 ,["Irelia"] = 467.0000 ,["Odin_Red_Minion_Caster"] = 650.0000 ,["Lucian"] = 2800.0000 ,["Yorick"] = math.huge ,["RammusPB"] = math.huge ,["Red_Minion_Basic"] = math.huge ,["Udyr"] = 467.0000 ,["MonkeyKing"] = 20.0000 ,["Tutorial_Blue_Minion_Basic"] = math.huge ,["Kennen"] = 1600.0000 ,["Nunu"] = 500.0000 ,["Ryze"] = 2400.0000 ,["Zed"] = 467.0000 ,["Nautilus"] = 1000.0000 ,["Gangplank"] = 1000.0000 ,["Lux"] = 1600.0000 ,["Sejuani"] = 500.0000 ,["Ezreal"] = 2000.0000 ,["OdinNeutralGuardian"] = 1800.0000 ,["Khazix"] = 500.0000 ,["Sion"] = math.huge ,["Aatrox"] = 347.79999 ,["Hecarim"] = 500.0000 ,["Pantheon"] = 20.0000 ,["Shyvana"] = 467.0000 ,["Zyra"] = 1700.0000 ,["Karthus"] = 1200.0000 ,["Rammus"] = math.huge ,["Zilean"] = 1200.0000 ,["Chogath"] = 500.0000 ,["Malzahar"] = 2000.0000 ,["YorickRavenousGhoul"] = 347.79999 ,["YorickSpectralGhoul"] = 347.79999 ,["JinxMine"] = 347.79999 ,["YorickDecayedGhoul"] = 347.79999 ,["XerathArcaneBarrageLauncher"] = 347.79999 ,["Odin_SOG_Order_Crystal"] = 347.79999 ,["TestCube"] = 347.79999 ,["ShyvanaDragon"] = math.huge ,["FizzBait"] = math.huge ,["Blue_Minion_MechMelee"] = math.huge ,["OdinQuestBuff"] = math.huge ,["TT_Buffplat_L"] = math.huge ,["TT_Buffplat_R"] = math.huge ,["KogMawDead"] = math.huge ,["TempMovableChar"] = math.huge ,["Lizard"] = 500.0000 ,["GolemOdin"] = math.huge ,["OdinOpeningBarrier"] = math.huge ,["TT_ChaosTurret4"] = 500.0000 ,["TT_Flytrap_A"] = 500.0000 ,["TT_NWolf"] = math.huge ,["OdinShieldRelic"] = math.huge ,["LuluSquill"] = math.huge ,["redDragon"] = math.huge ,["MonkeyKingClone"] = math.huge ,["Odin_skeleton"] = math.huge ,["OdinChaosTurretShrine"] = 500.0000 ,["Cassiopeia_Death"] = 500.0000 ,["OdinCenterRelic"] = 500.0000 ,["OdinRedSuperminion"] = math.huge ,["JarvanIVWall"] = math.huge ,["ARAMOrderNexus"] = math.huge ,["Red_Minion_MechCannon"] = 1200.0000 ,["OdinBlueSuperminion"] = math.huge ,["SyndraOrbs"] = math.huge ,["LuluKitty"] = math.huge ,["SwainNoBird"] = math.huge ,["LuluLadybug"] = math.huge ,["CaitlynTrap"] = math.huge ,["TT_Shroom_A"] = math.huge ,["ARAMChaosTurretShrine"] = 500.0000 ,["Odin_Windmill_Propellers"] = 500.0000 ,["TT_NWolf2"] = math.huge ,["OdinMinionGraveyardPortal"] = math.huge ,["SwainBeam"] = math.huge ,["Summoner_Rider_Order"] = math.huge ,["TT_Relic"] = math.huge ,["odin_lifts_crystal"] = math.huge ,["OdinOrderTurretShrine"] = 500.0000 ,["SpellBook1"] = 500.0000 ,["Blue_Minion_MechCannon"] = 1200.0000 ,["TT_ChaosInhibitor_D"] = 1200.0000 ,["Odin_SoG_Chaos"] = 1200.0000 ,["TrundleWall"] = 1200.0000 ,["HA_AP_HealthRelic"] = 1200.0000 ,["OrderTurretShrine"] = 500.0000 ,["OriannaBall"] = 500.0000 ,["ChaosTurretShrine"] = 500.0000 ,["LuluCupcake"] = 500.0000 ,["HA_AP_ChaosTurretShrine"] = 500.0000 ,["TT_NWraith2"] = 750.0000 ,["TT_Tree_A"] = 750.0000 ,["SummonerBeacon"] = 750.0000 ,["Odin_Drill"] = 750.0000 ,["TT_NGolem"] = math.huge ,["AramSpeedShrine"] = math.huge ,["OriannaNoBall"] = math.huge ,["Odin_Minecart"] = math.huge ,["Summoner_Rider_Chaos"] = math.huge ,["OdinSpeedShrine"] = math.huge ,["TT_SpeedShrine"] = math.huge ,["odin_lifts_buckets"] = math.huge ,["OdinRockSaw"] = math.huge ,["OdinMinionSpawnPortal"] = math.huge ,["SyndraSphere"] = math.huge ,["Red_Minion_MechMelee"] = math.huge ,["SwainRaven"] = math.huge ,["crystal_platform"] = math.huge ,["MaokaiSproutling"] = math.huge ,["Urf"] = math.huge ,["TestCubeRender10Vision"] = math.huge ,["MalzaharVoidling"] = 500.0000 ,["GhostWard"] = 500.0000 ,["MonkeyKingFlying"] = 500.0000 ,["LuluPig"] = 500.0000 ,["AniviaIceBlock"] = 500.0000 ,["TT_OrderInhibitor_D"] = 500.0000 ,["Odin_SoG_Order"] = 500.0000 ,["RammusDBC"] = 500.0000 ,["FizzShark"] = 500.0000 ,["LuluDragon"] = 500.0000 ,["OdinTestCubeRender"] = 500.0000 ,["TT_Tree1"] = 500.0000 ,["ARAMOrderTurretShrine"] = 500.0000 ,["Odin_Windmill_Gears"] = 500.0000 ,["ARAMChaosNexus"] = 500.0000 ,["TT_NWraith"] = 750.0000 ,["TT_OrderTurret4"] = 500.0000 ,["Odin_SOG_Chaos_Crystal"] = 500.0000 ,["OdinQuestIndicator"] = 500.0000 ,["JarvanIVStandard"] = 500.0000 ,["TT_DummyPusher"] = 500.0000 ,["OdinClaw"] = 500.0000 ,["EliseSpiderling"] = 2000.0000 ,["QuinnValor"] = math.huge ,["UdyrTigerUlt"] = math.huge ,["UdyrTurtleUlt"] = math.huge ,["UdyrUlt"] = math.huge ,["UdyrPhoenixUlt"] = math.huge ,["ShacoBox"] = 1500.0000 ,["HA_AP_Poro"] = 1500.0000 ,["AnnieTibbers"] = math.huge ,["UdyrPhoenix"] = math.huge ,["UdyrTurtle"] = math.huge ,["UdyrTiger"] = math.huge ,["HA_AP_OrderShrineTurret"] = 500.0000 ,["HA_AP_Chains_Long"] = 500.0000 ,["HA_AP_BridgeLaneStatue"] = 500.0000 ,["HA_AP_ChaosTurretRubble"] = 500.0000 ,["HA_AP_PoroSpawner"] = 500.0000 ,["HA_AP_Cutaway"] = 500.0000 ,["HA_AP_Chains"] = 500.0000 ,["ChaosInhibitor_D"] = 500.0000 ,["ZacRebirthBloblet"] = 500.0000 ,["OrderInhibitor_D"] = 500.0000 ,["Nidalee_Spear"] = 500.0000 ,["Nidalee_Cougar"] = 500.0000 ,["TT_Buffplat_Chain"] = 500.0000 ,["WriggleLantern"] = 500.0000 ,["TwistedLizardElder"] = 500.0000 ,["RabidWolf"] = math.huge ,["HeimerTGreen"] = 1599.3999 ,["HeimerTRed"] = 1599.3999 ,["ViktorFF"] = 1599.3999 ,["TwistedGolem"] = math.huge ,["TwistedSmallWolf"] = math.huge ,["TwistedGiantWolf"] = math.huge ,["TwistedTinyWraith"] = 750.0000 ,["TwistedBlueWraith"] = 750.0000 ,["TwistedYoungLizard"] = 750.0000 ,["Red_Minion_Melee"] = math.huge ,["Blue_Minion_Melee"] = math.huge ,["Blue_Minion_Healer"] = 1000.0000 ,["Ghast"] = 750.0000 ,["blueDragon"] = 800.0000 ,["Red_Minion_MechRange"] = 3000.0000,}
+
+	self.ProjectileSpeed = myHero.range > 300 and self.projectilespeeds[myHero.charName] or math.huge
+	self.BaseWindupTime = 3
+	self.BaseAnimationTime = 0.65
+
+	--Callbacks
+	self.AfterAttackCallbacks = {}
+	self.OnAttackCallbacks = {}
+	self.BeforeAttackCallbacks = {}
+
+	self.LastAttack = 0
+	self.EnemyMinions = minionManager(MINION_ENEMY, 2000, myHero, MINION_SORT_MAXHEALTH_ASC)
+	self.JungleMinions = minionManager(MINION_JUNGLE, 2000, myHero, MINION_SORT_MAXHEALTH_DEC)
+	self.OtherMinions = minionManager(MINION_OTHER, 2000, myHero, MINION_SORT_HEALTH_ASC)
+
+	self.Attacks = true
+	self.Move = true
+	self.mode = -1
+	self.checkcancel = 0
+
+
+	AddProcessSpellCallback(function(unit, spell) self:OnProcessSpell(unit, spell) end)
+end
+
+function SOW:LoadToMenu(m)
+	if not m then
+		self.Menu = scriptConfig("Simple OrbWalker", "SOW")
+	else
+		self.Menu = m
+	end
+
+	self.Menu:addParam("Enabled", "Enabled", SCRIPT_PARAM_ONOFF, true)
+	self.Menu:addParam("FarmDelay", "Farm Delay", SCRIPT_PARAM_SLICE, 0, 0, 150)
+	self.Menu:addParam("ExtraWindUpTime", "Extra WindUp Time", SCRIPT_PARAM_SLICE, 0,  0, 150)
+	self.Menu:addParam("masteryhavoc", "Mastery: Havoc", SCRIPT_PARAM_ONOFF, true)
+	self.Menu:addParam("masterybutcher", "Mastery: Butcher", SCRIPT_PARAM_ONOFF, true)
+
+	self.Menu:addParam("Attack",  "Attack", SCRIPT_PARAM_LIST, 2, { "Only Farming", "Farming + Carry mode"})
+	self.Menu:addParam("Mode",  "Orbwalking mode", SCRIPT_PARAM_LIST, 1, { "To mouse", "To target"})
+
+	self.Menu:addParam("Hotkeys", "", SCRIPT_PARAM_INFO, "")
+	self.Menu:addParam("Mode3", "Last hit!", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("X"))
+	self.Menu:addParam("Mode1", "Mixed Mode!", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("C"))
+	self.Menu:addParam("Mode2", "Laneclear!", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
+	self.Menu:addParam("Mode0", "Carry me!", SCRIPT_PARAM_ONKEYDOWN, false, 32)
+
+	AddTickCallback(function() self:OnTick() end)
+end
+
+function SOW:DisableAttacks()
+	self.Attacks = false
+end
+
+function SOW:EnableAttacks()
+	self.Attacks = true
+end
+
+function SOW:ForceTarget(target)
+	self.forcetarget = target
+end
+
+function SOW:GetTime()
+	return os.clock()
+end
+
+function SOW:MyRange(target)
+	local myRange = myHero.range + 40
+	if target and ValidTarget(target) then
+		myRange = myRange + 40
+	end
+	return myRange - 20
+end
+
+function SOW:InRange(target)
+	local MyRange = self:MyRange(target)
+	if target and GetDistanceSqr(target.visionPos, myHero.visionPos) <= MyRange * MyRange then
+		return true
+	end
+end
+
+function SOW:ValidTarget(target)
+	if target and target.type and (target.type == "obj_BarracksDampener" or target.type == "obj_HQ")  then
+		return false
+	end
+	return ValidTarget(target) and self:InRange(target)
+end
+
+function SOW:Attack(target)
+	self.LastAttack = self:GetTime() + self:Latency()
+	myHero:Attack(target)
+end
+
+function SOW:WindUpTime(exact)
+	return (1 / (myHero.attackSpeed * self.BaseWindupTime)) + (exact and 0 or self.Menu.ExtraWindUpTime)
+end
+
+
+function SOW:AnimationTime()
+	return (1 / (myHero.attackSpeed * self.BaseAnimationTime))
+end
+
+function SOW:Latency()
+	return GetLatency() / 2000
+end
+
+function SOW:CanAttack()
+	if self.LastAttack <= self:GetTime() then
+		return (self:GetTime() + self:Latency()  > self.LastAttack + self:AnimationTime())
+	end
+	return false
+end
+
+function SOW:CanMove()
+	if (self:GetTime() > (self.LastAttack + self:WindUpTime() - self:Latency()) + 0.07) and not _G.evade and not Casting then
+		return true
+	else
+		return false
+	end
+end
+
+function SOW:BeforeAttack(target)
+	local result = false
+	for i, cb in ipairs(self.BeforeAttackCallbacks) do
+		local ri = cb(target, self.mode)
+		if ri then
+			result = true
+		end
+	end
+	return result
+end
+
+function SOW:RegisterBeforeAttackCallback(f)
+	table.insert(self.BeforeAttackCallbacks, f)
+end
+
+function SOW:OnAttack(target)
+	for i, cb in ipairs(self.OnAttackCallbacks) do
+		cb(target, self.mode)
+	end
+end
+
+function SOW:RegisterOnAttackCallback(f)
+	table.insert(self.OnAttackCallbacks, f)
+end
+
+function SOW:AfterAttack(target)
+	for i, cb in ipairs(self.AfterAttackCallbacks) do
+		cb(target, self.mode)
+	end
+end
+
+function SOW:RegisterAfterAttackCallback(f)
+	table.insert(self.AfterAttackCallbacks, f)
+end
+
+function SOW:MoveTo(x, y)
+	myHero:MoveTo(x, y)
+end
+
+function SOW:OrbWalk(target, point)
+	point = point or self.forceorbwalkpos
+	if self.Attacks and self:CanAttack() and self:ValidTarget(target) and not self:BeforeAttack(target) then
+		self:Attack(target)
+	elseif self:CanMove() and self.Move then
+		if not point then
+			local OBTarget = GetTarget() or target
+			if self.Menu.Mode == 1 or not OBTarget then
+				local Mv = Vector(myHero) + 400 * (Vector(mousePos) - Vector(myHero)):normalized()
+				self:MoveTo(Mv.x, Mv.z)
+			elseif GetDistanceSqr(OBTarget) > 100*100 + math.pow(40, 2) then
+--~ 				local point = self.VP:GetPredictedPos(OBTarget, 0, 2*myHero.ms, myHero, false)
+--~ 				if VIP_USER then
+--~ 					local point = self.VP:GetPredictedPos(OBTarget, 0, 2*myHero.ms, myHero, false)
+--~ 				else
+					local point = OBTarget
+--~ 				end
+				if GetDistanceSqr(point) < 100*100 + math.pow(40, 2) then
+					point = Vector(Vector(myHero) - point):normalized() * 50
+				end
+				self:MoveTo(point.x, point.z)
+			end
+		else
+			self:MoveTo(point.x, point.z)
+		end
+	end
+end
+
+function SOW:IsAttack(SpellName)
+	if SpellName:lower():find("attack") then
+		return true
+	else
+		return false
+	end
+end
+
+function SOW:IsAAReset(SpellName)
+	local SpellID
+	if SpellName:lower() == myHero:GetSpellData(_Q).name:lower() then
+		SpellID = _Q
+	end
+
+	if SpellID then
+		return true
+	end
+	return false
+end
+
+function SOW:OnProcessSpell(unit, spell)
+	if unit.isMe and self:IsAttack(spell.name) then
+		self.BaseAnimationTime = 1 / (spell.animationTime * myHero.attackSpeed)
+		self.BaseWindupTime = 1 / (spell.windUpTime * myHero.attackSpeed)
+		self.LastAttack = self:GetTime() - self:Latency()
+		self.checking = true
+		self.LastAttackCancelled = false
+		self:OnAttack(spell.target)
+		self.checkcancel = self:GetTime()
+		DelayAction(function(t) self:AfterAttack(t) end, self:WindUpTime() - self:Latency(), {spell.target})
+
+	elseif unit.isMe and self:IsAAReset(spell.name) then
+		DelayAction(function() self:resetAA() end, 0.25)
+	end
+end
+
+function SOW:resetAA()
+	self.LastAttack = 0
+end
+
+function SOW:KillableMinion()
+	local result
+	for i, minion in ipairs(self.EnemyMinions.objects) do
+		local time = (self:Latency()*10) + self:WindUpTime(true) + (GetDistance(minion.visionPos, myHero.visionPos) / self.ProjectileSpeed)
+		local PredictedHealth = Prodiction.GetPredictedHealthTime(minion, time + self.Menu.FarmDelay)
+		if self:ValidTarget(minion) and PredictedHealth < SOW:CalcAADamage(minion, self.Menu.masteryhavoc, self.Menu.masterybutcher) and PredictedHealth > -40 then
+			result = minion
+			break
+		end
+	end
+	return result
+end
+
+function SOW:ShouldWait()
+	for i, minion in ipairs(self.EnemyMinions.objects) do
+		local time = (self:Latency()*10) + self:WindUpTime(true) + (GetDistance(minion.visionPos, myHero.visionPos) / self.ProjectileSpeed)
+		if self:ValidTarget(minion) and Prodiction.GetPredictedHealthTime(minion, time * 2) < SOW:CalcAADamage(minion, self.Menu.masteryhavoc, self.Menu.masterybutcher) then
+			return true
+		end
+	end
+end
+
+function SOW:CalcAADamage(unit, havoc, butcher)
+	local AADmg = myHero:CalcDamage(unit)
+	if havoc then
+		AADmg = AADmg*1.03
+	end
+	if butcher then
+		AADmg = AADmg + 2
+	end
+
+	if myHero:GetSpellData(_Q).level > 0 and myHero:CanUseSpell(_Q) == SUPRESSED then
+		AADmg = AADmg + myHero:CalcDamage(minion, ((0.05 * myHero:GetSpellData(_Q).level) + 0.25 ) * myHero.totalDamage)
+	end
+	return AADmg
+end
+
+function SOW:ValidStuff()
+	local result = self:GetTarget()
+
+	if result then
+		return result
+	end
+
+	for i, minion in ipairs(self.EnemyMinions.objects) do
+		local time = (self:Latency()*10) + self:WindUpTime(true) + (GetDistance(minion.visionPos, myHero.visionPos) / self.ProjectileSpeed)
+		local PredictedHealth = Prodiction.GetPredictedHealthTime(minion, time + self.Menu.FarmDelay)
+		local pdamage = Prodiction.GetPredictedHealthTime(minion, time * 2)
+		local pdamage2 = minion.health - Prodiction.GetPredictedHealthTime(minion, time + self.Menu.FarmDelay)
+		if self:ValidTarget(minion) and ((pdamage) > 2*SOW:CalcAADamage(minion, self.Menu.masteryhavoc, self.Menu.masterybutcher) or pdamage2 == 0) then
+			return minion
+		end
+	end
+
+
+	for i, minion in ipairs(self.JungleMinions.objects) do
+		if self:ValidTarget(minion) then
+			return minion
+		end
+	end
+
+	for i, minion in ipairs(self.OtherMinions.objects) do
+		if self:ValidTarget(minion) then
+			return minion
+		end
+	end
+end
+
+function SOW:GetTarget(OnlyChampions)
+	local result
+	local healthRatio
+
+	if self:ValidTarget(self.forcetarget) then
+		return self.forcetarget
+	elseif self.forcetarget ~= nil then
+		return nil
+	end
+
+	if (not self.STS or not OnlyChampions) and self:ValidTarget(GetTarget()) and (GetTarget().type == myHero.type or (not OnlyChampions)) then
+		return GetTarget()
+	end
+
+	if self.STS then
+		local oldhitboxmode = self.STS.hitboxmode
+		self.STS.hitboxmode = true
+
+		result = self.STS:GetTarget(myHero.range)
+
+		self.STS.hitboxmode = oldhitboxmode
+		return result
+	end
+
+	for i, champion in ipairs(GetEnemyHeroes()) do
+		local hr = champion.health / myHero:CalcDamage(champion, 200)
+		if self:ValidTarget(champion) and ((healthRatio == nil) or hr < healthRatio) then
+			result = champion
+			healthRatio = hr
+		end
+	end
+
+	return result
+end
+
+function SOW:Farm(mode, point)
+	if mode == 1 then
+		self.EnemyMinions:update()
+		local target = self:KillableMinion() or self:GetTarget()
+		self:OrbWalk(target, point)
+		self.mode = 1
+	elseif mode == 2 then
+		self.EnemyMinions:update()
+		self.OtherMinions:update()
+		self.JungleMinions:update()
+
+		local target = self:KillableMinion()
+		if target then
+			self:OrbWalk(target, point)
+		elseif not self:ShouldWait() then
+			if self:ValidTarget(self.lasttarget) then
+				target = self.lasttarget
+			else
+				target = self:ValidStuff()
+			end
+			self.lasttarget = target
+
+			self:OrbWalk(target, point)
+		else
+			self:OrbWalk(nil, point)
+		end
+		self.mode = 2
+	elseif mode == 3 then
+		self.EnemyMinions:update()
+		local target = self:KillableMinion()
+		self:OrbWalk(target, point)
+		self.mode = 3
+	end
+end
+
+function SOW:OnTick()
+	if not self.Menu.Enabled then return end
+	if self.Menu.Mode0 then
+		local target = self:GetTarget(true)
+		if self.Menu.Attack == 2 then
+			self:OrbWalk(target)
+		else
+			self:OrbWalk()
+		end
+		self.mode = 0
+	elseif self.Menu.Mode1 then
+		self:Farm(1)
+	elseif self.Menu.Mode2 then
+		self:Farm(2)
+	elseif self.Menu.Mode3 then
+		self:Farm(3)
+	else
+		self.mode = -1
+	end
+end
+
+function SOW:DrawAARange(width, color)
+	local p = WorldToScreen(D3DXVECTOR3(myHero.x, myHero.y, myHero.z))
+	if OnScreen(p.x, p.y) then
+		DrawCircle3D(myHero.x, myHero.y, myHero.z, self:MyRange() + 25, width or 1, color or ARGB(255, 255, 0, 0))
+	end
 end

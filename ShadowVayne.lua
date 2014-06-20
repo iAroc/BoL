@@ -7,143 +7,276 @@
 	]]
 if myHero.charName ~= "Vayne" then return end
 
+
 ------------------------
 ------ AutoUpdate ------
 ------------------------
-function _AutoUpdate()
-	_AutoUpdates = {
-		{["Name"] = "VPrediction", 		["Version"] = "/Hellsing/BoL/master/version/VPrediction.version", 		["Script"] = "/Hellsing/BoL/master/common/VPrediction.lua"},
-		{["Name"] = "SOW", 				["Version"] = "/Hellsing/BoL/master/version/SOW.version", 				["Script"] = "/Hellsing/BoL/master/common/SOW.lua"},
-		{["Name"] = "SourceLib", 		["Version"] = "/TheRealSource/public/master/common/SourceLib.version", 	["Script"] = "/TheRealSource/public/master/common/SourceLib.lua"},
-		{["Name"] = "Selector", 		["Version"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.revision", 	["Script"] = "/pqmailer/BoL_Scripts/master/Paid/Selector.lua"},
-		{["Name"] = "CustomPermaShow", 	["Version"] = "/Superx321/BoL/master/common/CustomPermaShow.Version", 	["Script"] = "/Superx321/BoL/master/common/CustomPermaShow.lua"},
-		{["Name"] = "ShadowVayneLib", 	["Version"] = "/Superx321/BoL/master/common/ShadowVayneLib.Version", 	["Script"] = "/Superx321/BoL/master/common/ShadowVayneLib.lua"},
-	}
+_OwnEnv = GetCurrentEnv().FILE_NAME:gsub(".lua", "")
+DrawDoneDelay = 5
+_G.DebugAutoUpdate = true
+_G.VayneScriptName = "ShadowVayne"
+version = 0.4
 
+function _ScriptAutoUpdate(StartMessage)
+
+	_AutoUpdates = {
+-- Name				Host							Type		Version													Script																												VersionCheckString, LocalVersion, ServerVersion
+{"VPrediction",		"raw.githubusercontent.com",	"Lib",		"/Hellsing/BoL/master/version/VPrediction.version",		"/Hellsing/BoL/master/common/VPrediction.lua",																		"local version",nil,nil},
+--{"SOW",				"raw.githubusercontent.com",	"Lib",		"/Hellsing/BoL/master/version/SOW.version",				"/Hellsing/BoL/master/common/SOW.lua",																				"local version",nil,nil},
+{"SourceLib",		"raw.githubusercontent.com",	"Lib",		"/TheRealSource/public/master/common/SourceLib.version","/TheRealSource/public/master/common/SourceLib.lua",																"local version",nil,nil},
+{"Selector",		"raw.githubusercontent.com",	"Lib",		"/pqmailer/BoL_Scripts/master/Paid/Selector.revision",	"/pqmailer/BoL_Scripts/master/Paid/Selector.lua",																	"@version",nil,nil},
+{"CustomPermaShow",	"raw.githubusercontent.com",	"Lib",		"/Superx321/BoL/master/common/CustomPermaShow.Version",	"/Superx321/BoL/master/common/CustomPermaShow.lua",																	"version =",nil,nil},
+{"ShadowVayneLib",	"raw.githubusercontent.com",	"Lib",		"/Superx321/BoL/master/common/ShadowVayneLib.Version",	"/Superx321/BoL/master/common/ShadowVayneLib.lua",																	"version =",nil,nil},
+{"Prodiction",		"bitbucket.org",				"Lib",		nil,													"/Klokje/public-klokjes-bol-scripts/raw/1467bf108b116274f8763693b00b7d977faf7735/Test/Prodiction/Prodiction.lua",	"--Prodiction",nil,1.1},
+{_OwnEnv,			"raw.githubusercontent.com",	"Script",	"/Superx321/BoL/master/ShadowVayne.Version",			"/Superx321/BoL/master/ShadowVayne.lua",																			"version =",nil,nil},
+}
+	NeedUpdateTable = {}
+	UpdateDrawMsgs = {}
 	function _Receive()
+		if Error then return end
 		if not UpdateVersionDone then
 			if not UpdateVersionStarted then
-				UpdateVersionStarted = true
-				TcpSocket = socket.connect("reddi-ts.de", 80)
-				SendString = "GET /BoL/ScriptsNew.php?count="..#_AutoUpdates
-				for i=1,#_AutoUpdates do
-						SendString = SendString .. "&"..i.."_script=".._AutoUpdates[i]["Version"]
+				TcpVersionSocket = socket.connect("sx-bol.de", 80)
+				if type(TcpVersionSocket) == "userdata" then
+					_AddUpdateDrawMsg("VersionSocket Connected", "green")
+				else
+					_AddUpdateDrawMsg("Failed to Connect VersionSocket", "red")
+					Error = true
+					return
 				end
-				TcpSocket:send(SendString .. " HTTP/1.0\r\n\r\n")
+				_CheckOnlineVersion = {}
+				for i=1,#_AutoUpdates do
+					if _AutoUpdates[i][4] ~= nil then
+						table.insert(_CheckOnlineVersion, _AutoUpdates[i])
+					end
+				end
+
+				SendString = "GET /BoL/ScriptUpdates/VersionCheck.php?count="..#_CheckOnlineVersion
+				for i=1,#_CheckOnlineVersion do
+					SendString = SendString .. "&"..i.."_script=".._CheckOnlineVersion[i][4].."&"..i.."_host=".._CheckOnlineVersion[i][2]
+				end
+				_AddUpdateDrawMsg("Sending VersionCheck")
+				TcpVersionSocket:send(SendString .. " HTTP/1.0\r\n\r\n")
+				UpdateVersionStarted = true
 			end
-			TcpSocket:settimeout(0)
-			local TcpReceive, TcpStatus = TcpSocket:receive('*a')
-			if TcpStatus ~= "timeout" then
-				if TcpReceive ~= nil then
-					UpdateVersionDone = true
-					NeedUpdateTable = {}
-					ScriptUpdateDone = 0
-					for i=1,#_AutoUpdates do
-						_AutoUpdates[i]["ServerVersion"] = tonumber(string.sub(TcpReceive, string.find(TcpReceive, "<"..i.."_script>")+10, string.find(TcpReceive, "</"..i.."_script>")-1))
-						_AutoUpdates[i]["LocalVersion"] = tonumber(_GetLocalVersion(_AutoUpdates[i]["Name"])) or 0
-						if _AutoUpdates[i]["ServerVersion"] > _AutoUpdates[i]["LocalVersion"] then
-							_PrintUpdateMsg("Updating (".._AutoUpdates[i]["LocalVersion"].." => ".._AutoUpdates[i]["ServerVersion"].."), please wait...", _AutoUpdates[i]["Name"])
-							table.insert(NeedUpdateTable, {_AutoUpdates[i]["Name"],_AutoUpdates[i]["Script"],_AutoUpdates[i]["LocalVersion"],_AutoUpdates[i]["ServerVersion"]})
+			TcpVersionSocket:settimeout(0)
+			 TcpVersionReceive, TcpVersionStatus = TcpVersionSocket:receive('*a')
+			if TcpVersionStatus ~= "timeout" then
+				if TcpVersionReceive ~= nil then
+					_AddUpdateDrawMsg("Got VersionCheck answer", "green")
+					_AddUpdateDrawMsg("", "green")
+					for i=1,#_CheckOnlineVersion do
+						_CheckOnlineVersion[i][7] = tonumber(_GetVersion(_CheckOnlineVersion[i][1])) or 0
+						_CheckOnlineVersion[i][8] = tonumber(string.sub(TcpVersionReceive, string.find(TcpVersionReceive, "<"..i.."_script>")+10, string.find(TcpVersionReceive, "</"..i.."_script>")-1))
+
+						if _CheckOnlineVersion[i][8] > _CheckOnlineVersion[i][7] then
+							_AddUpdateDrawMsg(_CheckOnlineVersion[i][1].." needs an Update (Local: ".._CheckOnlineVersion[i][7]..", Server: ".._CheckOnlineVersion[i][8]..")", "red")
+--~ 							_PrintUpdateMsg("Updateing (".._CheckOnlineVersion[i][7].." => ".._CheckOnlineVersion[i][8].."), please wait...", _CheckOnlineVersion[i][1])
+							table.insert(NeedUpdateTable, _CheckOnlineVersion[i])
+						else
+							_AddUpdateDrawMsg(_CheckOnlineVersion[i][1].." dont need an Update (Local: ".._CheckOnlineVersion[i][7]..", Server: ".._CheckOnlineVersion[i][8]..")", "green")
 						end
 					end
+					UpdateVersionDone = true
 				else
-					TcpSocket = socket.connect("reddi-ts.de", 80)
-					SendString = "GET /BoL/ScriptsNew.php?count="..#_AutoUpdates
-					for i=1,#_AutoUpdates do
-							SendString = SendString .. "&"..i.."_script=".._AutoUpdates[i]["Version"]
-					end
-					TcpSocket:send(SendString .. " HTTP/1.0\r\n\r\n")
-				end
-			end
-		end
-
-		if UpdateVersionDone and ScriptUpdateDone < #NeedUpdateTable then
-			if not UpdateScriptStarted then
-				UpdateScriptStarted = true
-				TcpVersionSocket = {}
-				for i=1,#NeedUpdateTable do
-					TcpVersionSocket[i] = socket.connect("reddi-ts.de", 80)
-					SendString = "GET /BoL/ScriptsOld.php?path="..NeedUpdateTable[i][2]
-					TcpVersionSocket[i]:send(SendString .. " HTTP/1.0\r\n\r\n")
-				end
-			end
-			for i=1,#NeedUpdateTable do
-				TcpVersionSocket[i]:settimeout(0.1)
-				TcpReceive, TcpStatus = TcpVersionSocket[i]:receive("*a")
-				if TcpStatus ~= "timeout" then
-					if TcpReceive ~= nil then
-						_PrintUpdateMsg("Updated ("..NeedUpdateTable[i][3].." => "..NeedUpdateTable[i][4]..")", NeedUpdateTable[i][1])
-						ScriptUpdateDone = ScriptUpdateDone + 1
-						LibNameFile = io.open(LIB_PATH..NeedUpdateTable[i][1]..".lua", "w+")
-						LibNameFile:write(string.sub(TcpReceive, string.find(TcpReceive, "<script>")+8, string.find(TcpReceive, "</script>")-1))
-						LibNameFile:close()
+					if not retry then retry = 1 else retry = retry + 1 end
+					_AddUpdateDrawMsg("VersionCheck was nil, retry["..retry.."]", "red")
+					TcpVersionSocket = socket.connect("sx-bol.de", 80)
+					if type(TcpVersionSocket) == "userdata" then
+						_AddUpdateDrawMsg("VersionSocket Connected, retry["..retry.."]", "green")
 					else
-						TcpVersionSocket[i] = socket.connect("reddi-ts.de", 80)
-						SendString = "GET /BoL/ScriptsOld.php?path="..NeedUpdateTable[i][2]
-						TcpVersionSocket[i]:send(SendString .. " HTTP/1.0\r\n\r\n")
+						_AddUpdateDrawMsg("Failed to Connect VersionSocket, retry["..retry.."]", "red")
+						Error = true
+						return
 					end
+					SendString = "GET /BoL/ScriptUpdates/VersionCheck.php?count="..#_CheckOnlineVersion
+					for i=1,#_CheckOnlineVersion do
+						SendString = SendString .. "&"..i.."_script=".._CheckOnlineVersion[i][4]
+					end
+					TcpVersionSocket:send(SendString .. " HTTP/1.0\r\n\r\n")
 				end
 			end
 		end
 
-		if UpdateVersionDone and ScriptUpdateDone >= #NeedUpdateTable then
-			if not PrintOnce then
-			PrintOnce = true
+		if UpdateVersionDone and not CheckRestVersions then
 			for i=1,#_AutoUpdates do
-				_RequireWithoutUpdate(_AutoUpdates[i]["Name"])
+				if _AutoUpdates[i][4] == nil then
+					_AutoUpdates[i][7] = tonumber(_GetVersion(_AutoUpdates[i][1])) or 0
+					if _AutoUpdates[i][8] > _AutoUpdates[i][7] then
+						_AddUpdateDrawMsg(_AutoUpdates[i][1].." needs an Update (Local: ".._AutoUpdates[i][7]..", Server: ".._AutoUpdates[i][8]..")", "red")
+--~ 						_PrintUpdateMsg("Updating (".._AutoUpdates[i][7].." => ".._AutoUpdates[i][8].."), please wait...", _AutoUpdates[i][1])
+						table.insert(NeedUpdateTable, _AutoUpdates[i])
+					else
+						_AddUpdateDrawMsg(_AutoUpdates[i][1].." dont need an Update (Local: ".._AutoUpdates[i][7]..", Server: ".._AutoUpdates[i][8]..")", "green")
+					end
+				end
 			end
+			CheckRestVersions = true
+		end
+
+		if CheckRestVersions and not UpdateScriptDone then
+			_AddUpdateDrawMsg("", "green")
+			for i=1,#NeedUpdateTable do
+				TcpScriptSocket = socket.connect("sx-bol.de", 80)
+				if type(TcpScriptSocket) == "userdata" then
+					_AddUpdateDrawMsg("ScriptSocket("..NeedUpdateTable[i][1]..") Connected", "green")
+				else
+					_AddUpdateDrawMsg("Failed to Connect ScriptSocket("..NeedUpdateTable[i][1]..")", "red")
+					Error = true
+					return
+				end
+				SendString = "GET /BoL/ScriptUpdates/ScriptDownload.php?path="..NeedUpdateTable[i][5].."&host="..NeedUpdateTable[i][2]
+				TcpScriptSocket:send(SendString .. " HTTP/1.0\r\n\r\n")
+				ServerScript = TcpScriptSocket:receive('*a')
+				if ServerScript == nil then	_AddUpdateDrawMsg("ScriptUpdate("..NeedUpdateTable[i][1]..") answer was nil", "red") else
+					_AddUpdateDrawMsg("Script("..NeedUpdateTable[i][1]..") Updated", "green")
+--~ 					_PrintUpdateMsg("Updated ("..NeedUpdateTable[i][7].." => "..NeedUpdateTable[i][8]..")", NeedUpdateTable[i][1])
+					SaveString = string.sub(ServerScript, string.find(ServerScript, "<script>")+8, string.find(ServerScript, "</script>")-1)
+					_AddUpdateDrawMsg("Updated(".. NeedUpdateTable[i][1] ..") String Lengh: "..string.len(SaveString))
+					if string.len(SaveString) > 1000 then
+						_SaveToFile(NeedUpdateTable[i][1], SaveString)
+					else
+						_AddUpdateDrawMsg(NeedUpdateTable[i][1]..": UpdateString to short", "red")
+					end
+				end
+			end
+			UpdateScriptDone = true
+			_AddUpdateDrawMsg("AutoUpdate Ended")
+		end
+
+		if UpdateScriptDone then
+			if not AutoUpdateDone then
+				for i=1,#_AutoUpdates do
+					if _AutoUpdates[i][3] == "Lib" then
+						_RequireWithoutUpdate(_AutoUpdates[i][1])
+					end
+				end
+				_OnLoad()
+				AutoUpdateDone = true
+				_PrintUpdateMsg("Version ".. _G.CassioVersion .." loaded")
+				DelayAction(function() _G.DebugAutoUpdate = false end, DrawDoneDelay)
 			end
 		end
 	end
 
-	socket = require("socket")
-	AddTickCallback(_Receive)
-end
-
-function _GetLocalVersion(LibName)
-	if FileExist(LIB_PATH..LibName..".lua") then
-		LibNameFile = io.open(LIB_PATH..LibName..".lua", "r")
-		LibNameString = LibNameFile:read("*a")
-		LibNameFile:close()
-		LibNameVersionPos = LibNameString:lower():find("version")
-		if type(LibNameVersionPos) == "number" then
-			for i = 1,20 do
-				GetCurrentChar = string.sub(LibNameString, LibNameVersionPos+i, LibNameVersionPos+i)
-				if type(tonumber(GetCurrentChar)) == "number" then
-					VersionNumberStartPos = LibNameVersionPos+i
-					break
+	function _GetVersion(_ScriptName)
+		for i = 1,#_AutoUpdates do
+			if _AutoUpdates[i][1] == _ScriptName then
+				if _AutoUpdates[i][3] == "Lib" then
+					SavePath = LIB_PATH.._ScriptName..".lua"
+				else
+					SavePath = SCRIPT_PATH.._ScriptName..".lua"
 				end
+				LibNumber = i
+				break
 			end
+		end
 
-			for i = 0,20 do
-				GetCurrentChar = string.sub(LibNameString, VersionNumberStartPos+i, VersionNumberStartPos+i)
-				if type(tonumber(GetCurrentChar)) ~= "number" and GetCurrentChar ~= "." then
-					VersionNumberEndPos = VersionNumberStartPos+i-1
-					break
-				end
+		if FileExist(SavePath) then
+			_ScriptFile = io.open(SavePath, "r")
+			_ScriptString = _ScriptFile:read("*a")
+			_ScriptFile:close()
+			_ScriptVersionPos = _ScriptString:find(_AutoUpdates[LibNumber][6])
+			if _ScriptVersionPos ~= nil then
+				_ScriptVersionString = string.sub(_ScriptString, _ScriptVersionPos + string.len(_AutoUpdates[LibNumber][6]) + 1, _ScriptVersionPos + string.len(_AutoUpdates[LibNumber][6]) + 1 + 10)
+				_ScriptVersion = string.match(_ScriptVersionString, "%d *.*%d")
 			end
-			FileVersion = string.sub(LibNameString, VersionNumberStartPos, VersionNumberEndPos)
-			if tonumber(FileVersion) == nil then FileVersion = 0 end
-			if FileVersion == "2.431" then
-				return 5
-			else
-				return FileVersion
-			end
+			if _ScriptVersion == 2.431 then _ScriptVersion = math.huge end -- VPred 2.431
+			if _ScriptVersion == nil then _ScriptVersion = 0 end
+			return _ScriptVersion
 		else
 			return 0
 		end
-	else
-		return 0
 	end
+
+	function _SwapAutoUpdate(SwapState, _ScriptName)
+		_ScriptNameFile = io.open(LIB_PATH.._ScriptName..".lua", "r")
+		_ScriptNameString = _ScriptNameFile:read("*a")
+		_ScriptNameFile:close()
+		if SwapState == "true" then
+			_ScriptNameString = _ScriptNameString:gsub("AUTOUPDATE = false", "AUTOUPDATE = true") 		-- SOW & VPrediction
+			_ScriptNameString = _ScriptNameString:gsub("autoUpdate   = false", "autoUpdate   = true") 	-- SourceLib
+			_ScriptNameString = _ScriptNameString:gsub("AutoUpdate = false", "AutoUpdate = true") 		-- Selector
+		else
+			_ScriptNameString = _ScriptNameString:gsub("AUTOUPDATE = true", "AUTOUPDATE = false") 		-- SOW & VPrediction
+			_ScriptNameString = _ScriptNameString:gsub("autoUpdate   = true", "autoUpdate   = false") 	-- SourceLib
+			_ScriptNameString = _ScriptNameString:gsub("AutoUpdate = true", "AutoUpdate = false") 		-- Selector
+		end
+		_ScriptNameFile = io.open(LIB_PATH.._ScriptName..".lua", "w+")
+		_ScriptNameFile:write(_ScriptNameString)
+		_ScriptNameFile:close()
+	end
+
+	function _RequireWithoutUpdate(_ScriptName)
+		_SwapAutoUpdate("false", _ScriptName)
+		loadfile(LIB_PATH .. _ScriptName..".lua")()
+		_SwapAutoUpdate("true", _ScriptName)
+	end
+
+	function _PrintUpdateMsg(Msg, _ScriptName)
+		if _ScriptName == nil or _ScriptName == _OwnEnv then
+			print("<font color=\"#F0Ff8d\"><b>".._G.VayneScriptName..":</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
+		else
+			print("<font color=\"#F0Ff8d\"><b>".._G.VayneScriptName.."(".._ScriptName.."):</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
+		end
+	end
+
+	function _SaveToFile(_ScriptName, RawScript)
+		for i = 1,#_AutoUpdates do
+			if _AutoUpdates[i][1] == _ScriptName then
+				if _AutoUpdates[i][3] == "Lib" then
+					SavePath = LIB_PATH.._ScriptName..".lua"
+				else
+					SavePath = SCRIPT_PATH.._ScriptName..".lua"
+				end
+				break
+			end
+		end
+		_ScriptNameFile = io.open(SavePath, "w+")
+		_ScriptNameFile:write(RawScript)
+		_ScriptNameFile:close()
+	end
+
+	function _AddUpdateDrawMsg(Msg, Color)
+		local AlradyAdded = false
+		for i=1,#UpdateDrawMsgs do
+			if UpdateDrawMsgs[i][1] == Msg then
+				AlradyAdded = true
+				break
+			end
+		end
+
+		if not AlradyAdded then
+			if Color == nil then Color = "white" end
+			table.insert(UpdateDrawMsgs, {Msg, Color})
+		end
+	end
+
+	function _DrawUpdateMsg()
+		if _G.DebugAutoUpdate then
+			Color = {
+			["white"] =RGBA(0xFF,0xFF,0xFF,0xFF),
+			["green"] =RGBA(0x45,0x8B,0x00,0xFF),
+			["red"] =RGBA(0xB2,0x22,0x22,0xFF),
+			}
+			for i=1,#UpdateDrawMsgs do
+				DrawText(UpdateDrawMsgs[i][1], 15, 10, i*11, Color[UpdateDrawMsgs[i][2]])
+			end
+		end
+	end
+
+
+	if StartMessage ~= nil then _PrintUpdateMsg(StartMessage, ScriptName) end
+	_AddUpdateDrawMsg("Init AutoUpdate")
+	socket = require("socket")
+	AddTickCallback(_Receive)
+	AddDrawCallback(_DrawUpdateMsg)
 end
 
-function _PrintUpdateMsg(Msg, LibName)
-	if LibName == nil or LibName == "ShadowVayneLib" then
-		print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
-	else
-		print("<font color=\"#F0Ff8d\"><b>ShadowVayne("..LibName.."):</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
-	end
-end
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------------------
 
 ------------------------
 ------ MainScript ------
