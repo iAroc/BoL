@@ -15,7 +15,7 @@ _OwnEnv = GetCurrentEnv().FILE_NAME:gsub(".lua", "")
 DrawDoneDelay = 5
 _G.DebugAutoUpdate = true
 _G.VayneScriptName = "ShadowVayne"
-version = 0.4
+shadowversion = 0.4
 
 function _ScriptAutoUpdate(StartMessage)
 
@@ -153,7 +153,7 @@ function _ScriptAutoUpdate(StartMessage)
 				end
 				_OnLoad()
 				AutoUpdateDone = true
-				_PrintUpdateMsg("Version ".. _G.CassioVersion .." loaded")
+				_PrintUpdateMsg("Version ".. shadowversion .." loaded")
 				DelayAction(function() _G.DebugAutoUpdate = false end, DrawDoneDelay)
 			end
 		end
