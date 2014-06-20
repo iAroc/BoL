@@ -5,7 +5,7 @@
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
 	]]
-	version = 3.23
+	version = 3.24
 	SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
 	SVSOWMenu = scriptConfig("[ShadowVayne] SimpleOrbWalker Settings", "SV_SOW")
 	if not VIP_USER then SVTSMenu = scriptConfig("[ShadowVayne] TargetSelector Settings", "SV_TS") end
@@ -15,6 +15,13 @@
 ------------------------
 function _PrintScriptMsg(Msg)
 	PrintChat("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
+end
+
+if not _G.ShadowVayneLoaded then
+	for i=1,10 do
+		_PrintScriptMsg("Please Redownload the Script from the Thread!")
+	end
+	return
 end
 
 function _CheckOrbWalkers()
