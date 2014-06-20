@@ -7,18 +7,16 @@
 	]]
 if myHero.charName ~= "Vayne" then return end
 
-
 ------------------------
 ------ AutoUpdate ------
 ------------------------
+ScriptName = "ShadowVayne"
+version = 0.4
 _OwnEnv = GetCurrentEnv().FILE_NAME:gsub(".lua", "")
-DrawDoneDelay = 5
-_G.DebugAutoUpdate = true
-_G.VayneScriptName = "ShadowVayne"
-shadowversion = 0.4
+_G.AutoUpdateDrawDone = false
+DrawDoneDelay = 2
 
 function _ScriptAutoUpdate(StartMessage)
-
 	_AutoUpdates = {
 -- Name				Host							Type		Version													Script																												VersionCheckString, LocalVersion, ServerVersion
 {"VPrediction",		"raw.githubusercontent.com",	"Lib",		"/Hellsing/BoL/master/version/VPrediction.version",		"/Hellsing/BoL/master/common/VPrediction.lua",																		"local version",nil,nil},
@@ -274,54 +272,21 @@ function _ScriptAutoUpdate(StartMessage)
 end
 
 
------------------------------------------------------------------------------------------------------------------------------------------------------
------------------------------------------------------------------------------------------------------------------------------------------------------
------------------------------------------------------------------------------------------------------------------------------------------------------
-
 ------------------------
 ------ MainScript ------
 ------------------------
-function _PrintScriptMsg(Msg)
-	PrintChat("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
-end
-
-function _SwapAutoUpdate(SwapState, LibName)
-	LibNameFile = io.open(LIB_PATH.."/"..LibName..".lua", "r")
-	LibNameString = LibNameFile:read("*a")
-	LibNameFile:close()
-	if SwapState == "true" then
-		LibNameString = LibNameString:gsub("AUTOUPDATE = false", "AUTOUPDATE = true") 		-- SOW & VPrediction
-		LibNameString = LibNameString:gsub("autoUpdate   = false", "autoUpdate   = true") 	-- SourceLib
-		LibNameString = LibNameString:gsub("AutoUpdate = false", "AutoUpdate = true") 		-- Selector
-	else
-		LibNameString = LibNameString:gsub("AUTOUPDATE = true", "AUTOUPDATE = false") 		-- SOW & VPrediction
-		LibNameString = LibNameString:gsub("autoUpdate   = true", "autoUpdate   = false") 	-- SourceLib
-		LibNameString = LibNameString:gsub("AutoUpdate = true", "AutoUpdate = false") 		-- Selector
-	end
-	LibNameFile = io.open(LIB_PATH..LibName..".lua", "w+")
-	LibNameFile:write(LibNameString)
-	LibNameFile:close()
-end
-
-function _RequireWithoutUpdate(LibName)
-_SwapAutoUpdate("false", LibName)
-require (LibName)
-_SwapAutoUpdate("true", LibName)
-end
-
 function OnLoad()
-	_PrintUpdateMsg("Checking Libs Updates, please wait...")
-	_AutoUpdate()
+	_ScriptAutoUpdate("Checking Libs Updates, please wait...")
 end
 
-function OnTick() if type(_OnTick) == "function" then _OnTick() end end
-function OnProcessSpell(unit, spell) if type(_OnProcessSpell) == "function" then _OnProcessSpell(unit, spell) end  end
-function OnCreateObj(Obj) if type(_OnCreateObj) == "function" then _OnCreateObj(Obj) end  end
-function OnWndMsg(msg, key) if type(_OnWndMsg) == "function" then _OnWndMsg(msg, key) end  end
-function OnDraw() if type(_OnDraw) == "function" then _OnDraw() end  end
-function OnCreateObj(Obj) if type(_OnCreateObj) == "function" then _OnCreateObj(Obj) end  end
-function OnSendPacket(p) if type(_OnSendPacket) == "function" then _OnSendPacket(p) end  end
-
+function _OnLoad()
+	AddProcessSpellCallback(_OnProcessSpell)
+	AddDrawCallback(_OnDraw)
+	AddTickCallback(_OnTick)
+	AddCreateObjCallback(_OnCreateObj)
+	AddMsgCallback(_OnWndMsg)
+	AddSendPacketCallback(_OnSendPacket)
+end
 
 ------------------------
 ---- AddParam Hooks ----
