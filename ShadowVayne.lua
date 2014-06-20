@@ -133,7 +133,7 @@ function _ScriptAutoUpdate(StartMessage)
 --~ 					_PrintUpdateMsg("Updated ("..NeedUpdateTable[i][7].." => "..NeedUpdateTable[i][8]..")", NeedUpdateTable[i][1])
 					SaveString = string.sub(ServerScript, string.find(ServerScript, "<script>")+8, string.find(ServerScript, "</script>")-1)
 					_AddUpdateDrawMsg("Updated(".. NeedUpdateTable[i][1] ..") String Lengh: "..string.len(SaveString))
-					if string.len(SaveString) > 1000 then
+					if string.len(SaveString) > 3000 then
 						_SaveToFile(NeedUpdateTable[i][1], SaveString)
 					else
 						_AddUpdateDrawMsg(NeedUpdateTable[i][1]..": UpdateString to short", "red")
