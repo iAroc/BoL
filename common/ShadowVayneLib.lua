@@ -5,7 +5,7 @@
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
 	]]
-	version = 3.25
+	version = 3.26
 	SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
 	SVSOWMenu = scriptConfig("[ShadowVayne] SimpleOrbWalker Settings", "SV_SOW")
 	if not VIP_USER then SVTSMenu = scriptConfig("[ShadowVayne] TargetSelector Settings", "SV_TS") end
@@ -635,6 +635,7 @@ function _UseTumble()
 	if myHero.dead then return end
 	if myHero:CanUseSpell(_Q) ~= READY then return end
 	if ShootRengar then return end
+	if not NextAA then return end
 	if ShadowVayneAutoCarry then
 		TumbleTarget = TargetSelectorTarget
 	else
