@@ -5,24 +5,24 @@
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
 	]]
-	version = 3.24
+	version = 3.25
 	SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
 	SVSOWMenu = scriptConfig("[ShadowVayne] SimpleOrbWalker Settings", "SV_SOW")
 	if not VIP_USER then SVTSMenu = scriptConfig("[ShadowVayne] TargetSelector Settings", "SV_TS") end
---~ 	VIP_USER = false
-------------------------
+
+	------------------------
 ------ MainScript ------
 ------------------------
 function _PrintScriptMsg(Msg)
 	PrintChat("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">"..Msg.."</font>")
 end
 
-if not _G.ShadowVayneLoaded then
-	for i=1,10 do
-		_PrintScriptMsg("Please Redownload the Script from the Thread!")
-	end
-	return
-end
+--~ if not _G.ShadowVayneLoaded then
+--~ 	for i=1,10 do
+--~ 		_PrintScriptMsg("Please Redownload the Script from the Thread!")
+--~ 	end
+--~ 	return
+--~ end
 
 function _CheckOrbWalkers()
 	if _G.AutoCarry ~= nil then
@@ -635,14 +635,12 @@ function _UseTumble()
 	if myHero.dead then return end
 	if myHero:CanUseSpell(_Q) ~= READY then return end
 	if ShootRengar then return end
-	if not LastAttackedEnemy then return end
-	if LastAttackedEnemy.dead then return end
-	if LastAttackedEnemy.health < 1 then return end
-	if ShadowVayneAutoCarry and TargetSelectorTarget then
+	if ShadowVayneAutoCarry then
 		TumbleTarget = TargetSelectorTarget
 	else
 		TumbleTarget = LastAttackedEnemy
 	end
+	if not ValidTarget(TumbleTarget) then return end
 
 	if  (SVMainMenu.tumble.Qautocarry and ShadowVayneAutoCarry and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaAutoCarry)) or
 		(SVMainMenu.tumble.Qmixedmode and ShadowVayneMixedMode and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaMixedMode)) or
