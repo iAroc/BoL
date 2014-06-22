@@ -12,7 +12,7 @@
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 3.28
+	self.ShadowTable.version = 3.29
 	CondemnLastE = 0
 	print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Version "..self.ShadowTable.version.." loaded</font>")
 
@@ -235,6 +235,18 @@ function ShadowVayne:FillMenu_KeySetting()
 	SVMainMenu.keysetting:addParam("MixedModeOrb", "Orbwalker in MixedMode: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
 	SVMainMenu.keysetting:addParam("LaneClearOrb", "Orbwalker in LaneClear: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
 	SVMainMenu.keysetting:addParam("LastHitOrb", "Orbwalker in LastHit: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
+	--~ SAC R84 FIX
+	SVMainMenu.keysetting:addParam("SACAutoCarry","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.keysetting:addParam("SACMixedMode","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.keysetting:addParam("SACLaneClear","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.keysetting:addParam("SACLastHit","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+	if _G.Reborn_Loaded then
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACAutoCarry", AutoCarry.MODE_AUTOCARRY)
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACMixedMode", AutoCarry.MODE_MIXEDMODE)
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLaneClear", AutoCarry.MODE_LANECLEAR)
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLastHit", AutoCarry.MODE_LASTHIT)
+	end
+
 	if SVMainMenu.keysetting._param[12].listTable[SVMainMenu.keysetting.AutoCarryOrb] == nil then SVMainMenu.keysetting.AutoCarryOrb = 1 end
 	if SVMainMenu.keysetting._param[13].listTable[SVMainMenu.keysetting.MixedModeOrb] == nil then SVMainMenu.keysetting.MixedModeOrb = 1 end
 	if SVMainMenu.keysetting._param[14].listTable[SVMainMenu.keysetting.LaneClearOrb] == nil then SVMainMenu.keysetting.LaneClearOrb = 1 end
@@ -317,6 +329,7 @@ end
 
 function ShadowVayne:FillMenu_Draw()
 	SVMainMenu.draw:addParam("DrawAARange", "Draw Basicattack Range", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.draw:addParam("DrawERange", "Draw E Range", SCRIPT_PARAM_ONOFF, false)
 	SVMainMenu.draw:addParam("DrawNeededAutohits", "Draw Needed Autohits", SCRIPT_PARAM_ONOFF, false)
 	SVMainMenu.draw:addParam("DrawEColor", "E Range Color", SCRIPT_PARAM_LIST, 1, { "Riot standard", "Green", "Blue", "Red", "Purple" })
 	SVMainMenu.draw:addParam("DrawAAColor", "Basicattack Range Color", SCRIPT_PARAM_LIST, 1, { "Riot standard", "Green", "Blue", "Red", "Purple" })
@@ -436,21 +449,17 @@ function ShadowVayne:ActivateModes()
 	if LaneClearOrbText == "MMA" then _G.MMA_LaneClear = ShadowVayneLaneClear end
 	if LastHitOrbText == "MMA" then _G.MMA_LastHit = ShadowVayneLastHit end
 
-	--~ Activate SAC:Reborn
+	--~ Activate SAC:Reborn R83
 	if AutoCarryOrbText == "Reborn R83" then Keys.AutoCarry = ShadowVayneAutoCarry end
 	if MixedModeOrbText == "Reborn R83" then Keys.MixedMode = ShadowVayneMixedMode end
 	if LaneClearOrbText == "Reborn R83" then Keys.LaneClear = ShadowVayneLaneClear end
 	if LastHitOrbText   == "Reborn R83" then Keys.LastHit = ShadowVayneLastHit end
-	if AutoCarryOrbText == "Reborn R84" then Keys.AutoCarry = ShadowVayneAutoCarry end
-	if MixedModeOrbText == "Reborn R84" then Keys.MixedMode = ShadowVayneMixedMode end
-	if LaneClearOrbText == "Reborn R84" then Keys.LaneClear = ShadowVayneLaneClear end
-	if LastHitOrbText   == "Reborn R84" then Keys.LastHit = ShadowVayneLastHit end
 
---~ 	--~ Activate SAC:Reborn R84 FIX
---~ 	if AutoCarryOrbText == "Reborn" then SVMainMenu.keysetting.SACAutoCarry = ShadowVayneAutoCarry end
---~ 	if MixedModeOrbText == "Reborn" then SVMainMenu.keysetting.SACMixedMode = ShadowVayneMixedMode end
---~ 	if LaneClearOrbText == "Reborn" then SVMainMenu.keysetting.SACLaneClear = ShadowVayneLaneClear end
---~ 	if LastHitOrbText == "Reborn" then SVMainMenu.keysetting.SACLastHit = ShadowVayneLastHit end
+	--~ Activate SAC:Reborn R84
+	if AutoCarryOrbText == "Reborn R84" then SVMainMenu.keysetting.SACAutoCarry = ShadowVayneAutoCarry end
+	if MixedModeOrbText == "Reborn R84" then SVMainMenu.keysetting.SACMixedMode = ShadowVayneMixedMode end
+	if LaneClearOrbText == "Reborn R84" then SVMainMenu.keysetting.SACLaneClear = ShadowVayneLaneClear end
+	if LastHitOrbText   == "Reborn R84" then SVMainMenu.keysetting.SACLastHit = ShadowVayneLastHit end
 
 	--~ Activate SAC:Revamped
 --~ 	if AutoCarryOrbText == "Revamped" then REVMenu.AutoCarry = ShadowVayneAutoCarry end
@@ -1495,17 +1504,6 @@ function SOW:DrawAARange(width, color)
 	end
 end
 
---~ SAC R84 FIX
---~ 		SVMainMenu.keysetting:addParam("SACAutoCarry","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
---~ 		SVMainMenu.keysetting:addParam("SACMixedMode","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
---~ 		SVMainMenu.keysetting:addParam("SACLaneClear","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
---~ 		SVMainMenu.keysetting:addParam("SACLastHit","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
---~ 	if SACLoaded then
---~ 		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACAutoCarry", AutoCarry.MODE_AUTOCARRY)
---~ 		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACMixedMode", AutoCarry.MODE_MIXEDMODE)
---~ 		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLaneClear", AutoCarry.MODE_LANECLEAR)
---~ 		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLastHit", AutoCarry.MODE_LASTHIT)
---~ 	end
 
 --~ ---------------------------------
 --~ ---------- Stunn Logic ----------
