@@ -9,21 +9,20 @@ if myHero.charName ~= "Vayne" then return end
 
 _OwnEnv = GetCurrentEnv().FILE_NAME:gsub(".lua", "")
 
-ShadowVersion = 0.7
+ShadowVersion = 0.8
 
 ------------------------
 ------ MainScript ------
 ------------------------
 function OnLoad()
-	TCPUpdater:AddScript("VPrediction","Lib","raw.githubusercontent.com","/Hellsing/BoL/master/common/VPrediction.lua","/Hellsing/BoL/master/version/VPrediction.version","local version", "Free")
-	TCPUpdater:AddScript("SOW","Lib","raw.githubusercontent.com","/Hellsing/BoL/master/common/SOW.lua","/Hellsing/BoL/master/version/SOW.version","local version", "Free")
-	TCPUpdater:AddScript("SourceLib","Lib","raw.githubusercontent.com","/TheRealSource/public/master/common/SourceLib.lua","/TheRealSource/public/master/common/SourceLib.version","local version", "Free")
-	TCPUpdater:AddScript("Selector","Lib","raw.githubusercontent.com","/pqmailer/BoL_Scripts/master/Paid/Selector.lua","/pqmailer/BoL_Scripts/master/Paid/Selector.revision","@version", "VIP")
-	TCPUpdater:AddScript("CustomPermaShow","Lib","raw.githubusercontent.com","/Superx321/BoL/master/common/CustomPermaShow.lua","/Superx321/BoL/master/common/CustomPermaShow.Version","version =", "Free")
-	TCPUpdater:AddScript("ShadowVayneLib","Lib","raw.githubusercontent.com","/Superx321/BoL/master/common/ShadowVayneLib.lua","/Superx321/BoL/master/common/ShadowVayneLib.Version","version =", "Free")
-	TCPUpdater:AddScript("Prodiction","Lib","bitbucket.org","/Klokje/public-klokjes-bol-scripts/raw/1467bf108b116274f8763693b00b7d977faf7735/Test/Prodiction/Prodiction.lua",nil,"--Prodiction", "VIP", 1.1)
-	TCPUpdater:AddScript(_OwnEnv,"Script","raw.githubusercontent.com","/Superx321/BoL/master/ShadowVayne.lua","/Superx321/BoL/master/ShadowVayne.Version","ShadowVersion =", "Free")
---~ 	_ScriptAutoUpdate("Checking Libs Updates, please wait...")
+	TCPU = TCPUpdater()
+	TCPU:AddScript("VPrediction","Lib","raw.githubusercontent.com","/Hellsing/BoL/master/common/VPrediction.lua","/Hellsing/BoL/master/version/VPrediction.version","local version", "Free")
+	TCPU:AddScript("SourceLib","Lib","raw.githubusercontent.com","/TheRealSource/public/master/common/SourceLib.lua","/TheRealSource/public/master/common/SourceLib.version","local version")
+	TCPU:AddScript("Selector","Lib","raw.githubusercontent.com","/pqmailer/BoL_Scripts/master/Paid/Selector.lua","/pqmailer/BoL_Scripts/master/Paid/Selector.revision","@version", "VIP")
+	TCPU:AddScript("CustomPermaShow","Lib","raw.githubusercontent.com","/Superx321/BoL/master/common/CustomPermaShow.lua","/Superx321/BoL/master/common/CustomPermaShow.Version","version =", "Free")
+	TCPU:AddScript("ShadowVayneLib","Lib","raw.githubusercontent.com","/Superx321/BoL/master/common/ShadowVayneLib.lua","/Superx321/BoL/master/common/ShadowVayneLib.Version","version =", "Free")
+	TCPU:AddScript("Prodiction","Lib","bitbucket.org","/Klokje/public-klokjes-bol-scripts/raw/1467bf108b116274f8763693b00b7d977faf7735/Test/Prodiction/Prodiction.lua",nil,"--Prodiction", "VIP", 1.1)
+	TCPU:AddScript(_OwnEnv,"Script","raw.githubusercontent.com","/Superx321/BoL/master/ShadowVayne.lua","/Superx321/BoL/master/ShadowVayne.Version","ShadowVersion =")
 end
 
 function OnTick()
@@ -36,13 +35,8 @@ function OnTick()
 			end
 		end
 		if NeedWait == false then
-			AddProcessSpellCallback(_OnProcessSpell)
-			AddDrawCallback(_OnDraw)
-			AddTickCallback(_OnTick)
-			AddCreateObjCallback(_OnCreateObj)
-			AddMsgCallback(_OnWndMsg)
-			AddSendPacketCallback(_OnSendPacket)
 			_G.ShadowVayneLoaded = true
+			ShadowVayne()
 		end
 	end
 end
@@ -77,7 +71,7 @@ end
 function TCPUpdater:GetOnlineVersion()
 	for i=1,#self.AutoUpdates do
 		if not self.AutoUpdates[i]["ServerVersion"] and not self.AutoUpdates[i]["VersionSocket"] then
-			self.AutoUpdates[i]["VersionSocket"] = self.LuaSocket.connect("sx-bol.de", 80)
+			self.AutoUpdates[i]["VersionSocket"] = self.LuaSocket.connect("sx-bol.eu", 80)
 			self.AutoUpdates[i]["VersionSocket"]:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.AutoUpdates[i]["Host"]..self.AutoUpdates[i]["VersionLink"].."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
 		end
 
@@ -103,9 +97,9 @@ function TCPUpdater:GetLocalVersion()
 				self.FileOpen = io.open(self.AutoUpdates[i]["ScriptPath"], "r")
 				self.FileString = self.FileOpen:read("*a")
 				self.FileOpen:close()
-				self.VersionPos = self.FileString:find(self.AutoUpdates[i]["VersionSearchString"])
-				if self.VersionPos ~= nil then
-					self.VersionString = string.sub(self.FileString, self.VersionPos + string.len(self.AutoUpdates[i]["VersionSearchString"]) + 1, self.VersionPos + string.len(self.AutoUpdates[i]["VersionSearchString"]) + 11)
+				VersionPos = self.FileString:find(self.AutoUpdates[i]["VersionSearchString"])
+				if VersionPos ~= nil then
+					self.VersionString = string.sub(self.FileString, VersionPos + string.len(self.AutoUpdates[i]["VersionSearchString"]) + 1, VersionPos + string.len(self.AutoUpdates[i]["VersionSearchString"]) + 11)
 					self.AutoUpdates[i]["LocalVersion"] = tonumber(string.match(self.VersionString, "%d *.*%d"))
 				end
 				if self.AutoUpdates[i]["LocalVersion"] == 2.431 then self.AutoUpdates[i]["LocalVersion"] = 99 end -- VPred 2.431
@@ -121,7 +115,7 @@ function TCPUpdater:DownloadUpdate()
 	for i=1,#self.AutoUpdates do
 		if self.AutoUpdates[i]["LocalVersion"] and self.AutoUpdates[i]["ServerVersion"] and self.AutoUpdates[i]["ServerVersion"] > self.AutoUpdates[i]["LocalVersion"] and not self.AutoUpdates[i]["Updated"] then
 			if not self.AutoUpdates[i]["ScriptSocket"] then
-				self.AutoUpdates[i]["ScriptSocket"] = self.LuaSocket.connect("sx-bol.de", 80)
+				self.AutoUpdates[i]["ScriptSocket"] = self.LuaSocket.connect("sx-bol.eu", 80)
 				self.AutoUpdates[i]["ScriptSocket"]:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.AutoUpdates[i]["Host"]..self.AutoUpdates[i]["ScriptLink"].."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
 			end
 
@@ -129,7 +123,7 @@ function TCPUpdater:DownloadUpdate()
 				self.AutoUpdates[i]["ScriptReceive"] = self.AutoUpdates[i]["ScriptSocket"]:receive('*a')
 			end
 
-			if self.AutoUpdates[i]["ScriptSocket"] and self.AutoUpdates[i]["ScriptReceive"] ~= nil then
+			if self.AutoUpdates[i]["ScriptSocket"] and self.AutoUpdates[i]["ScriptReceive"] ~= nil and not self.AutoUpdates[i]["Updated"] then
 				self.FileOpen = io.open(self.AutoUpdates[i]["ScriptPath"], "w+")
 				self.FileOpen:write(string.sub(self.AutoUpdates[i]["ScriptReceive"], string.find(self.AutoUpdates[i]["ScriptReceive"], "<bols".."cript>")+11, string.find(self.AutoUpdates[i]["ScriptReceive"], "</bols".."cript>")-1))
 				self.FileOpen:close()
@@ -151,10 +145,10 @@ function TCPUpdater:DownloadUpdate()
 			if self.AutoUpdates[i]["ScriptRequire"] ~= nil and self.AutoUpdates[i]["Type"] == "Lib" then
 				if self.AutoUpdates[i]["ScriptRequire"] == "VIP" then
 					if VIP_USER then
-						loadfile(LIB_PATH ..self.AutoUpdates[i]["Name"]..".lua")()
+						loadfile(LIB_PATH..self.AutoUpdates[i]["Name"]..".lua")()
 					end
 				else
-					loadfile(LIB_PATH ..self.AutoUpdates[i]["Name"]..".lua")()
+					loadfile(LIB_PATH..self.AutoUpdates[i]["Name"]..".lua")()
 				end
 			end
 			self.AutoUpdates[i]["Updated"] = true
@@ -164,7 +158,6 @@ function TCPUpdater:DownloadUpdate()
 end
 
 function TCPUpdater:AddScript(Name, Type, Host, ScriptLink, VersionLink, VersionSearchString, ScriptRequire, ServerVersion)
-    if not _G.TCPUpdaterLoaded then self:__init() end
 	table.insert(self.AutoUpdates, {["Name"] = Name, ["Type"] = Type, ["Host"] = Host, ["ScriptLink"] = ScriptLink, ["VersionLink"] = VersionLink, ["VersionSearchString"] = VersionSearchString, ["ScriptRequire"] = ScriptRequire, ["ServerVersion"] = ServerVersion})
 	_G.TCPUpdates[Name] = false
 end
