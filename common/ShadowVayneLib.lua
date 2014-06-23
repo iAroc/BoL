@@ -12,11 +12,9 @@
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 3.29
+	self.ShadowTable.version = 3.30
 	CondemnLastE = 0
 	print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Version "..self.ShadowTable.version.." loaded</font>")
-
-	Selector.Instance()
 
 	self:GetOrbWalkers()
 	self:GenerateTables()
@@ -35,7 +33,9 @@ function ShadowVayne:__init()
 	self:FillMenu_Tumble()
 	self:FillMenu_WallTumble()
 
+	self:LoadTS()
 	self:LoadSOW()
+	self:ArrangeEnemies()
 	self:LoadRengar()
 	self:LoadCustomPermaShow()
 
@@ -51,6 +51,7 @@ function ShadowVayne:__init()
 	AddTickCallback(function() self:Tumble() end)
 	AddTickCallback(function() self:CondemnStun() end)
 	AddTickCallback(function() self:WallTumble() end)
+	AddTickCallback(function() self:UpdateHeroDirection() end)
 
 	AddCreateObjCallback(function(Obj) self:RengarObject(Obj) end)
 	AddCreateObjCallback(function(Obj) self:ThreshObject(Obj) end)
@@ -66,6 +67,8 @@ function ShadowVayne:__init()
 	AddDrawCallback(function() self:Draw_AARange() end)
 
 	AddSendPacketCallback(function(p) self:SendPacket_WallTumble(p) end)
+
+	AddMsgCallback(function(msg,key) self:DoubleModeProtection(msg, key) end)
 end
 
 function ShadowVayne:GetOrbWalkers()
@@ -153,12 +156,12 @@ function ShadowVayne:GenerateTables()
 
 	AutoLevelSpellTable = {
                 ["SpellOrder"]	= {"QWE", "QEW", "WQE", "WEQ", "EQW", "EWQ"},
-                ["QWE"]	= {1,2,3,1,1,4,1,2,1,2,4,2,2,3,3,4,3,3},
-                ["QEW"]	= {1,3,2,1,1,4,1,3,1,3,4,3,3,2,2,4,2,2},
-                ["WQE"]	= {2,1,3,2,2,4,2,1,2,1,4,1,1,3,3,4,3,3},
-                ["WEQ"]	= {2,3,1,2,2,4,2,3,2,3,4,3,3,1,1,4,1,1},
-                ["EQW"]	= {3,1,2,3,3,4,3,1,3,1,4,1,1,2,2,4,2,2},
-                ["EWQ"]	= {3,2,1,3,3,4,3,2,3,2,4,2,2,1,1,4,1,1}
+                ["QWE"]	= {_Q,_W,_E,_Q,_Q,_R,_Q,_W,_Q,_W,_R,_W,_W,_E,_E,_R,_E,_E},
+                ["QEW"]	= {_Q,_E,_W,_Q,_Q,_R,_Q,_E,_Q,_E,_R,_E,_E,_W,_W,_R,_W,_W},
+                ["WQE"]	= {_W,_Q,_E,_W,_W,_R,_W,_Q,_W,_Q,_R,_Q,_Q,_E,_E,_R,_E,_E},
+                ["WEQ"]	= {_W,_E,_Q,_W,_W,_R,_W,_E,_W,_E,_R,_E,_E,_Q,_Q,_R,_Q,_Q},
+                ["EQW"]	= {_E,_Q,_W,_E,_E,_R,_E,_Q,_E,_Q,_R,_Q,_Q,_W,_W,_R,_W,_W},
+                ["EWQ"]	= {_E,_W,_Q,_E,_E,_R,_E,_W,_E,_W,_R,_W,_W,_Q,_Q,_R,_Q,_Q}
 	}
 
 	priorityTable = {
@@ -189,6 +192,12 @@ function ShadowVayne:GenerateTables()
     },
 
 }
+
+
+	heroDirDB = {}
+	for i, enemy in ipairs(GetEnemyHeroes()) do
+			heroDirDB[enemy.name] = {lastVec = Vector(0,0,0), dir = Vector(0,0,0), lastAngle = 0, index = i}
+	end
 
 
 	TumbleSpots = {
@@ -330,9 +339,9 @@ end
 function ShadowVayne:FillMenu_Draw()
 	SVMainMenu.draw:addParam("DrawAARange", "Draw Basicattack Range", SCRIPT_PARAM_ONOFF, false)
 	SVMainMenu.draw:addParam("DrawERange", "Draw E Range", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.draw:addParam("DrawNeededAutohits", "Draw Needed Autohits", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.draw:addParam("DrawEColor", "E Range Color", SCRIPT_PARAM_LIST, 1, { "Riot standard", "Green", "Blue", "Red", "Purple" })
-	SVMainMenu.draw:addParam("DrawAAColor", "Basicattack Range Color", SCRIPT_PARAM_LIST, 1, { "Riot standard", "Green", "Blue", "Red", "Purple" })
+	SVMainMenu.draw:addParam("drawecolor", "E Range Color", SCRIPT_PARAM_COLOR, {141, 124, 4, 4})
+	SVMainMenu.draw:addParam("drawaacolor", "Basicattack Range Color", SCRIPT_PARAM_COLOR, {141, 124, 4, 4})
+	SVMainMenu.draw:addParam("LagFree", "Use LagFreeCircles", SCRIPT_PARAM_ONOFF, false)
 end
 
 function ShadowVayne:FillMenu_Autolevel()
@@ -396,6 +405,84 @@ function ShadowVayne:LoadSOW()
 	VP = VPrediction()
 	SOWi = SOW(VP)
 	SOWi:LoadToMenu(SVSOWMenu)
+end
+
+function ShadowVayne:LoadTS()
+	SVTSMenu = scriptConfig("[ShadowVayne] TargetSelector", "SV_TS")
+	for i, enemy in pairs(GetEnemyHeroes()) do
+		SVTSMenu:addParam(enemy.charName,enemy.charName, SCRIPT_PARAM_SLICE, 1, 1, #GetEnemyHeroes(), 0)
+	end
+	SVTSMenu:addParam("fap","", SCRIPT_PARAM_INFO, "")
+	SVTSMenu:addParam("fap","Higher Number = Higher Focus", SCRIPT_PARAM_INFO, "")
+	SVTSMenu:addParam("fap","Means:", SCRIPT_PARAM_INFO, "")
+	SVTSMenu:addParam("fap","EnemyAdc = 5", SCRIPT_PARAM_INFO, "")
+	SVTSMenu:addParam("fap","EnemyTank = 1", SCRIPT_PARAM_INFO, "")
+end
+
+function ShadowVayne:ArrangeEnemies()
+	local EnemiesFound = 0
+	for z=1,#priorityTable.AD_Carry do
+		for i=1,#GetEnemyHeroes() do
+			if priorityTable.AD_Carry[z] == SVTSMenu._param[i].text then
+				SVTSMenu[SVTSMenu._param[i].text] = #GetEnemyHeroes() - EnemiesFound
+				EnemiesFound = EnemiesFound + 1
+			end
+		end
+	end
+
+	for z=1,#priorityTable.AP do
+		for i=1,#GetEnemyHeroes() do
+			if priorityTable.AP[z] == SVTSMenu._param[i].text then
+				SVTSMenu[SVTSMenu._param[i].text] = #GetEnemyHeroes() - EnemiesFound
+				EnemiesFound = EnemiesFound + 1
+			end
+		end
+	end
+
+	for z=1,#priorityTable.Bruiser do
+		for i=1,#GetEnemyHeroes() do
+			if priorityTable.Bruiser[z] == SVTSMenu._param[i].text then
+				SVTSMenu[SVTSMenu._param[i].text] = #GetEnemyHeroes() - EnemiesFound
+				EnemiesFound = EnemiesFound + 1
+			end
+		end
+	end
+
+	for z=1,#priorityTable.Support do
+		for i=1,#GetEnemyHeroes() do
+			if priorityTable.Support[z] == SVTSMenu._param[i].text then
+				SVTSMenu[SVTSMenu._param[i].text] = #GetEnemyHeroes() - EnemiesFound
+				EnemiesFound = EnemiesFound + 1
+			end
+		end
+	end
+
+	for z=1,#priorityTable.Tank do
+		for i=1,#GetEnemyHeroes() do
+			if priorityTable.Tank[z] == SVTSMenu._param[i].text then
+				SVTSMenu[SVTSMenu._param[i].text] = #GetEnemyHeroes() - EnemiesFound
+				EnemiesFound = EnemiesFound + 1
+			end
+		end
+	end
+end
+
+function ShadowVayne:DoubleModeProtection(msg, key)
+		if key == SVMainMenu.keysetting._param[7].key then -- AutoCarry
+			  SVMainMenu.keysetting.mixedmode,SVMainMenu.keysetting.laneclear,SVMainMenu.keysetting.lasthit = false,false,false
+		end
+
+		if key == SVMainMenu.keysetting._param[8].key then -- MixedMode
+			  SVMainMenu.keysetting.autocarry,SVMainMenu.keysetting.laneclear,SVMainMenu.keysetting.lasthit = false,false,false
+		end
+
+		if key == SVMainMenu.keysetting._param[9].key then -- LaneClear
+			  SVMainMenu.keysetting.autocarry,SVMainMenu.keysetting.mixedmode,SVMainMenu.keysetting.lasthit = false,false,false
+		end
+
+		if key == SVMainMenu.keysetting._param[10].key then -- LastHit
+			  SVMainMenu.keysetting.autocarry,SVMainMenu.keysetting.mixedmode,SVMainMenu.keysetting.laneclear = false,false,false
+		end
 end
 
 function ShadowVayne:LoadRengar()
@@ -481,11 +568,11 @@ function ShadowVayne:AutoLeveSpell()
 		LevelSpell(_E)
 	end
 	if SVMainMenu.autolevel.UseAutoLevelfirst and myHero.level < 4 then
-		LevelSpell(AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.first3level]][myHero.level] -1)
+		LevelSpell(AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.first3level]][myHero.level])
 	end
 
 	if SVMainMenu.autolevel.UseAutoLevelrest and myHero.level > 3 then
-		LevelSpell(AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.restlevel]][myHero.level] -1)
+		LevelSpell(AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.restlevel]][myHero.level])
 	end
 end
 
@@ -498,9 +585,35 @@ function ShadowVayne:PermaShows()
 end
 
 function ShadowVayne:GetTarget()
-	if VIP_USER then
-		return Selector.GetTarget(SelectorMenu.Get().mode, nil, {distance = 650})
+	local TargetTable = { ["Hero"] = nil, ["AA"] = math.huge }
+	for i, enemy in pairs(GetEnemyHeroes()) do
+		if ValidTarget(enemy, 650) then
+			NeededAA = self:GetAACount(enemy)
+			if (NeededAA < TargetTable.AA) or (NeededAA == TargetTable.AA and SVTSMenu[enemy.charName] > SVTSMenu[TargetTable["Hero"].charName]) then
+				TargetTable.AA = NeededAA
+				TargetTable.Hero = enemy
+			end
+		end
 	end
+	return TargetTable["Hero"]
+end
+
+function ShadowVayne:GetAACount(enemy)
+		EnemyHP = math.ceil(enemy.health)
+		if myHero:GetSpellData(_W).level > 0 then TargetTrueDmg = math.floor((((enemy.maxHealth/100)*(3+(myHero:GetSpellData(_W).level)))+(10+(myHero:GetSpellData(_W).level)*10))/3) else	TargetTrueDmg = 0 end
+		AADMG = math.floor((math.floor(myHero.totalDamage)) * 100 / (100 + enemy.armor)) + TargetTrueDmg
+		DMGThisAA = AADMG + TargetTrueDmg
+		NeededAA = math.ceil(EnemyHP / DMGThisAA)
+		NeededAARoundDown = (math.floor(NeededAA/3))*3
+		DMGWithAA = NeededAARoundDown * DMGThisAA
+		PredictHP = EnemyHP - DMGWithAA
+		RestAA = math.ceil(PredictHP / AADMG)
+
+		if RestAA > 2 then
+			return NeededAA
+		else
+			return NeededAARoundDown + RestAA
+		end
 end
 
 function ShadowVayne:BotRK()
@@ -727,33 +840,13 @@ end
 
 function ShadowVayne:Draw_CondemnRange()
 	if SVMainMenu.draw.DrawERange then
-		if SVMainMenu.draw.DrawEColor == 1 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0x80FFFF)
-		elseif SVMainMenu.draw.DrawEColor == 2 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0x0080FF)
-		elseif SVMainMenu.draw.DrawEColor == 3 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0x5555FF)
-		elseif SVMainMenu.draw.DrawEColor == 4 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0xFF2D2D)
-		elseif SVMainMenu.draw.DrawEColor == 5 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 710, 0x8B42B3)
-		end
+		self:CircleDraw(myHero.x, myHero.y, myHero.z, 710, ARGB(SVMainMenu.draw.drawecolor[1], SVMainMenu.draw.drawecolor[2],SVMainMenu.draw.drawecolor[3],SVMainMenu.draw.drawecolor[4]))
 	end
 end
 
 function ShadowVayne:Draw_AARange()
 	if SVMainMenu.draw.DrawAARange then
-		if SVMainMenu.draw.DrawAAColor == 1 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0x80FFFF)
-		elseif SVMainMenu.draw.DrawAAColor == 2 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0x0080FF)
-		elseif SVMainMenu.draw.DrawAAColor == 3 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0x5555FF)
-		elseif SVMainMenu.draw.DrawAAColor == 4 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0xFF2D2D)
-		elseif SVMainMenu.draw.DrawAAColor == 5 then
-			DrawCircle(myHero.x, myHero.y, myHero.z, 655, 0x8B42B3)
-		end
+		self:CircleDraw(myHero.x, myHero.y, myHero.z, 655, ARGB(SVMainMenu.draw.drawaacolor[1], SVMainMenu.draw.drawaacolor[2],SVMainMenu.draw.drawaacolor[3],SVMainMenu.draw.drawaacolor[4]))
 	end
 end
 
@@ -798,30 +891,17 @@ function ShadowVayne:CondemnStun()
 			(SVMainMenu.targets[enemy.charName][(enemy.charName).."LastHit"]   and ShadowVayneLastHit) or
 			(SVMainMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
 				if GetDistance(enemy) <= 1000 and not enemy.dead and enemy.visible then
---~ 					if not VIP_USER then -- FREEUSER
---~ 						local CurrentDirection = (Vector(enemy) - ChampInfoTable[enemy.charName].CurrentVector)
---~ 						if CurrentDirection ~= Vector(0,0,0) then
---~ 							CurrentDirection = CurrentDirection:normalized()
---~ 						end
---~ 						ChampInfoTable[enemy.charName].CurrentAngle = ChampInfoTable[enemy.charName].CurrentDirection:dotP( CurrentDirection )
---~ 						ChampInfoTable[enemy.charName].CurrentDirection = CurrentDirection
---~ 						ChampInfoTable[enemy.charName].CurrentVector = Vector(enemy)
---~ 						if ChampInfoTable[enemy.charName].CurrentDirection ~= Vector(0,0,0) then
---~ 							if ChampInfoTable[enemy.charName].CurrentAngle and ChampInfoTable[enemy.charName].CurrentAngle > 0.8 then
---~ 								local AfterCastPos = Vector(enemy) + ChampInfoTable[enemy.charName].CurrentDirection * (enemy.ms * 0.0005)
---~ 								local timeElapsed = _GetCollisionTime(AfterCastPos, ChampInfoTable[enemy.charName].CurrentDirection, enemy.ms, myHero, 2200 )
---~ 								if timeElapsed ~= nil then
---~ 									StunnPos =  Vector(enemy) + ChampInfoTable[enemy.charName].CurrentDirection * enemy.ms * (timeElapsed + 0.5)/2
---~ 								end
---~ 							end
---~ 						else
---~ 							StunnPos = Vector(enemy)
---~ 						end
---~ 					end
+					if not VIP_USER then -- FREEUSER
+						StunPos = self:GetCondemCollisionTime(enemy)
+						if StunPos ~= nil and GetDistance(StunPos) < 710 then
+							self:CheckWallStun(StunPos, enemy)
+						end
+
+					end
 
 					if VIP_USER then -- PR0D
-						StunPos, StunInfo = Prodiction.GetPrediction(enemy, 710, 2450, 0.255 + (GetLatency() / 1000), 0, myHero)
-						if StunPos ~= nil and GetDistance(StunPos) < 710 and StunInfo.hitchance > 1 then
+						StunPos, StunInfo = Prodiction.GetPrediction(enemy, 710, 2300, 0.255 + (GetLatency() / 1000), 10, myHero)
+						if StunPos ~= nil and GetDistance(StunPos) < 710 then
 							self:CheckWallStun(StunPos, enemy)
 						end
 					end
@@ -915,6 +995,115 @@ function ShadowVayne:SendPacket_WallTumble(p)
 				myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y)
 			end
 		end
+	end
+end
+
+function ShadowVayne:UpdateHeroDirection() --Function done by Yomie from EzCondemn
+	for heroName, heroObj in pairs(heroDirDB) do
+		local hero = heroManager:GetHero(heroObj.index)
+		local currentVec = Vector(hero)
+		local dir = (currentVec - heroObj.lastVec)
+
+		if dir ~= Vector(0,0,0) then
+			dir = dir:normalized()
+		end
+
+		heroObj.lastAngle = heroObj.dir:dotP( dir )
+		heroObj.dir = dir
+		heroObj.lastVec = currentVec
+	end
+end
+
+function ShadowVayne:GetCondemCollisionTime(target) --Function done by Yomie from EzCondemn
+	local heroObj = heroDirDB[target.name]
+
+	if heroObj.dir ~= Vector(0,0,0) then
+
+	if heroObj.lastAngle and heroObj.lastAngle < .8 then
+		return nil
+	end
+
+
+	local windupPos = Vector(target) + heroObj.dir * (target.ms * 250/1000)
+	local timeElapsed = self:GetCollisionTime(windupPos, heroObj.dir, target.ms, myHero, 2000 )
+
+	if timeElapsed == nil then
+		return nil
+	end
+
+	return Vector(target) + heroObj.dir * target.ms * (timeElapsed + .25)/2
+
+	end
+
+	return Vector(target)
+end
+
+function ShadowVayne:GetCollisionTime (targetPos, targetDir, targetSpeed, sourcePos, projSpeed ) --Function done by Yomie from EzCondemn
+	local velocity = targetDir * targetSpeed
+
+	local velocityX = velocity.x
+	local velocityY = velocity.z
+
+	local relStart = targetPos - sourcePos
+
+	local relStartX = relStart.x
+	local relStartY = relStart.z
+
+	local a = velocityX * velocityX + velocityY * velocityY - projSpeed * projSpeed
+	local b = 2 * velocityX * relStartX + 2 * velocityY * relStartY
+	local c = relStartX * relStartX + relStartY * relStartY
+
+	local disc = b * b - 4 * a * c
+
+	if disc >= 0 then
+		local t1 = -( b + math.sqrt( disc )) / (2 * a )
+		local t2 = -( b - math.sqrt( disc )) / (2 * a )
+
+
+		if t1 and t2 and t1 > 0 and t2 > 0 then
+			if t1 > t2 then
+				return t2
+			else
+				return t1
+			end
+		elseif t1 and t1 > 0 then
+			return t1
+		elseif t2 and t2 > 0 then
+			return t2
+		end
+	end
+
+	return nil
+end
+
+function ShadowVayne:DrawCircleNextLvl(x, y, z, radius, width, color, chordlength)
+ radius = radius or 300
+ quality = math.max(8,math.floor(180/math.deg((math.asin((chordlength/(2*radius)))))))
+ quality = 2 * math.pi / quality
+ radius = radius*.92
+ local points = {}
+ for theta = 0, 2 * math.pi + quality, quality do
+  local c = WorldToScreen(D3DXVECTOR3(x + radius * math.cos(theta), y, z - radius * math.sin(theta)))
+  points[#points + 1] = D3DXVECTOR2(c.x, c.y)
+ end
+ DrawLines2(points, width or 1, color or 4294967295)
+end
+
+function ShadowVayne:DrawCircle2(x, y, z, radius, color)
+ local vPos1 = Vector(x, y, z)
+ local vPos2 = Vector(cameraPos.x, cameraPos.y, cameraPos.z)
+ local tPos = vPos1 - (vPos1 - vPos2):normalized() * radius
+ local sPos = WorldToScreen(D3DXVECTOR3(tPos.x, tPos.y, tPos.z))
+ if OnScreen({ x = sPos.x, y = sPos.y }, { x = sPos.x, y = sPos.y })  then
+  self:DrawCircleNextLvl(x, y, z, radius, 1, color, 75)
+ end
+end
+
+function ShadowVayne:CircleDraw(x,y,z,radius, color)
+	if SVMainMenu.draw.LagFree then
+		self:DrawCircle2(x, y, z, radius, color)
+	else
+		DrawCircle(x, y, z, radius, color)
 	end
 end
 
@@ -1509,44 +1698,6 @@ end
 --~ ---------- Stunn Logic ----------
 --~ ---------------------------------
 
---~ function _GetCollisionTime (targetPos, targetDir, targetSpeed, sourcePos, projSpeed ) --Function done by Yomie from EzCondemn
---~ 	local velocity = targetDir * targetSpeed
-
---~ 	local velocityX = velocity.x
---~ 	local velocityY = velocity.z
-
---~ 	local relStart = targetPos - sourcePos
-
---~ 	local relStartX = relStart.x
---~ 	local relStartY = relStart.z
-
---~ 	local a = velocityX * velocityX + velocityY * velocityY - projSpeed * projSpeed
---~ 	local b = 2 * velocityX * relStartX + 2 * velocityY * relStartY
---~ 	local c = relStartX * relStartX + relStartY * relStartY
-
---~ 	local disc = b * b - 4 * a * c
-
---~ 	if disc >= 0 then
---~ 		local t1 = -( b + math.sqrt( disc )) / (2 * a )
---~ 		local t2 = -( b - math.sqrt( disc )) / (2 * a )
-
-
---~ 		if t1 and t2 and t1 > 0 and t2 > 0 then
---~ 			if t1 > t2 then
---~ 				return t2
---~ 			else
---~ 				return t1
---~ 			end
---~ 		elseif t1 and t1 > 0 then
---~ 			return t1
---~ 		elseif t2 and t2 > 0 then
---~ 			return t2
---~ 		end
---~ 	end
-
---~ 	return nil
---~ end
-
 --~ function _GetFlyTime(EnemyDistance)
 --~ 		if EnemyDistance <  25 then FlyTimeDelay = 0 end
 --~ 		if EnemyDistance >  24 and EnemyDistance <  75 then FlyTimeDelay = (StunnFlyTime["50"]/1000) end
@@ -1570,39 +1721,3 @@ end
 --~ ------------------------
 --~ ----- Unused Funcs -----
 --~ ------------------------
---~ function _GetNeededAutoHits(enemy)
---~ 		local PredictHP = math.ceil(enemy.health)
---~ 		local ThisAA = 0
---~ 		local BladeSlot = GetInventorySlotItem(3153)
---~ 		local TrueDMGPercent = ((enemy.maxHealth/100))*(3+(myHero:GetSpellData(_W).level))
---~ 		if myHero:GetSpellData(_W).level > 0 then TargetTrueDmg = math.floor((((enemy.maxHealth/100)*(3+(myHero:GetSpellData(_W).level)))+(10+(myHero:GetSpellData(_W).level)*10))/3) else	TargetTrueDmg = 0 end
---~ 		while PredictHP > 0 do
---~ 			ThisAA = ThisAA + 1
---~ 			DMGThisAA = math.floor((math.floor(myHero.totalDamage)) * 100 / (100 + enemy.armor))
---~ 			if BladeSlot ~= nil then BladeDMG = math.floor(math.floor(PredictHP)*5 / (100 + enemy.armor)) else BladeDMG = 0 end
---~ 			MyDMG = DMGThisAA + BladeDMG + TargetTrueDmg
---~ 			PredictHP = PredictHP - MyDMG
---~ 		end
-
---~ 		if ThisAA ~= math.floor(ThisAA/3)*3 then
---~ 			local PredictHP = math.ceil(enemy.health)
---~ 			for i = 1,math.floor(ThisAA/3)*3,1 do
---~ 				DMGThisAA = math.floor((math.floor(myHero.totalDamage)) * 100 / (100 + enemy.armor))
---~ 				if BladeSlot ~= nil then BladeDMG = math.floor(math.floor(PredictHP)*5 / (100 + enemy.armor)) else BladeDMG = 0 end
---~ 				MyDMG = DMGThisAA + BladeDMG + TargetTrueDmg
---~ 				PredictHP = PredictHP - MyDMG
---~ 			end
-
---~ 			for i = 1,2,1 do
---~ 				DMGThisAA = math.floor((math.floor(myHero.totalDamage)) * 100 / (100 + enemy.armor))
---~ 				if BladeSlot ~= nil then BladeDMG = math.floor(math.floor(PredictHP)*5 / (100 + enemy.armor)) else BladeDMG = 0 end
---~ 				MyDMG = DMGThisAA + BladeDMG
---~ 				PredictHP = PredictHP - MyDMG
---~ 			end
-
---~ 			if PredictHP > 0 then
---~ 				ThisAA = (math.ceil(ThisAA/3)*3)
---~ 			end
---~ 		end
---~ 	return ThisAA
---~ end
