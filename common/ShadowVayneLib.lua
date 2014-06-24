@@ -12,7 +12,7 @@
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 3.30
+	self.ShadowTable.version = 3.31
 	CondemnLastE = 0
 	print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Version "..self.ShadowTable.version.." loaded</font>")
 
@@ -1414,10 +1414,12 @@ function SOW:OnProcessSpell(unit, spell)
 		self.LastAttackCancelled = false
 		self:OnAttack(spell.target)
 		self.checkcancel = self:GetTime()
+		self.LastTarget = spell.target
 		DelayAction(function(t) self:AfterAttack(t) end, self:WindUpTime() - self:Latency(), {spell.target})
 
 	elseif unit.isMe and self:IsAAReset(spell.name) then
-		DelayAction(function() self:resetAA() end, 0.25)
+		DelayAction(function() self:resetAA() end, spell.windUpTime - self:Latency())
+		DelayAction(function() if self.LastTarget ~= nil and self:ValidTarget(self.LastTarget) then myHero:Attack(self.LastTarget) end end, 0.25)
 	end
 end
 
