@@ -12,7 +12,10 @@
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 3.31
+	self.ShadowTable.version = 3.32
+	self.LastLevelSpell = 0
+	self.LastTumble = 0
+	self.ForceAA = false
 	CondemnLastE = 0
 	print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Version "..self.ShadowTable.version.." loaded</font>")
 
@@ -40,7 +43,7 @@ function ShadowVayne:__init()
 	self:LoadCustomPermaShow()
 
 	AddTickCallback(function() self:ActivateModes() end)
-	AddTickCallback(function() self:AutoLeveSpell() end)
+	AddTickCallback(function() self:AutoLevelSpell() end)
 	AddTickCallback(function() self:PermaShows() end)
 	AddTickCallback(function() self:BotRK() end)
 	AddTickCallback(function() self:BilgeWater() end)
@@ -561,18 +564,21 @@ function ShadowVayne:ActivateModes()
 	if LastHitOrbText == "SOW" then SVSOWMenu.Mode3 = ShadowVayneLastHit end
 end
 
-function ShadowVayne:AutoLeveSpell()
-	if GetGame().map.index == 8 and myHero.level < 4 and SVMainMenu.autolevel.UseAutoLevelfirst then
-		LevelSpell(_Q)
-		LevelSpell(_W)
-		LevelSpell(_E)
-	end
-	if SVMainMenu.autolevel.UseAutoLevelfirst and myHero.level < 4 then
-		LevelSpell(AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.first3level]][myHero.level])
-	end
+function ShadowVayne:AutoLevelSpell()
+	if self.LastLevelSpell + 250 < GetTickCount() then
+		self.LastLevelSpell = GetTickCount()
+		if GetGame().map.index == 8 and myHero.level < 4 and SVMainMenu.autolevel.UseAutoLevelfirst then
+			LevelSpell(_Q)
+			LevelSpell(_W)
+			LevelSpell(_E)
+		end
+		if SVMainMenu.autolevel.UseAutoLevelfirst and myHero.level < 4 then
+			LevelSpell(AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.first3level]][myHero.level])
+		end
 
-	if SVMainMenu.autolevel.UseAutoLevelrest and myHero.level > 3 then
-		LevelSpell(AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.restlevel]][myHero.level])
+		if SVMainMenu.autolevel.UseAutoLevelrest and myHero.level > 3 then
+			LevelSpell(AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.restlevel]][myHero.level])
+		end
 	end
 end
 
@@ -720,13 +726,17 @@ function ShadowVayne:TreshLantern()
 	end
 end
 
-function ShadowVayne:Tumble()
-	if not ShadowVayneAutoCarry then
-		Target = self.LastAATarget
+function ShadowVayne:Tumble(LastTarget, LastWindUptime)
+	if LastTarget then
+		Target = LastTarget
 	else
-		Target = self:GetTarget()
+		if not ShadowVayneAutoCarry then
+			Target = self.LastAATarget
+		else
+			Target = self:GetTarget()
+		end
 	end
-	if not myHero.dead and myHero:CanUseSpell(_Q) == READY and ValidTarget(Target, 900) then
+	if not myHero.dead and myHero:CanUseSpell(_Q) == READY and ValidTarget(Target, 850) and self.LastTumble + 1000 < GetTickCount() then
 		if  (SVMainMenu.tumble.Qautocarry and ShadowVayneAutoCarry and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaAutoCarry)) or
 			(SVMainMenu.tumble.Qmixedmode and ShadowVayneMixedMode and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaMixedMode)) or
 			(SVMainMenu.tumble.Qlaneclear and ShadowVayneLaneClear and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLaneClear)) or
@@ -735,10 +745,34 @@ function ShadowVayne:Tumble()
 			local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
 			if GetDistance(AfterTumblePos, Target) < 650 and GetDistance(AfterTumblePos, Target) > 250 and AllowTumble then
 				CastSpell(_Q, mousePos.x, mousePos.z)
+				self.LastTumble = GetTickCount()
+--~ 				SOW:resetAA()
+--~ 				if Target then
+--~ 					self.ForceAA = true
+--~ 					DelayAction(function() self:AfterTumbleForceAA(Target) end, 0.2)
+--~ 				end
 			end
 			if GetDistance(AfterTumblePos, Target) < 650 and GetDistance(Target) > 650 then
 				CastSpell(_Q, mousePos.x, mousePos.z)
+				self.LastTumble = GetTickCount()
+--~ 				SOW:resetAA()
+--~ 				if Target then
+--~ 					self.ForceAA = true
+--~ 					DelayAction(function() self:AfterTumbleForceAA(Target) end, 0.2)
+--~ 				end
 			end
+		end
+	end
+end
+
+function ShadowVayne:AfterTumbleForceAA(Target)
+	if self.ForceAA then
+		if ValidTarget(Target, 650) then
+			print("FORCE")
+			myHero:Attack(Target)
+			DelayAction(function() self:AfterTumbleForceAA(Target) end, 0.1)
+		else
+			self.ForceAA = false
 		end
 	end
 end
@@ -811,10 +845,13 @@ end
 
 function ShadowVayne:ProcessSpell_AllowTumble(unit, spell)
 	if unit.isMe then
-		if spell.name:lower():find("attack") then
+		if spell.name:lower():find("attack") and not spell.name:lower():find("tumble") then
 			self.LastAATarget = spell.target
 			DelayAction(function() AllowTumble = true end, spell.windUpTime - GetLatency() / 2000)
 			DelayAction(function() AllowTumble = false end, (spell.animationTime - GetLatency() / 2000) - (spell.windUpTime))
+		end
+		if spell.name:lower():find("attack") and spell.name:lower():find("tumble") then
+			self.ForceAA = false
 		end
 	end
 end
@@ -854,12 +891,13 @@ function ShadowVayne:CheckWallStun(PredictPos, Source)
 	local BushFound, Bushpos = false, nil
 	for i = 1, SVMainMenu.autostunn.pushDistance, 50  do
 		local CheckWallPos = Vector(PredictPos) + (Vector(PredictPos) - myHero):normalized()*(i)
-		if IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) and not BushFound then
+		local CheckVector = D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)
+		if not BushFound and IsWallOfGrass(CheckVector) then
 			BushFound = true
 			BushPos = CheckWallPos
 		end
-		if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
-			if UnderTurret(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z), true) then
+		if IsWall(CheckVector) then
+			if UnderTurret(CheckVector, true) then
 				if SVMainMenu.autostunn.towerstunn then
 					AllowTumble = false
 					CastSpell(_E, Source)
@@ -900,8 +938,8 @@ function ShadowVayne:CondemnStun()
 					end
 
 					if VIP_USER then -- PR0D
-						StunPos, StunInfo = Prodiction.GetPrediction(enemy, 710, 2300, 0.255 + (GetLatency() / 1000), 10, myHero)
-						if StunPos ~= nil and GetDistance(StunPos) < 710 then
+						StunPos = Prodiction.GetPrediction(enemy, 650, 1200, 0.4, 10, myHero)
+						if StunPos ~= nil and GetDistanceSqr(StunPos) < 650*650 then
 							self:CheckWallStun(StunPos, enemy)
 						end
 					end
@@ -1418,8 +1456,8 @@ function SOW:OnProcessSpell(unit, spell)
 		DelayAction(function(t) self:AfterAttack(t) end, self:WindUpTime() - self:Latency(), {spell.target})
 
 	elseif unit.isMe and self:IsAAReset(spell.name) then
-		DelayAction(function() self:resetAA() end, spell.windUpTime - self:Latency())
-		DelayAction(function() if self.LastTarget ~= nil and self:ValidTarget(self.LastTarget) then myHero:Attack(self.LastTarget) end end, 0.25)
+		DelayAction(function() self:resetAA() end, 0.25)
+--~ 		DelayAction(function() if self.LastTarget ~= nil and self:ValidTarget(self.LastTarget) then myHero:Attack(self.LastTarget) end end, 0.25)
 	end
 end
 
