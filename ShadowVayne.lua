@@ -8,8 +8,7 @@
 if myHero.charName ~= "Vayne" then return end
 
 _OwnEnv = GetCurrentEnv().FILE_NAME:gsub(".lua", "")
-
-ShadowVersion = 0.9
+ShadowVersion = 1.0
 
 ------------------------
 ------ MainScript ------
@@ -17,6 +16,7 @@ ShadowVersion = 0.9
 function OnLoad()
 	TCPU = TCPUpdater()
 	TCPU:AddScript("VPrediction","Lib","raw.githubusercontent.com","/Hellsing/BoL/master/common/VPrediction.lua","/Hellsing/BoL/master/version/VPrediction.version","local version", "Free")
+	TCPU:AddScript("SOW","Lib","raw.githubusercontent.com","/Hellsing/BoL/master/common/SOW.lua","/Hellsing/BoL/master/version/SOW.version","local version", "Free")
 --~ 	TCPU:AddScript("SourceLib","Lib","raw.githubusercontent.com","/TheRealSource/public/master/common/SourceLib.lua","/TheRealSource/public/master/common/SourceLib.version","local version")
 --~ 	TCPU:AddScript("Selector","Lib","raw.githubusercontent.com","/pqmailer/BoL_Scripts/master/Paid/Selector.lua","/pqmailer/BoL_Scripts/master/Paid/Selector.revision","@version", "VIP")
 	TCPU:AddScript("CustomPermaShow","Lib","raw.githubusercontent.com","/Superx321/BoL/master/common/CustomPermaShow.lua","/Superx321/BoL/master/common/CustomPermaShow.Version","version =", "Free")
@@ -50,109 +50,116 @@ function TCPUpdater:__init()
 	_G.TCPUpdaterLoaded = true
 	self.AutoUpdates = {}
 	self.LuaSocket = require("socket")
-	AddTickCallback(function() self:GetOnlineVersion() end)
-	AddTickCallback(function() self:GetScriptPath() end)
-	AddTickCallback(function() self:GetLocalVersion() end)
-	AddTickCallback(function() self:DownloadUpdate() end)
+	AddTickCallback(function() self:TCPUpdate() end)
 end
 
-function TCPUpdater:GetScriptPath()
+function TCPUpdater:PrintDebug(Debug,Name,Msg)
+	if Debug ~= nil then
+		print(Name..Msg..Debug)
+	end
+end
+
+function TCPUpdater:TCPUpdate()
 	for i=1,#self.AutoUpdates do
 		if not self.AutoUpdates[i]["ScriptPath"] then
-			if self.AutoUpdates[i]["Type"] == "Lib" then
-				self.AutoUpdates[i]["ScriptPath"] = LIB_PATH..self.AutoUpdates[i]["Name"]..".lua"
+			self.AutoUpdates[i]["ScriptPath"] = self:GetScriptPath(self.AutoUpdates[i])
+		end
+
+		if self.AutoUpdates[i]["ScriptPath"] and not self.AutoUpdates[i]["LocalVersion"] then
+			self.AutoUpdates[i]["LocalVersion"] = self:GetLocalVersion(self.AutoUpdates[i])
+		end
+
+		if not self.AutoUpdates[i]["ServerVersion"] and self.AutoUpdates[i]["ScriptPath"] and self.AutoUpdates[i]["LocalVersion"] then
+			self.AutoUpdates[i]["ServerVersion"] = self:GetOnlineVersion(self.AutoUpdates[i])
+		end
+
+		if self.AutoUpdates[i]["ServerVersion"] and self.AutoUpdates[i]["LocalVersion"] and self.AutoUpdates[i]["ScriptPath"] and not _G.TCPUpdates[self.AutoUpdates[i]["Name"]] then
+			if self.AutoUpdates[i]["ServerVersion"] > self.AutoUpdates[i]["LocalVersion"] then
+				self:DownloadUpdate(self.AutoUpdates[i])
 			else
-				self.AutoUpdates[i]["ScriptPath"] = SCRIPT_PATH..self.AutoUpdates[i]["Name"]..".lua"
+				self:LoadScript(self.AutoUpdates[i])
 			end
 		end
 	end
 end
 
-function TCPUpdater:GetOnlineVersion()
-	for i=1,#self.AutoUpdates do
-		if not self.AutoUpdates[i]["ServerVersion"] and not self.AutoUpdates[i]["VersionSocket"] then
-			self.AutoUpdates[i]["VersionSocket"] = self.LuaSocket.connect("sx-bol.eu", 80)
-			self.AutoUpdates[i]["VersionSocket"]:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.AutoUpdates[i]["Host"]..self.AutoUpdates[i]["VersionLink"].."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
+function TCPUpdater:LoadScript(TCPScript)
+	if TCPScript["ScriptRequire"] then
+		if TCPScript["ScriptRequire"] == "VIP" then
+			if VIP_USER then
+				loadfile(TCPScript["ScriptPath"])()
+			end
+		else
+			loadfile(TCPScript["ScriptPath"])()
 		end
+	end
+	_G.TCPUpdates[TCPScript["Name"]] = true
+end
 
-		if not self.AutoUpdates[i]["ServerVersion"] and self.AutoUpdates[i]["VersionSocket"] then
-			self.AutoUpdates[i]["VersionSocket"]:settimeout(0)
-			self.AutoUpdates[i]["VersionReceive"], self.AutoUpdates[i]["VersionStatus"] = self.AutoUpdates[i]["VersionSocket"]:receive('*a')
-		end
+function TCPUpdater:GetScriptPath(TCPScript)
+	if TCPScript["Type"] == "Lib" then
+		return LIB_PATH..TCPScript["Name"]..".lua"
+	else
+		return SCRIPT_PATH..TCPScript["Name"]..".lua"
+	end
+end
 
-		if self.AutoUpdates[i]["VersionStatus"] ~= 'timeout' and self.AutoUpdates[i]["VersionReceive"] == nil then
-			self.AutoUpdates[i]["VersionSocket"] = nil
-		end
+function TCPUpdater:GetOnlineVersion(TCPScript)
+	if not TCPScript["VersionSocket"] then
+		TCPScript["VersionSocket"] = self.LuaSocket.connect("sx-bol.eu", 80)
+		TCPScript["VersionSocket"]:send("GET /BoL/TCPUpdater/GetScript.php?script="..TCPScript["Host"]..TCPScript["VersionLink"].."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
+	end
 
-		if not self.AutoUpdates[i]["ServerVersion"] and self.AutoUpdates[i]["VersionSocket"] and self.AutoUpdates[i]["VersionStatus"] ~= 'timeout' and self.AutoUpdates[i]["VersionReceive"] ~= nil then
-			self.AutoUpdates[i]["ServerVersion"] = tonumber(string.sub(self.AutoUpdates[i]["VersionReceive"], string.find(self.AutoUpdates[i]["VersionReceive"], "<bols".."cript>")+11, string.find(self.AutoUpdates[i]["VersionReceive"], "</bols".."cript>")-1))
+	if TCPScript["VersionSocket"] then
+		TCPScript["VersionSocket"]:settimeout(0)
+		TCPScript["VersionReceive"], TCPScript["VersionStatus"] = TCPScript["VersionSocket"]:receive('*a')
+	end
+
+	if TCPScript["VersionSocket"] and TCPScript["VersionStatus"] ~= 'timeout' then
+		if TCPScript["VersionReceive"] == nil then
+			return 0
+		else
+			return tonumber(string.sub(TCPScript["VersionReceive"], string.find(TCPScript["VersionReceive"], "<bols".."cript>")+11, string.find(TCPScript["VersionReceive"], "</bols".."cript>")-1))
 		end
 	end
 end
 
-function TCPUpdater:GetLocalVersion()
-	for i=1,#self.AutoUpdates do
-		if not self.AutoUpdates[i]["LocalVersion"] and self.AutoUpdates[i]["ScriptPath"] then
-			if FileExist(self.AutoUpdates[i]["ScriptPath"]) then
-				self.FileOpen = io.open(self.AutoUpdates[i]["ScriptPath"], "r")
-				self.FileString = self.FileOpen:read("*a")
-				self.FileOpen:close()
-				VersionPos = self.FileString:find(self.AutoUpdates[i]["VersionSearchString"])
-				if VersionPos ~= nil then
-					self.VersionString = string.sub(self.FileString, VersionPos + string.len(self.AutoUpdates[i]["VersionSearchString"]) + 1, VersionPos + string.len(self.AutoUpdates[i]["VersionSearchString"]) + 11)
-					self.AutoUpdates[i]["LocalVersion"] = tonumber(string.match(self.VersionString, "%d *.*%d"))
-				end
-				if self.AutoUpdates[i]["LocalVersion"] == 2.431 then self.AutoUpdates[i]["LocalVersion"] = 99 end -- VPred 2.431
-				if self.AutoUpdates[i]["LocalVersion"] == nil then self.AutoUpdates[i]["LocalVersion"] = 0 end
-			else
-				self.AutoUpdates[i]["LocalVersion"] = 0
-			end
+function TCPUpdater:GetLocalVersion(TCPScript)
+	if FileExist(TCPScript["ScriptPath"]) then
+		self.FileOpen = io.open(TCPScript["ScriptPath"], "r")
+		self.FileString = self.FileOpen:read("*a")
+		self.FileOpen:close()
+		VersionPos = self.FileString:find(TCPScript["VersionSearchString"])
+		if VersionPos ~= nil then
+			self.VersionString = string.sub(self.FileString, VersionPos + string.len(TCPScript["VersionSearchString"]) + 1, VersionPos + string.len(TCPScript["VersionSearchString"]) + 11)
+			self.VersionSave = tonumber(string.match(self.VersionString, "%d *.*%d"))
 		end
+		if self.VersionSave == 2.431 then self.VersionSave = math.huge end -- VPred 2.431
+		if self.VersionSave == nil then self.VersionSave = 0 end
+	else
+		self.VersionSave = 0
 	end
+	return self.VersionSave
 end
 
-function TCPUpdater:DownloadUpdate()
-	for i=1,#self.AutoUpdates do
-		if self.AutoUpdates[i]["LocalVersion"] and self.AutoUpdates[i]["ServerVersion"] and self.AutoUpdates[i]["ServerVersion"] > self.AutoUpdates[i]["LocalVersion"] and not self.AutoUpdates[i]["Updated"] then
-			if not self.AutoUpdates[i]["ScriptSocket"] then
-				self.AutoUpdates[i]["ScriptSocket"] = self.LuaSocket.connect("sx-bol.eu", 80)
-				self.AutoUpdates[i]["ScriptSocket"]:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.AutoUpdates[i]["Host"]..self.AutoUpdates[i]["ScriptLink"].."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
-			end
+function TCPUpdater:DownloadUpdate(TCPScript)
+	if not TCPScript["ScriptSocket"] then
+		TCPScript["ScriptSocket"] = self.LuaSocket.connect("sx-bol.eu", 80)
+		TCPScript["ScriptSocket"]:send("GET /BoL/TCPUpdater/GetScript.php?script="..TCPScript["Host"]..TCPScript["ScriptLink"].."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
+	end
 
-			if self.AutoUpdates[i]["ScriptSocket"] then
-				self.AutoUpdates[i]["ScriptReceive"] = self.AutoUpdates[i]["ScriptSocket"]:receive('*a')
-			end
+	if TCPScript["ScriptSocket"] then
+		TCPScript["ScriptReceive"], TCPScript["ScriptStatus"] = TCPScript["ScriptSocket"]:receive('*a')
+	end
 
-			if self.AutoUpdates[i]["ScriptSocket"] and self.AutoUpdates[i]["ScriptReceive"] ~= nil and not self.AutoUpdates[i]["Updated"] then
-				self.FileOpen = io.open(self.AutoUpdates[i]["ScriptPath"], "w+")
-				self.FileOpen:write(string.sub(self.AutoUpdates[i]["ScriptReceive"], string.find(self.AutoUpdates[i]["ScriptReceive"], "<bols".."cript>")+11, string.find(self.AutoUpdates[i]["ScriptReceive"], "</bols".."cript>")-1))
-				self.FileOpen:close()
-				if self.AutoUpdates[i]["ScriptRequire"] ~= nil and self.AutoUpdates[i]["Type"] == "Lib" then
-					if self.AutoUpdates[i]["ScriptRequire"] == "VIP" then
-						if VIP_USER then
-							loadfile(LIB_PATH ..self.AutoUpdates[i]["Name"]..".lua")()
-						end
-					else
-						loadfile(LIB_PATH ..self.AutoUpdates[i]["Name"]..".lua")()
-					end
-				end
-				self.AutoUpdates[i]["Updated"] = true
-				_G.TCPUpdates[self.AutoUpdates[i]["Name"]] = true
-			end
-		end
-
-		if self.AutoUpdates[i]["LocalVersion"] and self.AutoUpdates[i]["ServerVersion"] and self.AutoUpdates[i]["ServerVersion"] <= self.AutoUpdates[i]["LocalVersion"] and not self.AutoUpdates[i]["Updated"] then
-			if self.AutoUpdates[i]["ScriptRequire"] ~= nil and self.AutoUpdates[i]["Type"] == "Lib" then
-				if self.AutoUpdates[i]["ScriptRequire"] == "VIP" then
-					if VIP_USER then
-						loadfile(LIB_PATH..self.AutoUpdates[i]["Name"]..".lua")()
-					end
-				else
-					loadfile(LIB_PATH..self.AutoUpdates[i]["Name"]..".lua")()
-				end
-			end
-			self.AutoUpdates[i]["Updated"] = true
-			_G.TCPUpdates[self.AutoUpdates[i]["Name"]] = true
+	if TCPScript["ScriptSocket"] and TCPScript["ScriptStatus"] ~= 'timeout' then
+		if TCPScript["ScriptReceive"] == nil then
+			print("Error in Loading Module: "..TCPScript["Name"])
+		else
+			self.FileOpen = io.open(TCPScript["ScriptPath"], "w+")
+			self.FileOpen:write(string.sub(TCPScript["ScriptReceive"], string.find(TCPScript["ScriptReceive"], "<bols".."cript>")+11, string.find(TCPScript["ScriptReceive"], "</bols".."cript>")-1))
+			self.FileOpen:close()
+			self:LoadScript(TCPScript)
 		end
 	end
 end
