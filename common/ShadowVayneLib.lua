@@ -12,13 +12,19 @@
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 3.35
+	self.ShadowTable.version = 3.36
 	self.ShadowTable.LastLevelCheck = 0
 	self.ShadowTable.LastHeroLevel = 0
 	self.LastTumble = 0
+	self.CurSkin = 0
 	self.ForceAA = false
 	self.hitboxmode = true
 	CondemnLastE = 0
+	SUMMONERS_RIFT   = { 1, 2 }
+	PROVING_GROUNDS  = 3
+	TWISTED_TREELINE = { 4, 10 }
+	CRYSTAL_SCAR     = 8
+	HOWLING_ABYSS    = 12
 	print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Version "..self.ShadowTable.version.." loaded</font>")
 
 	self:LoadMap()
@@ -38,6 +44,8 @@ function ShadowVayne:__init()
 	self:FillMenu_BilgeWater()
 	self:FillMenu_Tumble()
 	self:FillMenu_WallTumble()
+	self:FillMenu_SkinHack()
+	self:FillMenu_Debug()
 
 	self:LoadTS()
 	self:LoadSOW()
@@ -45,47 +53,77 @@ function ShadowVayne:__init()
 	self:LoadRengar()
 	self:LoadCustomPermaShow()
 
-	AddTickCallback(function() self:ActivateModes() end)
-	AddTickCallback(function() self:CheckLevelChange() end)
-	AddTickCallback(function() self:PermaShows() end)
-	AddTickCallback(function() self:BotRK() end)
-	AddTickCallback(function() self:BilgeWater() end)
-	AddTickCallback(function() self:GapCloserAfterCast() end)
-	AddTickCallback(function() self:GapCloserRengar() end)
-	AddTickCallback(function() self:SwitchToggleMode() end)
-	AddTickCallback(function() self:TreshLantern() end)
-	AddTickCallback(function() self:CondemnStun() end)
-	AddTickCallback(function() self:WallTumble() end)
-	AddTickCallback(function() self:UpdateHeroDirection() end)
+	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.activatemodes then self:ActivateModes() end end)
+	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.checklevelchange then self:CheckLevelChange() end end)
+	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.permashows then self:PermaShows() end end)
+	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.botrk then self:BotRK() end end)
+	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.bilgewater then self:BilgeWater() end end)
+	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.gapcloseraftercast then self:GapCloserAfterCast() end end)
+	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.gapcloserrengar then self:GapCloserRengar() end end)
+	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.switchtogglemode then self:SwitchToggleMode() end end)
+	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.threshlantern then self:TreshLantern() end end)
+	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.condemnstun then self:CondemnStun() end end)
+	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.twalltumble then self:WallTumble() end end)
+	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.updateherodirection then self:UpdateHeroDirection() end end)
+	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.generatetarget then self:GenerateTarget() end end)
+	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.skinhack then self:SkinHack() end end)
 
-	AddCreateObjCallback(function(Obj) self:RengarObject(Obj) end)
-	AddCreateObjCallback(function(Obj) self:ThreshObject(Obj) end)
+	AddCreateObjCallback(function(Obj) if not SVMainMenu.debugsettings.createobj.rengarobject then self:RengarObject(Obj) end end)
+	AddCreateObjCallback(function(Obj) if not SVMainMenu.debugsettings.createobj.threshobject then self:ThreshObject(Obj) end end)
 
-	AddProcessSpellCallback(function(unit, spell) self:ProcessSpell_GapCloser(unit, spell) end)
-	AddProcessSpellCallback(function(unit, spell) self:ProcessSpell_Interrupt(unit, spell) end)
-	AddProcessSpellCallback(function(unit, spell) self:ProcessSpell_BasicAttack(unit, spell) end)
-	AddProcessSpellCallback(function(unit, spell) self:ProcessSpell_Recall(unit, spell) end)
+	AddProcessSpellCallback(function(unit, spell) if not SVMainMenu.debugsettings.processspell.gapcloser then self:ProcessSpell_GapCloser(unit, spell) end end)
+	AddProcessSpellCallback(function(unit, spell) if not SVMainMenu.debugsettings.processspell.interrupt then self:ProcessSpell_Interrupt(unit, spell) end end)
+	AddProcessSpellCallback(function(unit, spell) if not SVMainMenu.debugsettings.processspell.basicattack then self:ProcessSpell_BasicAttack(unit, spell) end end)
+	AddProcessSpellCallback(function(unit, spell) if not SVMainMenu.debugsettings.processspell.recall then self:ProcessSpell_Recall(unit, spell) end end)
 
-	AddDrawCallback(function() self:Draw_WallTumble() end)
-	AddDrawCallback(function() self:Draw_CondemnRange() end)
-	AddDrawCallback(function() self:Draw_AARange() end)
+	AddDrawCallback(function() if not SVMainMenu.debugsettings.draw.dwalltumble then self:Draw_WallTumble() end end)
+	AddDrawCallback(function() if not SVMainMenu.debugsettings.draw.condemnrange then self:Draw_CondemnRange() end end)
+	AddDrawCallback(function() if not SVMainMenu.debugsettings.draw.aarange then self:Draw_AARange() end end)
+	AddDrawCallback(function() self:DebugDraw() end)
 
-	AddSendPacketCallback(function(p) self:SendPacket_WallTumble(p) end)
+	AddSendPacketCallback(function(p) if not SVMainMenu.debugsettings.sendpacket.pwalltumble then self:SendPacket_WallTumble(p) end end)
 
-	AddMsgCallback(function(msg,key) self:DoubleModeProtection(msg, key) end)
+	AddMsgCallback(function(msg,key) if not SVMainMenu.debugsettings.msg.doublemodeprotection then self:DoubleModeProtection(msg, key) end end)
 
 end
 
+function ShadowVayne:IsMap(map)
+    assert(map and (type(map) == "number" or type(map) == "table"), "IsMap(): map is invalid!")
+    if type(map) == "number" then
+        return GetGame().map.index == map
+    else
+        for _, id in ipairs(map) do
+            if GetGame().map.index == id then return true end
+        end
+    end
+end
+
+function ShadowVayne:GetMapName()
+    if self:IsMap(SUMMONERS_RIFT) then
+        return "Summoners Rift"
+    elseif self:IsMap(CRYSTAL_SCAR) then
+        return "Crystal Scar"
+    elseif self:IsMap(HOWLING_ABYSS) then
+        return "Howling Abyss"
+    elseif self:IsMap(TWISTED_TREELINE) then
+        return "Twisted Treeline"
+    elseif self:IsMap(PROVING_GROUNDS) then
+        return "Proving Grounds"
+    else
+        return "Unknown map"
+    end
+end
+
 function ShadowVayne:LoadMap()
-	if not FileExist(LIB_PATH.."\\Saves\\WorldGrid\\" .. GetMapName() .. "_Walls.SAVE") then
+	if not FileExist(LIB_PATH.."\\Saves\\WorldGrid\\" .. self:GetMapName() .. "_Walls.SAVE") then
 		RunCmdCommand('mkdir "' .. string.gsub(LIB_PATH.."/Saves/WorldGrid", [[/]], [[\]]) .. '"')
-		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. GetMapName() .."_Brushes.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. GetMapName() .. "_Brushes.SAVE")
-		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. GetMapName() .."_Vision.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. GetMapName() .. "_Vision.SAVE")
-		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. GetMapName() .."_Walls.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. GetMapName() .. "_Walls.SAVE")
-		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. GetMapName() .."_Info.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. GetMapName() .. "_Info.SAVE")
+		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. self:GetMapName() .."_Brushes.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. self:GetMapName() .. "_Brushes.SAVE")
+		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. self:GetMapName() .."_Vision.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. self:GetMapName() .. "_Vision.SAVE")
+		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. self:GetMapName() .."_Walls.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. self:GetMapName() .. "_Walls.SAVE")
+		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. self:GetMapName() .."_Info.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. self:GetMapName() .. "_Info.SAVE")
 	end
-	worldGridWalls = GetSave("WorldGrid\\" .. GetMapName() .. "_Walls")
-	worldGridBrushes = GetSave("WorldGrid\\" .. GetMapName() .. "_Brushes")
+	worldGridWalls = GetSave("WorldGrid\\" .. self:GetMapName() .. "_Walls")
+	worldGridBrushes = GetSave("WorldGrid\\" .. self:GetMapName() .. "_Brushes")
 end
 
 function ShadowVayne:GetWorldType(x,z)
@@ -265,8 +303,10 @@ function ShadowVayne:LoadMainMenu()
 	SVMainMenu:addSubMenu("[Misc]: PermaShow Settings", "permashowsettings")
 	SVMainMenu:addSubMenu("[Misc]: Draw Settings", "draw")
 	SVMainMenu:addSubMenu("[Misc]: WallTumble Settings", "walltumble")
+	SVMainMenu:addSubMenu("[Misc]: SkinHack", "skinhack")
 	SVMainMenu:addSubMenu("[BotRK]: Settings", "botrksettings")
 	SVMainMenu:addSubMenu("[Bilgewater]: Settings", "bilgesettings")
+	SVMainMenu:addSubMenu("[Debug]: Settings", "debugsettings")
 end
 
 function ShadowVayne:FillMenu_KeySetting()
@@ -439,6 +479,53 @@ end
 function ShadowVayne:FillMenu_WallTumble()
 	SVMainMenu.walltumble:addParam("spot1", "Draw & Use Spot 1 (Drake-Spot)", SCRIPT_PARAM_ONOFF, true)
 	SVMainMenu.walltumble:addParam("spot2", "Draw & Use Spot 2 (Min-Spot)", SCRIPT_PARAM_ONOFF, true)
+end
+
+function ShadowVayne:FillMenu_SkinHack()
+	SVMainMenu.skinhack:addParam("enabled", "Enable Skinhack", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.skinhack:addParam("skinid", "Choose the Skin: ", SCRIPT_PARAM_LIST, 1, { "No Skin", "Vindicator", "Aristocrat", "Dragonslayer", "Hearthseeker", "SKT T1" })
+end
+
+function ShadowVayne:FillMenu_Debug()
+	SVMainMenu.debugsettings:addSubMenu("Disable Callbacks: OnTick()", "tick")
+	SVMainMenu.debugsettings.tick:addParam("activatemodes", "Disable Tick Callback: ActivateModes", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.tick:addParam("checklevelchange", "Disable Tick Callback: CheckLevelChange", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.tick:addParam("permashows", "Disable Tick Callback: PermaShows", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.tick:addParam("botrk", "Disable Tick Callback: BotRK", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.tick:addParam("bilgewater", "Disable Tick Callback: Bilgewater", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.tick:addParam("gapcloseraftercast", "Disable Tick Callback: GapCloserAfterCast", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.tick:addParam("gapcloserrengar", "Disable Tick Callback: GapCloserRengar", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.tick:addParam("switchtogglemode", "Disable Tick Callback: SwitchToggleMode", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.tick:addParam("threshlantern", "Disable Tick Callback: TreshLantern", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.tick:addParam("condemnstun", "Disable Tick Callback: CondemnStun", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.tick:addParam("twalltumble", "Disable Tick Callback: WallTumble", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.tick:addParam("updateherodirection", "Disable Tick Callback: UpdateHeroDirection", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.tick:addParam("generatetarget", "Disable Tick Callback: GenerateTarget", SCRIPT_PARAM_ONOFF, false)
+
+	SVMainMenu.debugsettings:addSubMenu("Disable Callbacks: OnCreateObj()", "createobj")
+	SVMainMenu.debugsettings.createobj:addParam("rengarobject", "Disable CreateObj Callback: RengarObject", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.createobj:addParam("threshobject", "Disable CreateObj Callback: ThreshObject", SCRIPT_PARAM_ONOFF, false)
+
+	SVMainMenu.debugsettings:addSubMenu("Disable Callbacks: OnProcessSpell()", "processspell")
+	SVMainMenu.debugsettings.processspell:addParam("gapcloser", "Disable ProcessSpell Callback: GapCloser", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.processspell:addParam("interrupt", "Disable ProcessSpell Callback: Interrupt", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.processspell:addParam("basicattack", "Disable ProcessSpell Callback: BasicAttack", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.processspell:addParam("recall", "Disable ProcessSpell Callback: Recall", SCRIPT_PARAM_ONOFF, false)
+
+	SVMainMenu.debugsettings:addSubMenu("Disable Callbacks: OnDraw()", "draw")
+	SVMainMenu.debugsettings.draw:addParam("dwalltumble", "Disable Draw Callback: WallTumble", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.draw:addParam("condemnrange", "Disable Draw Callback: CondemnRange", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.draw:addParam("aarange", "Disable Draw Callback: AARange", SCRIPT_PARAM_ONOFF, false)
+
+	SVMainMenu.debugsettings:addSubMenu("Disable Callbacks: OnSendPacket()", "sendpacket")
+	SVMainMenu.debugsettings.sendpacket:addParam("pwalltumble", "Disable SendPacket Callback: WallTumble", SCRIPT_PARAM_ONOFF, false)
+
+	SVMainMenu.debugsettings:addSubMenu("Disable Callbacks: OnWndMsg()", "msg")
+	SVMainMenu.debugsettings.msg:addParam("doublemodeprotection", "Disable Msg Callback: DoubleModeProtection", SCRIPT_PARAM_ONOFF, false)
+
+	SVMainMenu.debugsettings:addSubMenu("TargetDraw", "targetdraw")
+	SVMainMenu.debugsettings.targetdraw:addParam("lefttop", "Draw the actual Target in the Top left corner", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.debugsettings.targetdraw:addParam("myhero", "Draw the actual Target on myHero", SCRIPT_PARAM_ONOFF, false)
 end
 
 function ShadowVayne:LoadSOW()
@@ -627,6 +714,14 @@ function ShadowVayne:LevelUpSpell()
 	end
 end
 
+function ShadowVayne:SkinHack()
+	if SVMainMenu.skinhack.enabled and self.CurSkin ~= SVMainMenu.skinhack.skinid then
+		local SkinIdSwap = { [1] = 6, [2] = 1, [3] = 2, [4] = 3, [5] = 4, [6] = 5 }
+		self.CurSkin = SVMainMenu.skinhack.skinid
+		ShadowVayne:SkinChanger(myHero.charName, SkinIdSwap[self.CurSkin])
+	end
+end
+
 function ShadowVayne:PermaShows()
 	CustomPermaShow("AutoCarry (Using "..AutoCarryOrbText..")", SVMainMenu.keysetting.autocarry, SVMainMenu.permashowsettings.carrypermashow, nil, 1426521024, nil, 1)
 	CustomPermaShow("MixedMode (Using "..MixedModeOrbText..")", SVMainMenu.keysetting.mixedmode, SVMainMenu.permashowsettings.mixedpermashow, nil, 1426521024, nil, 2)
@@ -635,11 +730,10 @@ function ShadowVayne:PermaShows()
 	CustomPermaShow("Auto-E after next BasicAttack", SVMainMenu.keysetting.basiccondemn, SVMainMenu.permashowsettings.epermashow, nil, 1426521024, nil,  5)
 end
 
-function ShadowVayne:GetTarget(MyRange)
+function ShadowVayne:GenerateTarget()
 	local TargetTable = { ["Hero"] = nil, ["AA"] = math.huge }
-	if MyRange then SearchRange = MyRange else SearchRange = 550.5 end
 	for i, enemy in pairs(GetEnemyHeroes()) do
-		if self:IsValid(enemy, SearchRange) then
+		if self:IsValid(enemy, 550.5) then
 			NeededAA = self:GetAACount(enemy) - SVTSMenu[enemy.charName]
 			if NeededAA < TargetTable.AA then
 				TargetTable.AA = NeededAA
@@ -647,7 +741,13 @@ function ShadowVayne:GetTarget(MyRange)
 			end
 		end
 	end
-	return TargetTable["Hero"]
+	if self.CurTarget ~= TargetTable["Hero"] then
+		self.CurTarget = TargetTable["Hero"]
+	end
+end
+
+function ShadowVayne:GetTarget()
+	return self.CurTarget
 end
 
 function ShadowVayne:IsValid(target, range)
@@ -1019,7 +1119,7 @@ function ShadowVayne:WallTumble()
 end
 
 function ShadowVayne:SendPacket_WallTumble(p)
-	if p.header == 153 and p.size == 26 then
+	if p.header == _G.Packet.headers.S_CAST then
 		if SVMainMenu.walltumble.spot1 then
 			if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
 				p.pos = 1
@@ -1055,7 +1155,7 @@ function ShadowVayne:SendPacket_WallTumble(p)
 		end
 	end
 
-	if p.header == 113 then
+	if p.header == _G.Packet.headers.S_MOVE then
 		p.pos = 1
 		P_NetworkID = p:DecodeF()
 		p:Decode1()
@@ -1188,4 +1288,48 @@ function ShadowVayne:CircleDraw(x,y,z,radius, color)
 	else
 		DrawCircle(x, y, z, radius, color)
 	end
+end
+
+function ShadowVayne:DebugDraw()
+	local DebugTarget = self:GetTarget()
+	if DebugTarget then
+	PrintTarget = DebugTarget.charName
+	PrintDistance = math.floor(GetDistance(DebugTarget))
+	else
+	PrintTarget = "nil"
+	PrintDistance = "nil"
+	end
+	if SVMainMenu.debugsettings.targetdraw.lefttop then
+		DrawText("Current Target: "..PrintTarget, 15, 10, 10, 4294967280) -- ivory
+		DrawText("Current Distance: "..PrintDistance, 15, 10, 25, 4294967280) -- ivory
+	end
+	if SVMainMenu.debugsettings.targetdraw.myhero then
+	    local p = WorldToScreen(D3DXVECTOR3(myHero.x, myHero.y, myHero.z))
+		DrawText("Current Target: "..PrintTarget, 15, p.x - GetTextArea("Current Target: "..PrintTarget, 15).x / 2, p.y, color or 4294967295)
+		DrawText("Current Distance: "..PrintDistance, 15, p.x - GetTextArea("Current Distance: "..PrintDistance, 15).x / 2, p.y + 15, color or 4294967295)
+	end
+end
+
+function ShadowVayne:SkinChanger(champ, skinId) -- Credits to shalzuth
+    p = CLoLPacket(0x97)
+    p:EncodeF(myHero.networkID)
+    p.pos = 1
+    t1 = p:Decode1()
+    t2 = p:Decode1()
+    t3 = p:Decode1()
+    t4 = p:Decode1()
+    p:Encode1(t1)
+    p:Encode1(t2)
+    p:Encode1(t3)
+    p:Encode1(bit32.band(t4,0xB))
+    p:Encode1(1)--hardcode 1 bitfield
+    p:Encode4(skinId)
+    for i = 1, #champ do
+        p:Encode1(string.byte(champ:sub(i,i)))
+    end
+    for i = #champ + 1, 64 do
+        p:Encode1(0)
+    end
+    p:Hide()
+    RecvPacket(p)
 end

@@ -8,7 +8,7 @@
 if myHero.charName ~= "Vayne" then return end
 
 _OwnEnv = GetCurrentEnv().FILE_NAME:gsub(".lua", "")
-ShadowVersion = 1.1
+ShadowVersion = 1.2
 
 ------------------------
 ------ MainScript ------
@@ -17,11 +17,11 @@ function OnLoad()
 	TCPU = TCPUpdater()
 	TCPU:AddScript("VPrediction","Lib","raw.githubusercontent.com","/Hellsing/BoL/master/common/VPrediction.lua","/Hellsing/BoL/master/version/VPrediction.version","local version", "Free")
 	TCPU:AddScript("SOW","Lib","raw.githubusercontent.com","/Hellsing/BoL/master/common/SOW.lua","/Hellsing/BoL/master/version/SOW.version","local version", "Free")
-	TCPU:AddScript("SourceLib","Lib","raw.githubusercontent.com","/TheRealSource/public/master/common/SourceLib.lua","/TheRealSource/public/master/common/SourceLib.version","local version", "Free")
+--~ 	TCPU:AddScript("SourceLib","Lib","raw.githubusercontent.com","/TheRealSource/public/master/common/SourceLib.lua","/TheRealSource/public/master/common/SourceLib.version","local version", "Free")
 --~ 	TCPU:AddScript("Selector","Lib","raw.githubusercontent.com","/pqmailer/BoL_Scripts/master/Paid/Selector.lua","/pqmailer/BoL_Scripts/master/Paid/Selector.revision","@version", "VIP")
 	TCPU:AddScript("CustomPermaShow","Lib","raw.githubusercontent.com","/Superx321/BoL/master/common/CustomPermaShow.lua","/Superx321/BoL/master/common/CustomPermaShow.Version","version =", "Free")
 	TCPU:AddScript("ShadowVayneLib","Lib","raw.githubusercontent.com","/Superx321/BoL/master/common/ShadowVayneLib.lua","/Superx321/BoL/master/common/ShadowVayneLib.Version","version =", "Free")
-	if VIP_USER then TCPU:AddScript("Prodiction","Lib","bitbucket.org","/Klokje/public-klokjes-bol-scripts/raw/1467bf108b116274f8763693b00b7d977faf7735/Test/Prodiction/Prodiction.lua",nil,"--Prodiction", "VIP", 1.1) end
+	if VIP_USER then TCPU:AddScript("Prodiction","Lib","bitbucket.org","/Klokje/public-klokjes-bol-scripts/raw/aef4be4e92a5b1ba70154752c49e4978e7178dd4/Test/Prodiction/Prodiction.lua",nil,"--Prodiction", "VIP", 1.2) end
 	TCPU:AddScript(_OwnEnv,"Script","raw.githubusercontent.com","/Superx321/BoL/master/ShadowVayne.lua","/Superx321/BoL/master/ShadowVayne.Version","ShadowVersion =")
 end
 
@@ -62,13 +62,13 @@ function TCPUpdater:TCPUpdate()
 		if self.AutoUpdates[i]["ScriptPath"] and not self.AutoUpdates[i]["LocalVersion"] then
 			self.AutoUpdates[i]["LocalVersion"] = self:GetLocalVersion(self.AutoUpdates[i])
 		end
-
 		if not self.AutoUpdates[i]["ServerVersion"] and self.AutoUpdates[i]["ScriptPath"] and self.AutoUpdates[i]["LocalVersion"] then
 			self.AutoUpdates[i]["ServerVersion"] = self:GetOnlineVersion(self.AutoUpdates[i])
 		end
 
 		if self.AutoUpdates[i]["ServerVersion"] and self.AutoUpdates[i]["LocalVersion"] and self.AutoUpdates[i]["ScriptPath"] and not _G.TCPUpdates[self.AutoUpdates[i]["Name"]] then
 			if self.AutoUpdates[i]["ServerVersion"] > self.AutoUpdates[i]["LocalVersion"] then
+				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating ".. self.AutoUpdates[i]["Name"].." to Version "..self.AutoUpdates[i]["ServerVersion"].."</font>")
 				self:DownloadUpdate(self.AutoUpdates[i])
 			else
 				self:LoadScript(self.AutoUpdates[i])
