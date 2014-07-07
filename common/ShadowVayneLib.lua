@@ -12,7 +12,7 @@
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 3.33
+	self.ShadowTable.version = 3.34
 	self.ShadowTable.LastLevelCheck = 0
 	self.ShadowTable.LastHeroLevel = 0
 	self.LastTumble = 0
@@ -21,6 +21,7 @@ function ShadowVayne:__init()
 	CondemnLastE = 0
 	print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Version "..self.ShadowTable.version.." loaded</font>")
 
+	self:LoadMap()
 	self:GetOrbWalkers()
 	self:GenerateTables()
 
@@ -72,6 +73,41 @@ function ShadowVayne:__init()
 	AddSendPacketCallback(function(p) self:SendPacket_WallTumble(p) end)
 
 	AddMsgCallback(function(msg,key) self:DoubleModeProtection(msg, key) end)
+
+end
+
+function ShadowVayne:LoadMap()
+	if not FileExist(LIB_PATH.."\\Saves\\WorldGrid\\" .. GetMapName() .. "_Walls.SAVE") then
+		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. GetMapName() .."_Brushes.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. GetMapName() .. "_Brushes.SAVE")
+		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. GetMapName() .."_Vision.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. GetMapName() .. "_Vision.SAVE")
+		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. GetMapName() .."_Walls.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. GetMapName() .. "_Walls.SAVE")
+		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. GetMapName() .."_Info.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. GetMapName() .. "_Info.SAVE")
+	end
+	worldGridWalls = GetSave("WorldGrid\\" .. GetMapName() .. "_Walls")
+	worldGridBrushes = GetSave("WorldGrid\\" .. GetMapName() .. "_Brushes")
+end
+
+function ShadowVayne:GetWorldType(x,z)
+	local GridX = math.round(x/50)
+	local GridZ = math.round(z/50)
+	if worldGridWalls[GridX] and worldGridWalls[GridX][GridZ] then
+		return 1
+	elseif worldGridBrushes[GridX] and worldGridBrushes[GridX][GridZ] then
+		return 2
+	else
+		return 0
+	end
+end
+
+function ShadowVayne:TCPDownload(Host, Link, Save)
+	LuaSocket = require("socket")
+	ScriptSocket = LuaSocket.connect(Host, 80)
+	ScriptSocket:send("GET "..Link:gsub(" ", "%%20").." HTTP/1.0\r\n\r\n")
+	ScriptReceive, ScriptStatus = ScriptSocket:receive('*a')
+	ScriptFileOpen = io.open(Save, "w+")
+	ScriptStart = string.find(ScriptReceive, "return")
+	ScriptFileOpen:write(string.sub(ScriptReceive, ScriptStart))
+	ScriptFileOpen:close()
 end
 
 function ShadowVayne:GetOrbWalkers()
@@ -601,9 +637,9 @@ function ShadowVayne:GetTarget(MyRange)
 	local TargetTable = { ["Hero"] = nil, ["AA"] = math.huge }
 	if MyRange then SearchRange = MyRange else SearchRange = 550.5 end
 	for i, enemy in pairs(GetEnemyHeroes()) do
-		if self:IsValid(enemy, SearchRange ^ 2) then
-			NeededAA = self:GetAACount(enemy)
-			if (NeededAA < TargetTable.AA) or (NeededAA == TargetTable.AA and SVTSMenu[enemy.charName] > SVTSMenu[TargetTable["Hero"].charName]) then
+		if self:IsValid(enemy, SearchRange) then
+			NeededAA = self:GetAACount(enemy) - SVTSMenu[enemy.charName]
+			if NeededAA < TargetTable.AA then
 				TargetTable.AA = NeededAA
 				TargetTable.Hero = enemy
 			end
@@ -612,13 +648,10 @@ function ShadowVayne:GetTarget(MyRange)
 	return TargetTable["Hero"]
 end
 
-function ShadowVayne:IsValid(target, range, selected)
-local RangeSqr = ShadowVayne:GetDistanceSqr(target)
-local AllowedRange = ((math.sqrt(range) + self.VP:GetHitBox(myHero) + self.VP:GetHitBox(target)) ^ 2)
-    if ValidTarget(target) and RangeSqr <= AllowedRange then
-        if selected or (not (ShadowVayne:HasBuff(target, "UndyingRage") and (target.health == 1)) and not ShadowVayne:HasBuff(target, "JudicatorIntervention")) then
-            return true
-        end
+function ShadowVayne:IsValid(target, range)
+local AllowedRange = range + self.VP:GetHitBox(myHero) + self.VP:GetHitBox(target)
+    if ValidTarget(target) and GetDistance(target) <= AllowedRange then
+		return true
     end
 end
 
@@ -897,25 +930,25 @@ end
 function ShadowVayne:CheckWallStun(PredictPos, Source, Hitchance)
 	local BushFound, Bushpos = false, nil
 	if CondemnLastE + 1000 < GetTickCount() then
-		for i = 1, SVMainMenu.autostunn.pushDistance, 50  do
+		for i = 1, SVMainMenu.autostunn.pushDistance, 20  do
 			local CheckWallPos = Vector(PredictPos) + (Vector(PredictPos) - myHero):normalized()*(i)
-			local CheckVector = D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)
-			if not BushFound and IsWallOfGrass(CheckVector) then
+			local WorldType = self:GetWorldType(CheckWallPos.x, CheckWallPos.z)
+			if not BushFound and WorldType == 2 then
 				BushFound = true
 				BushPos = CheckWallPos
 			end
-			if IsWall(CheckVector) then
+			if WorldType == 1 then
 				if UnderTurret(CheckVector, true) then
 					if SVMainMenu.autostunn.towerstunn then
 						AllowTumble = false
 						CastSpell(_E, Source)
-						print("Stunned: "..Source.charName..". HitChance: "..Hitchance)
+--~ 						print("Stunned: "..Source.charName..". HitChance: "..Hitchance)
 						CondemnLastE = GetTickCount()
 						break
 					end
 				else
 					AllowTumble = false
-					print("Stunned: "..Source.charName..". HitChance: "..Hitchance)
+--~ 					print("Stunned: "..Source.charName..". HitChance: "..Hitchance)
 					CastSpell(_E, Source)
 					CondemnLastE = GetTickCount()
 					if BushFound and SVMainMenu.autostunn.trinket and myHero:CanUseSpell(ITEM_7) == 0 then
@@ -945,12 +978,11 @@ function ShadowVayne:CondemnStun()
 						if StunPos ~= nil and GetDistance(StunPos) < 710 then
 							self:CheckWallStun(StunPos, enemy, 0)
 						end
-
 					end
 
 					if VIP_USER then -- PR0D
 						StunPos, StunnInfo = Prodiction.GetPrediction(enemy, 650, 1200, 0.4, 10, myHero)
-						if StunPos ~= nil and GetDistanceSqr(StunPos) < 650*650 and StunnInfo.hitchance > 1 then
+						if StunPos and GetDistanceSqr(StunPos) < 650*650 and StunnInfo and StunnInfo.hitchance > 1 then
 							self:CheckWallStun(StunPos, enemy, StunnInfo.hitchance)
 						end
 					end

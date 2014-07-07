@@ -8,7 +8,7 @@
 if myHero.charName ~= "Vayne" then return end
 
 _OwnEnv = GetCurrentEnv().FILE_NAME:gsub(".lua", "")
-ShadowVersion = 1.0
+ShadowVersion = 1.1
 
 ------------------------
 ------ MainScript ------
@@ -17,7 +17,7 @@ function OnLoad()
 	TCPU = TCPUpdater()
 	TCPU:AddScript("VPrediction","Lib","raw.githubusercontent.com","/Hellsing/BoL/master/common/VPrediction.lua","/Hellsing/BoL/master/version/VPrediction.version","local version", "Free")
 	TCPU:AddScript("SOW","Lib","raw.githubusercontent.com","/Hellsing/BoL/master/common/SOW.lua","/Hellsing/BoL/master/version/SOW.version","local version", "Free")
---~ 	TCPU:AddScript("SourceLib","Lib","raw.githubusercontent.com","/TheRealSource/public/master/common/SourceLib.lua","/TheRealSource/public/master/common/SourceLib.version","local version")
+	TCPU:AddScript("SourceLib","Lib","raw.githubusercontent.com","/TheRealSource/public/master/common/SourceLib.lua","/TheRealSource/public/master/common/SourceLib.version","local version", "Free")
 --~ 	TCPU:AddScript("Selector","Lib","raw.githubusercontent.com","/pqmailer/BoL_Scripts/master/Paid/Selector.lua","/pqmailer/BoL_Scripts/master/Paid/Selector.revision","@version", "VIP")
 	TCPU:AddScript("CustomPermaShow","Lib","raw.githubusercontent.com","/Superx321/BoL/master/common/CustomPermaShow.lua","/Superx321/BoL/master/common/CustomPermaShow.Version","version =", "Free")
 	TCPU:AddScript("ShadowVayneLib","Lib","raw.githubusercontent.com","/Superx321/BoL/master/common/ShadowVayneLib.lua","/Superx321/BoL/master/common/ShadowVayneLib.Version","version =", "Free")
@@ -51,12 +51,6 @@ function TCPUpdater:__init()
 	self.AutoUpdates = {}
 	self.LuaSocket = require("socket")
 	AddTickCallback(function() self:TCPUpdate() end)
-end
-
-function TCPUpdater:PrintDebug(Debug,Name,Msg)
-	if Debug ~= nil then
-		print(Name..Msg..Debug)
-	end
 end
 
 function TCPUpdater:TCPUpdate()
