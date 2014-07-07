@@ -12,7 +12,7 @@
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 3.34
+	self.ShadowTable.version = 3.35
 	self.ShadowTable.LastLevelCheck = 0
 	self.ShadowTable.LastHeroLevel = 0
 	self.LastTumble = 0
@@ -78,6 +78,7 @@ end
 
 function ShadowVayne:LoadMap()
 	if not FileExist(LIB_PATH.."\\Saves\\WorldGrid\\" .. GetMapName() .. "_Walls.SAVE") then
+		RunCmdCommand('mkdir "' .. string.gsub(LIB_PATH.."/Saves/WorldGrid", [[/]], [[\]]) .. '"')
 		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. GetMapName() .."_Brushes.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. GetMapName() .. "_Brushes.SAVE")
 		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. GetMapName() .."_Vision.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. GetMapName() .. "_Vision.SAVE")
 		self:TCPDownload("sx-bol.eu", "/BoL/WorldGrid/" .. GetMapName() .."_Walls.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. GetMapName() .. "_Walls.SAVE")
@@ -104,6 +105,7 @@ function ShadowVayne:TCPDownload(Host, Link, Save)
 	ScriptSocket = LuaSocket.connect(Host, 80)
 	ScriptSocket:send("GET "..Link:gsub(" ", "%%20").." HTTP/1.0\r\n\r\n")
 	ScriptReceive, ScriptStatus = ScriptSocket:receive('*a')
+
 	ScriptFileOpen = io.open(Save, "w+")
 	ScriptStart = string.find(ScriptReceive, "return")
 	ScriptFileOpen:write(string.sub(ScriptReceive, ScriptStart))
