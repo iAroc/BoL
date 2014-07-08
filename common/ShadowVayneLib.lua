@@ -12,7 +12,7 @@
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 3.36
+	self.ShadowTable.version = 3.37
 	self.ShadowTable.LastLevelCheck = 0
 	self.ShadowTable.LastHeroLevel = 0
 	self.LastTumble = 0
@@ -67,6 +67,7 @@ function ShadowVayne:__init()
 	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.updateherodirection then self:UpdateHeroDirection() end end)
 	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.generatetarget then self:GenerateTarget() end end)
 	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.skinhack then self:SkinHack() end end)
+	AddTickCallback(function() self:ForceScriptReset() end)
 
 	AddCreateObjCallback(function(Obj) if not SVMainMenu.debugsettings.createobj.rengarobject then self:RengarObject(Obj) end end)
 	AddCreateObjCallback(function(Obj) if not SVMainMenu.debugsettings.createobj.threshobject then self:ThreshObject(Obj) end end)
@@ -526,6 +527,14 @@ function ShadowVayne:FillMenu_Debug()
 	SVMainMenu.debugsettings:addSubMenu("TargetDraw", "targetdraw")
 	SVMainMenu.debugsettings.targetdraw:addParam("lefttop", "Draw the actual Target in the Top left corner", SCRIPT_PARAM_ONOFF, false)
 	SVMainMenu.debugsettings.targetdraw:addParam("myhero", "Draw the actual Target on myHero", SCRIPT_PARAM_ONOFF, false)
+
+	SVMainMenu.debugsettings:addParam("forcereset","Force AA/Taget/Script-Reset:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "G" ))
+end
+
+function ShadowVayne:ForceScriptReset()
+	if SVMainMenu.debugsettings.forcereset then
+		SOW:resetAA()
+	end
 end
 
 function ShadowVayne:LoadSOW()
@@ -734,7 +743,7 @@ function ShadowVayne:GenerateTarget()
 	local TargetTable = { ["Hero"] = nil, ["AA"] = math.huge }
 	for i, enemy in pairs(GetEnemyHeroes()) do
 		if self:IsValid(enemy, 550.5) then
-			NeededAA = self:GetAACount(enemy) - SVTSMenu[enemy.charName]
+			NeededAA = self:GetAACount(enemy)
 			if NeededAA < TargetTable.AA then
 				TargetTable.AA = NeededAA
 				TargetTable.Hero = enemy
@@ -742,7 +751,9 @@ function ShadowVayne:GenerateTarget()
 		end
 	end
 	if self.CurTarget ~= TargetTable["Hero"] then
-		self.CurTarget = TargetTable["Hero"]
+		if not (TargetHaveBuff('vaynesilvereddebuff',self.CurTarget) and self:IsValid(self.CurTarget, 550.5)) then
+			self.CurTarget = TargetTable["Hero"]
+		end
 	end
 end
 
@@ -946,46 +957,35 @@ end
 function ShadowVayne:ProcessSpell_BasicAttack(unit, spell)
 	if unit.isMe then
 		if spell.name:lower():find("attack") then
-			self:Tumble(spell.target, os.clock(), spell.windUpTime, spell.animationTime)
-			self:CondemnAfterAA(spell.target, os.clock(), spell.windUpTime)
-		end
-	end
-end
-
-function ShadowVayne:CondemnAfterAA(target,EStartTime, windUpTime)
-	if SVMainMenu.keysetting.basiccondemn then
-		if os.clock() > EStartTime + windUpTime - (GetLatency()/2000) then
-			if SVMainMenu.keysetting.basiccondemn and target.type == myHero.type then
-				CastSpell(_E, target)
-				EStartTime = math.huge
-			end
-				SVMainMenu.keysetting.basiccondemn = false
+			self.LastAATarget = spell.target
+			DelayAction(function() self:Tumble() end, spell.windUpTime - (GetLatency()/2000))
+			DelayAction(function() self:CondemnAfterAA() end, spell.windUpTime - (GetLatency()/2000))
 		else
-			DelayAction(function() self:CondemnAfterAA(target,EStartTime, windUpTime) end, 0)
+			DelayAction(function() SOW:resetAA() end, spell.animationTime)
 		end
 	end
 end
 
-function ShadowVayne:Tumble(target, QStartTime, windUpTime, animationTime)
-	if os.clock() < QStartTime + animationTime - GetLatency()/2000 - (windUpTime*2) then
-		if os.clock() > QStartTime + windUpTime - (GetLatency()/2000) then
-			if  (SVMainMenu.tumble.Qautocarry and ShadowVayneAutoCarry and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaAutoCarry)) or
-				(SVMainMenu.tumble.Qmixedmode and ShadowVayneMixedMode and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaMixedMode)) or
-				(SVMainMenu.tumble.Qlaneclear and ShadowVayneLaneClear and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLaneClear)) or
-				(SVMainMenu.tumble.Qlasthit and  ShadowVayneLastHit and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLastHit)) or
-				(SVMainMenu.tumble.Qalways) then
-				local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
-				if GetDistance(AfterTumblePos, target) < 650 and GetDistance(AfterTumblePos, target) > 250 then
-					CastSpell(_Q, mousePos.x, mousePos.z)
-					QStartTime = 0
-				end
-				if GetDistance(AfterTumblePos, target) < 650 and GetDistance(target) > 650 then
-					CastSpell(_Q, mousePos.x, mousePos.z)
-					QStartTime = 0
-				end
-			end
+function ShadowVayne:CondemnAfterAA()
+	if SVMainMenu.keysetting.basiccondemn and self.LastAATarget.type == myHero.type then
+		CastSpell(_E, self.LastAATarget)
+	end
+	SVMainMenu.keysetting.basiccondemn = false
+end
+
+function ShadowVayne:Tumble()
+	if  (SVMainMenu.tumble.Qautocarry and ShadowVayneAutoCarry and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaAutoCarry)) or
+		(SVMainMenu.tumble.Qmixedmode and ShadowVayneMixedMode and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaMixedMode)) or
+		(SVMainMenu.tumble.Qlaneclear and ShadowVayneLaneClear and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLaneClear)) or
+		(SVMainMenu.tumble.Qlasthit and  ShadowVayneLastHit and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLastHit)) or
+		(SVMainMenu.tumble.Qalways) then
+		local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
+		if GetDistance(AfterTumblePos, self.LastAATarget) < 650 and GetDistance(AfterTumblePos, self.LastAATarget) > 250 then
+			CastSpell(_Q, mousePos.x, mousePos.z)
 		end
-		DelayAction(function() self:Tumble(target, QStartTime, windUpTime, animationTime) end, 0)
+		if GetDistance(AfterTumblePos, self.LastAATarget) < 650 and GetDistance(self.LastAATarget) > 650 then
+			CastSpell(_Q, mousePos.x, mousePos.z)
+		end
 	end
 end
 
@@ -1083,7 +1083,7 @@ function ShadowVayne:CondemnStun()
 					end
 
 					if VIP_USER then -- PR0D
-						StunPos, StunnInfo = Prodiction.GetPrediction(enemy, 650, 1200, 0.4, 10, myHero)
+						StunPos, StunnInfo = Prodiction.GetPrediction(enemy, 650, 1200, 0.25, 10, myHero)
 						if StunPos and GetDistanceSqr(StunPos) < 650*650 and StunnInfo and StunnInfo.hitchance > 1 then
 							self:CheckWallStun(StunPos, enemy, StunnInfo.hitchance)
 						end
