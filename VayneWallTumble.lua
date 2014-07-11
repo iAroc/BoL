@@ -62,7 +62,7 @@ end
 
 function OnSendPacket(p)
 	if VIP_USER then
-		if p.header == 153 and p.size == 26 then
+		if p.header == 154 and p.size == 26 then
 			if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
 				p.pos = 1
 				P_NetworkID = p:DecodeF()
@@ -94,7 +94,7 @@ function OnSendPacket(p)
 			end
 		end
 
-		if p.header == 113 then
+		if p.header == 114 then
 			p.pos = 1
 			P_NetworkID = p:DecodeF()
 			p:Decode1()
