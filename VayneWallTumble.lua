@@ -61,62 +61,59 @@ function _WallTumbleDraw()
 end
 
 function OnSendPacket(p)
-	if VIP_USER then
-		if p.header == 154 and p.size == 26 then
-			if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
-				p.pos = 1
-				P_NetworkID = p:DecodeF()
-				P_SpellID = p:Decode1()
-				if P_NetworkID == myHero.networkID and P_SpellID == _Q then
-					if DontBlockNext then
-						DontBlockNext = false
-					else
-						p:Block()
-						DontBlockNext = true
-						TumbleOverWall_1 = true
-					end
-				end
-			end
-
-			if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
-				p.pos = 1
-				P_NetworkID = p:DecodeF()
-				P_SpellID = p:Decode1()
-				if P_NetworkID == myHero.networkID and P_SpellID == _Q then
-					if DontBlockNext then
-						DontBlockNext = false
-					else
-						p:Block()
-						DontBlockNext = true
-						TumbleOverWall_2 = true
-					end
+	if p.header == _G.Packet.headers.S_CAST then
+		if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
+			p.pos = 1
+			P_NetworkID = p:DecodeF()
+			P_SpellID = p:Decode1()
+			if P_NetworkID == myHero.networkID and P_SpellID == _Q then
+				if DontBlockNext then
+					DontBlockNext = false
+				else
+					p:Block()
+					DontBlockNext = true
+					TumbleOverWall_1 = true
 				end
 			end
 		end
 
-		if p.header == 114 then
+		if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
 			p.pos = 1
 			P_NetworkID = p:DecodeF()
-			p:Decode1()
-			P_X = p:DecodeF()
-			P_X2 = RoundNumber(P_X, 2)
-			P_Y = p:DecodeF()
-			P_Y2 = RoundNumber(P_Y, 2)
-			if TumbleOverWall_1 == true then
-				RunToX, RunToY = TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y
-				if not (P_X2 == RunToX and P_Y2 == RunToY) then
+			P_SpellID = p:Decode1()
+			if P_NetworkID == myHero.networkID and P_SpellID == _Q then
+				if DontBlockNext then
+					DontBlockNext = false
+				else
 					p:Block()
-					myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y)
+					DontBlockNext = true
+					TumbleOverWall_2 = true
 				end
 			end
-			if TumbleOverWall_2 == true then
-				RunToX, RunToY = TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y
-				if not (P_X2 == RunToX and P_Y2 == RunToY) then
-					print(P_X2)
-					print(RunToX)
-					p:Block()
-					myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y)
-				end
+		end
+	end
+
+	if p.header == _G.Packet.headers.S_MOVE then
+		p.pos = 1
+		P_NetworkID = p:DecodeF()
+		p:Decode1()
+		P_X = p:DecodeF()
+		P_X2 = tonumber(string.format("%." .. (2) .. "f", P_X))
+
+		P_Y = p:DecodeF()
+		P_Y2 = tonumber(string.format("%." .. (2) .. "f", P_Y))
+		if TumbleOverWall_1 == true then
+			RunToX, RunToY = TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y
+			if not (P_X2 == RunToX and P_Y2 == RunToY) then
+				p:Block()
+				myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y)
+			end
+		end
+		if TumbleOverWall_2 == true then
+			RunToX, RunToY = TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y
+			if not (P_X2 == RunToX and P_Y2 == RunToY) then
+				p:Block()
+				myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y)
 			end
 		end
 	end
