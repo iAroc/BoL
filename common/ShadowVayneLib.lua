@@ -12,7 +12,7 @@
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 3.38
+	self.ShadowTable.version = 3.39
 	self.ShadowTable.LastLevelCheck = 0
 	self.ShadowTable.LastHeroLevel = 0
 	self.LastTumble = 0
@@ -887,7 +887,7 @@ function ShadowVayne:Youmuus()
 	 (SVMainMenu.youmuus.always) then
 		local YoumuusSlot = GetInventorySlotItem(3142)
 		if YoumuusSlot and myHero:CanUseSpell(YoumuusSlot) == 0 then
-			CastSpell(YoumuusSlot, Target)
+			CastSpell(YoumuusSlot)
 		end
 	end
 end
