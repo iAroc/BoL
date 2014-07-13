@@ -1,5 +1,5 @@
 
-version = 1.08
+version = 1.09
 
 if not _G.HidePermaShow then
 	_G.HidePermaShow = {}
@@ -147,7 +147,7 @@ function DrawText(Arg1, Arg2, Arg3, Arg4, Arg5)
 	if not (IsKeyDown(PressingKey) and IsKeyDown(1)) and _G.CPS.WaitForRelease then
 		_G.CPS.WaitForRelease = false
 		_G.CPS.OldCountDone = false
-		_G.CPS.StartY = 0
+		_G.CPS.StartY = GetSave("scriptConfig")["Master"].py
 		DelayAction(function() 	_G.CPS.OldCountDone = true end, 0.5)
 	end
 
