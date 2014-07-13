@@ -8,7 +8,7 @@
 if myHero.charName ~= "Vayne" then return end
 
 _OwnEnv = GetCurrentEnv().FILE_NAME:gsub(".lua", "")
-ShadowVersion = 1.3
+ShadowVersion = 1.4
 
 ------------------------
 ------ MainScript ------
@@ -209,7 +209,7 @@ _G.scriptConfig._DrawParam = function(self, varIndex)
 		self._param[varIndex].var = "sep"
 	end
 
-	if self.name == "MMA2013" and (self._param[varIndex].text:find("Spells on") or self._param[varIndex].text:find("Version")) then
+	if self.name == "MMA2014" and (self._param[varIndex].text:find("Spells on") or self._param[varIndex].text:find("Version")) then
 	HideParam = true
 		if not MMAParams then
 			MMAParams = true
@@ -218,7 +218,7 @@ _G.scriptConfig._DrawParam = function(self, varIndex)
 			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
 			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
 			self:addParam(self._param[varIndex].var, "Use Spells On", SCRIPT_PARAM_LIST,1, {"None","All Units","Heroes Only","Minion Only"})
-			self:addParam("mmaVersion","MMA - version:", SCRIPT_PARAM_INFO, "0.1408")
+			self:addParam("mmaVersion","MMA - version:", SCRIPT_PARAM_INFO, "0.1416")
 		end
 	end
 
@@ -236,7 +236,7 @@ _G.scriptConfig._DrawParam = function(self, varIndex)
 
 	if self.name == "SV_SOW" and (self._param[varIndex].var == "Hotkeys" or self._param[varIndex].var:find("Mode")) then HideParam = true end
 
-	if (self.name == "MMA2013" and self._param[varIndex].text:find("OnHold")) then HideParam = true end
+	if (self.name == "MMA2014" and self._param[varIndex].text:find("OnHold")) then HideParam = true end
 	if not HideParam then
 		_G.scriptConfig.CustomDrawParam(self, varIndex)
 	end
@@ -249,5 +249,15 @@ _G.scriptConfig.CustomDrawSubInstance = _G.scriptConfig._DrawSubInstance
 _G.scriptConfig._DrawSubInstance = function(self, index)
 	if not self.name:find("sidasacvayne") then
 		_G.scriptConfig.CustomDrawSubInstance(self, index)
+	end
+end
+
+-------------------------
+---- PermaShow Hooks ----
+-------------------------
+_G.scriptConfig.CustompermaShow = _G.scriptConfig.permaShow
+_G.scriptConfig.permaShow = function(self, pVar)
+	if not (self.name:find("sidasacvayne") or self.name == "MMA2014") then
+		_G.scriptConfig.CustompermaShow(self, pVar)
 	end
 end
