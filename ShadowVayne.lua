@@ -8,7 +8,7 @@
 if myHero.charName ~= "Vayne" then return end
 
 _OwnEnv = GetCurrentEnv().FILE_NAME:gsub(".lua", "")
-ShadowVersion = 1.2
+ShadowVersion = 1.3
 
 ------------------------
 ------ MainScript ------
@@ -67,7 +67,7 @@ function TCPUpdater:TCPUpdate()
 		end
 
 		if self.AutoUpdates[i]["ServerVersion"] and self.AutoUpdates[i]["LocalVersion"] and self.AutoUpdates[i]["ScriptPath"] and not _G.TCPUpdates[self.AutoUpdates[i]["Name"]] then
-			if self.AutoUpdates[i]["ServerVersion"] > self.AutoUpdates[i]["LocalVersion"] then
+			if self.AutoUpdates[i]["ServerVersion"] > self.AutoUpdates[i]["LocalVersion"] and self.AutoUpdates[i]["ServerVersion"] < 9999999999 then
 				print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Updating ".. self.AutoUpdates[i]["Name"].." to Version "..self.AutoUpdates[i]["ServerVersion"].."</font>")
 				self:DownloadUpdate(self.AutoUpdates[i])
 			else

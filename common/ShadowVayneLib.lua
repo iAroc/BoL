@@ -12,7 +12,7 @@
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 3.37
+	self.ShadowTable.version = 3.38
 	self.ShadowTable.LastLevelCheck = 0
 	self.ShadowTable.LastHeroLevel = 0
 	self.LastTumble = 0
@@ -42,9 +42,11 @@ function ShadowVayne:__init()
 	self:FillMenu_PermaShow()
 	self:FillMenu_BotRK()
 	self:FillMenu_BilgeWater()
+	self:FillMenu_Yomuus()
 	self:FillMenu_Tumble()
 	self:FillMenu_WallTumble()
 	self:FillMenu_SkinHack()
+	self:FillMenu_Selector()
 	self:FillMenu_Debug()
 
 	self:LoadTS()
@@ -147,7 +149,11 @@ function ShadowVayne:TCPDownload(Host, Link, Save)
 
 	ScriptFileOpen = io.open(Save, "w+")
 	ScriptStart = string.find(ScriptReceive, "return")
-	ScriptFileOpen:write(string.sub(ScriptReceive, ScriptStart))
+	if ScriptStart then
+		ScriptFileOpen:write(string.sub(ScriptReceive, ScriptStart))
+	else
+		print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Error in downloading WallSaves. Download them from the Thread by yourself!</font>")
+	end
 	ScriptFileOpen:close()
 end
 
@@ -305,8 +311,10 @@ function ShadowVayne:LoadMainMenu()
 	SVMainMenu:addSubMenu("[Misc]: Draw Settings", "draw")
 	SVMainMenu:addSubMenu("[Misc]: WallTumble Settings", "walltumble")
 	SVMainMenu:addSubMenu("[Misc]: SkinHack", "skinhack")
+	SVMainMenu:addSubMenu("[Misc]: Selector", "selector")
 	SVMainMenu:addSubMenu("[BotRK]: Settings", "botrksettings")
 	SVMainMenu:addSubMenu("[Bilgewater]: Settings", "bilgesettings")
+	SVMainMenu:addSubMenu("[Youmuu's]: Settings", "youmuus")
 	SVMainMenu:addSubMenu("[Debug]: Settings", "debugsettings")
 end
 
@@ -464,6 +472,14 @@ function ShadowVayne:FillMenu_BilgeWater()
 	SVMainMenu.bilgesettings:addParam("bilgeminheal", "Min Enemy Health Percent", SCRIPT_PARAM_SLICE, 20, 1, 100, 0)
 end
 
+function ShadowVayne:FillMenu_Yomuus()
+	SVMainMenu.youmuus:addParam("autocarry", "Use Youmuu's Ghostblade in AutoCarry", SCRIPT_PARAM_ONOFF, true)
+	SVMainMenu.youmuus:addParam("mixedmode", "Use Youmuu's Ghostblade in MixedMode", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.youmuus:addParam("laneclear", "Use Youmuu's Ghostblade in LaneClear", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.youmuus:addParam("lasthit", "Use Youmuu's Ghostblade in LastHit", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.youmuus:addParam("always", "Use Youmuu's Ghostblade always", SCRIPT_PARAM_ONOFF, false)
+end
+
 function ShadowVayne:FillMenu_Tumble()
 	SVMainMenu.tumble:addParam("Qautocarry", "Use Tumble in AutoCarry", SCRIPT_PARAM_ONOFF, true)
 	SVMainMenu.tumble:addParam("Qmixedmode", "Use Tumble in MixedMode", SCRIPT_PARAM_ONOFF, false)
@@ -485,6 +501,10 @@ end
 function ShadowVayne:FillMenu_SkinHack()
 	SVMainMenu.skinhack:addParam("enabled", "Enable Skinhack", SCRIPT_PARAM_ONOFF, false)
 	SVMainMenu.skinhack:addParam("skinid", "Choose the Skin: ", SCRIPT_PARAM_LIST, 1, { "No Skin", "Vindicator", "Aristocrat", "Dragonslayer", "Hearthseeker", "SKT T1" })
+end
+
+function ShadowVayne:FillMenu_Selector()
+	SVMainMenu.selector:addParam("enabled", "Use VIP Selector", SCRIPT_PARAM_ONOFF, false)
 end
 
 function ShadowVayne:FillMenu_Debug()
@@ -751,19 +771,35 @@ function ShadowVayne:GenerateTarget()
 		end
 	end
 	if self.CurTarget ~= TargetTable["Hero"] then
-		if not (TargetHaveBuff('vaynesilvereddebuff',self.CurTarget) and self:IsValid(self.CurTarget, 550.5)) then
-			self.CurTarget = TargetTable["Hero"]
-		end
+		self.CurTarget = TargetTable["Hero"]
 	end
 end
 
 function ShadowVayne:GetTarget()
-	return self.CurTarget
+	local SelectedTarget = GetTarget()
+	if SelectedTarget and self:IsValid(SelectedTarget, 550.5) then
+		return SelectedTarget
+	else
+		if SVMainMenu.selector.enabled and FileExist(LIB_PATH.."Selector.lua") then
+			if not SelectorInit then
+				require("Selector")
+				Selector.Instance()
+				SelectorInit = true
+			end
+			SelectorTarget = Selector.GetTarget(SelectorMenu.Get().mode, nil, {distance = 800})
+			if SelectorTarget and self:IsValid(SelectorTarget, 550.5) then
+				return SelectorTarget
+			else
+				return self.CurTarget
+			end
+		else
+			return self.CurTarget
+		end
+	end
 end
 
 function ShadowVayne:IsValid(target, range)
-local AllowedRange = range + self.VP:GetHitBox(myHero) + self.VP:GetHitBox(target)
-    if ValidTarget(target) and GetDistance(target) <= AllowedRange then
+    if ValidTarget(target) and GetDistance(target) <= range + self.VP:GetHitBox(myHero) + self.VP:GetHitBox(target) then
 		return true
     end
 end
@@ -804,17 +840,17 @@ function ShadowVayne:GetAACount(enemy)
 end
 
 function ShadowVayne:BotRK()
-	local BladeSlot = GetInventorySlotItem(3153)
-	if BladeSlot ~= nil and myHero:CanUseSpell(BladeSlot) == 0 then
-		local Target = self:GetTarget()
-		if Target ~= nil and GetDistance(Target) < 450 and not Target.dead and Target.visible then
-			if (SVMainMenu.botrksettings.botrkautocarry and ShadowVayneAutoCarry) or
-			 (SVMainMenu.botrksettings.botrkmixedmode and ShadowVayneMixedMode) or
-			 (SVMainMenu.botrksettings.botrklaneclear and ShadowVayneLaneClear) or
-			 (SVMainMenu.botrksettings.botrklasthit and ShadowVayneLastHit) or
-			 (SVMainMenu.botrksettings.botrkalways) then
-				if (math.floor(myHero.health / myHero.maxHealth * 100)) <= SVMainMenu.botrksettings.botrkmaxheal then
-					if (math.floor(Target.health / Target.maxHealth * 100)) >= SVMainMenu.botrksettings.botrkminheal then
+	local Target = self:GetTarget()
+	if Target ~= nil and GetDistance(Target) < 510 and not Target.dead and Target.visible then
+		if (SVMainMenu.botrksettings.botrkautocarry and ShadowVayneAutoCarry) or
+		 (SVMainMenu.botrksettings.botrkmixedmode and ShadowVayneMixedMode) or
+		 (SVMainMenu.botrksettings.botrklaneclear and ShadowVayneLaneClear) or
+		 (SVMainMenu.botrksettings.botrklasthit and ShadowVayneLastHit) or
+		 (SVMainMenu.botrksettings.botrkalways) then
+			if (math.floor(myHero.health / myHero.maxHealth * 100)) <= SVMainMenu.botrksettings.botrkmaxheal then
+				if (math.floor(Target.health / Target.maxHealth * 100)) >= SVMainMenu.botrksettings.botrkminheal then
+					local BladeSlot = GetInventorySlotItem(3153)
+					if BladeSlot ~= nil and myHero:CanUseSpell(BladeSlot) == 0 then
 						CastSpell(BladeSlot, Target)
 					end
 				end
@@ -824,21 +860,34 @@ function ShadowVayne:BotRK()
 end
 
 function ShadowVayne:BilgeWater()
-	local BilgeSlot = GetInventorySlotItem(3144)
-	if BilgeSlot ~= nil and myHero:CanUseSpell(BilgeSlot) == 0 then
-		local Target = self:GetTarget()
-		if Target ~= nil and GetDistance(Target) < 500 and not Target.dead and Target.visible then
-			if (SVMainMenu.bilgesettings.bilgeautocarry and ShadowVayneAutoCarry) or
-			 (SVMainMenu.bilgesettings.bilgemixedmode and ShadowVayneMixedMode) or
-			 (SVMainMenu.bilgesettings.bilgelaneclear and ShadowVayneLaneClear) or
-			 (SVMainMenu.bilgesettings.bilgelasthit and ShadowVayneLastHit) or
-			 (SVMainMenu.bilgesettings.bilgealways) then
-				if (math.floor(myHero.health / myHero.maxHealth * 100)) <= SVMainMenu.bilgesettings.bilgemaxheal then
-					if (math.floor(Target.health / Target.maxHealth * 100)) >= SVMainMenu.bilgesettings.bilgeminheal then
+	local Target = self:GetTarget()
+	if Target ~= nil and GetDistance(Target) < 510 and not Target.dead and Target.visible then
+		if (SVMainMenu.bilgesettings.bilgeautocarry and ShadowVayneAutoCarry) or
+		 (SVMainMenu.bilgesettings.bilgemixedmode and ShadowVayneMixedMode) or
+		 (SVMainMenu.bilgesettings.bilgelaneclear and ShadowVayneLaneClear) or
+		 (SVMainMenu.bilgesettings.bilgelasthit and ShadowVayneLastHit) or
+		 (SVMainMenu.bilgesettings.bilgealways) then
+			if (math.floor(myHero.health / myHero.maxHealth * 100)) <= SVMainMenu.bilgesettings.bilgemaxheal then
+				if (math.floor(Target.health / Target.maxHealth * 100)) >= SVMainMenu.bilgesettings.bilgeminheal then
+					local BilgeSlot = GetInventorySlotItem(3144)
+					if BilgeSlot ~= nil and myHero:CanUseSpell(BilgeSlot) == 0 then
 						CastSpell(BilgeSlot, Target)
 					end
 				end
 			end
+		end
+	end
+end
+
+function ShadowVayne:Youmuus()
+	if (SVMainMenu.youmuus.autocarry and ShadowVayneAutoCarry) or
+	 (SVMainMenu.youmuus.mixedmode and ShadowVayneMixedMode) or
+	 (SVMainMenu.youmuus.laneclear and ShadowVayneLaneClear) or
+	 (SVMainMenu.youmuus.lasthit and ShadowVayneLastHit) or
+	 (SVMainMenu.youmuus.always) then
+		local YoumuusSlot = GetInventorySlotItem(3142)
+		if YoumuusSlot and myHero:CanUseSpell(YoumuusSlot) == 0 then
+			CastSpell(YoumuusSlot, Target)
 		end
 	end
 end
@@ -902,7 +951,7 @@ end
 
 function ShadowVayne:TreshLantern()
 	if VIP_USER and SVMainMenu.keysetting.threshlantern and LanternObj then
-		LanternPacket = CLoLPacket(0x39)
+		LanternPacket = CLoLPacket(0x3A)
 		LanternPacket:EncodeF(myHero.networkID)
 		LanternPacket:EncodeF(LanternObj.networkID)
 		LanternPacket.dwArg1 = 1
@@ -958,8 +1007,11 @@ function ShadowVayne:ProcessSpell_BasicAttack(unit, spell)
 	if unit.isMe then
 		if spell.name:lower():find("attack") then
 			self.LastAATarget = spell.target
+			self.LastAATime = GetTickCount()
+			self.EndTumbleTime = GetTickCount() + ((spell.animationTime - (spell.windUpTime * 2) - (GetLatency()/2))*1000)
 			DelayAction(function() self:Tumble() end, spell.windUpTime - (GetLatency()/2000))
 			DelayAction(function() self:CondemnAfterAA() end, spell.windUpTime - (GetLatency()/2000))
+			self:Youmuus()
 		else
 			DelayAction(function() SOW:resetAA() end, spell.animationTime)
 		end
@@ -980,13 +1032,11 @@ function ShadowVayne:Tumble()
 		(SVMainMenu.tumble.Qlasthit and  ShadowVayneLastHit and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLastHit)) or
 		(SVMainMenu.tumble.Qalways) then
 		local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
-		if GetDistance(AfterTumblePos, self.LastAATarget) < 650 and GetDistance(AfterTumblePos, self.LastAATarget) > 250 then
-			CastSpell(_Q, mousePos.x, mousePos.z)
-		end
-		if GetDistance(AfterTumblePos, self.LastAATarget) < 650 and GetDistance(self.LastAATarget) > 650 then
+		if GetDistance(AfterTumblePos, self.LastAATarget) < 650 and GetDistance(AfterTumblePos, self.LastAATarget) > 100 then
 			CastSpell(_Q, mousePos.x, mousePos.z)
 		end
 	end
+	if GetTickCount() < self.EndTumbleTime then DelayAction(function() self:Tumble() end, 0) end
 end
 
 function ShadowVayne:ProcessSpell_Recall(unit, spell)
@@ -1044,13 +1094,13 @@ function ShadowVayne:CheckWallStun(PredictPos, Source, Hitchance)
 					if SVMainMenu.autostunn.towerstunn then
 						AllowTumble = false
 						CastSpell(_E, Source)
---~ 						print("Stunned: "..Source.charName..". HitChance: "..Hitchance)
+						print("Stunned: "..Source.charName..". HitChance: "..Hitchance)
 						CondemnLastE = GetTickCount()
 						break
 					end
 				else
 					AllowTumble = false
---~ 					print("Stunned: "..Source.charName..". HitChance: "..Hitchance)
+					print("Stunned: "..Source.charName..". HitChance: "..Hitchance)
 					CastSpell(_E, Source)
 					CondemnLastE = GetTickCount()
 					if BushFound and SVMainMenu.autostunn.trinket and myHero:CanUseSpell(ITEM_7) == 0 then
@@ -1083,8 +1133,8 @@ function ShadowVayne:CondemnStun()
 					end
 
 					if VIP_USER then -- PR0D
-						StunPos, StunnInfo = Prodiction.GetPrediction(enemy, 650, 1200, 0.25, 10, myHero)
-						if StunPos and GetDistanceSqr(StunPos) < 650*650 and StunnInfo and StunnInfo.hitchance > 1 then
+						StunPos, StunnInfo = Prodiction.GetPrediction(enemy, 710, 1200, 0.32, 10, myHero)
+						if StunPos and GetDistanceSqr(StunPos) < 710*710 and StunnInfo and StunnInfo.hitchance > 1 then
 							self:CheckWallStun(StunPos, enemy, StunnInfo.hitchance)
 						end
 					end
