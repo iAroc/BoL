@@ -1,5 +1,5 @@
 
-version = 1.07
+version = 1.08
 
 if not _G.HidePermaShow then
 	_G.HidePermaShow = {}
@@ -139,12 +139,12 @@ end
 
 function DrawText(Arg1, Arg2, Arg3, Arg4, Arg5)
 	_G.CPS.GetSaveMenu = GetSave("scriptConfig")["Menu"]
-
-	if IsKeyDown(_G.CPS.GetSaveMenu.menuKey) and IsKeyDown(1) then
+	if _G.CPS.GetSaveMenu.menuKey then PressingKey = _G.CPS.GetSaveMenu.menuKey else PressingKey = 16 end
+	if IsKeyDown(PressingKey) and IsKeyDown(1) then
 		_G.CPS.WaitForRelease = true
 	end
 
-	if not (IsKeyDown(_G.CPS.GetSaveMenu.menuKey) and IsKeyDown(1)) and _G.CPS.WaitForRelease then
+	if not (IsKeyDown(PressingKey) and IsKeyDown(1)) and _G.CPS.WaitForRelease then
 		_G.CPS.WaitForRelease = false
 		_G.CPS.OldCountDone = false
 		_G.CPS.StartY = 0
