@@ -12,13 +12,14 @@
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 3.39
+	self.ShadowTable.version = 3.40
 	self.ShadowTable.LastLevelCheck = 0
 	self.ShadowTable.LastHeroLevel = 0
 	self.LastTumble = 0
 	self.CurSkin = 0
 	self.ForceAA = false
 	self.hitboxmode = true
+	self.wayPointManager = WayPointManager()
 	CondemnLastE = 0
 	SUMMONERS_RIFT   = { 1, 2 }
 	PROVING_GROUNDS  = 3
@@ -70,6 +71,7 @@ function ShadowVayne:__init()
 	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.generatetarget then self:GenerateTarget() end end)
 	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.skinhack then self:SkinHack() end end)
 	AddTickCallback(function() self:ForceScriptReset() end)
+	AddTickCallback(function() self:UpdateLastPos() end)
 
 	AddCreateObjCallback(function(Obj) if not SVMainMenu.debugsettings.createobj.rengarobject then self:RengarObject(Obj) end end)
 	AddCreateObjCallback(function(Obj) if not SVMainMenu.debugsettings.createobj.threshobject then self:ThreshObject(Obj) end end)
@@ -282,9 +284,18 @@ function ShadowVayne:GenerateTables()
 
 	heroDirDB = {}
 	for i, enemy in ipairs(GetEnemyHeroes()) do
-			heroDirDB[enemy.name] = {lastVec = Vector(0,0,0), dir = Vector(0,0,0), lastAngle = 0, index = i}
+			heroDirDB[enemy.name] = {lastVec = Vector(0,0,0), dir = Vector(0,0,0), lastAngle = 0, index = i, hero = enemy}
 	end
 
+	LastPosTable = {}
+	for i, enemy in ipairs(GetEnemyHeroes()) do
+			table.insert(LastPosTable, {["posX"] = enemy.pos.x,["posY"] = enemy.pos.y,["posZ"] = enemy.pos.z, ["unit"] = enemy, ["dir"] = Vector(0,0,0)})
+	end
+
+	ProdictionCircle = {}
+	for i, enemy in ipairs(GetEnemyHeroes()) do
+		ProdictionCircle[enemy.charName] = {x=0,y=0,z=0}
+	end
 
 	TumbleSpots = {
 		["VisionPos_1"] = { ["x"] = 11590.95, ["y"] = 52, ["z"] = 4656.26 },
@@ -388,11 +399,11 @@ function ShadowVayne:FillMenu_StunTarget()
 	for i, enemy in ipairs(GetEnemyHeroes()) do
 		SVMainMenu.targets:addSubMenu(enemy.charName, enemy.charName)
 		SVMainMenu.targets[enemy.charName]:addParam("sep", "Stun "..(enemy.charName), SCRIPT_PARAM_INFO, "")
-		SVMainMenu.targets[enemy.charName]:addParam((enemy.charName).."AutoCarry", "in AutoCarry", SCRIPT_PARAM_ONOFF, true)
-		SVMainMenu.targets[enemy.charName]:addParam((enemy.charName).."MixedMode", "in MixedMode", SCRIPT_PARAM_ONOFF, false)
-		SVMainMenu.targets[enemy.charName]:addParam((enemy.charName).."LaneClear", "in LaneClear", SCRIPT_PARAM_ONOFF, false)
-		SVMainMenu.targets[enemy.charName]:addParam((enemy.charName).."LastHit", "in LastHit", SCRIPT_PARAM_ONOFF, false)
-		SVMainMenu.targets[enemy.charName]:addParam((enemy.charName).."Always", "Always", SCRIPT_PARAM_ONOFF, false)
+		SVMainMenu.targets[enemy.charName]:addParam("autocarry", "in AutoCarry", SCRIPT_PARAM_ONOFF, true)
+		SVMainMenu.targets[enemy.charName]:addParam("mixedmode", "in MixedMode", SCRIPT_PARAM_ONOFF, false)
+		SVMainMenu.targets[enemy.charName]:addParam("laneclear", "in LaneClear", SCRIPT_PARAM_ONOFF, false)
+		SVMainMenu.targets[enemy.charName]:addParam("lasthit", "in LastHit", SCRIPT_PARAM_ONOFF, false)
+		SVMainMenu.targets[enemy.charName]:addParam("always", "Always", SCRIPT_PARAM_ONOFF, false)
 		FoundStunTarget = true
 	end
 
@@ -775,10 +786,16 @@ function ShadowVayne:GenerateTarget()
 	end
 end
 
-function ShadowVayne:GetTarget()
+function ShadowVayne:GetTarget(OnlyChamps)
 	local SelectedTarget = GetTarget()
 	if SelectedTarget and self:IsValid(SelectedTarget, 550.5) then
-		return SelectedTarget
+		if OnlyChamps then
+			if SelectedTarget.type == myHero.type then
+				return SelectedTarget
+			end
+		else
+			return SelectedTarget
+		end
 	else
 		if SVMainMenu.selector.enabled and FileExist(LIB_PATH.."Selector.lua") then
 			if not SelectorInit then
@@ -1009,9 +1026,17 @@ function ShadowVayne:ProcessSpell_BasicAttack(unit, spell)
 			self.LastAATarget = spell.target
 			self.LastAATime = GetTickCount()
 			self.EndTumbleTime = GetTickCount() + ((spell.animationTime - (spell.windUpTime * 2) - (GetLatency()/2))*1000)
-			DelayAction(function() self:Tumble() end, spell.windUpTime - (GetLatency()/2000))
-			DelayAction(function() self:CondemnAfterAA() end, spell.windUpTime - (GetLatency()/2000))
+			if SVMainMenu.keysetting.basiccondemn then
+				DelayAction(function() self:CondemnAfterAA() end, spell.windUpTime - (GetLatency()/2000))
+			else
+				DelayAction(function() self:Tumble() end, spell.windUpTime - (GetLatency()/2000))
+			end
 			self:Youmuus()
+		elseif spell.name:lower():find("condemn") then
+			self.LastAATarget = spell.target
+			self.LastAATime = GetTickCount()
+			self.EndTumbleTime = GetTickCount() + ((spell.animationTime - (spell.windUpTime * 2) - (GetLatency()/2))*1000)
+			DelayAction(function() self:Tumble() end, spell.windUpTime - (GetLatency()/2000))
 		else
 			DelayAction(function() SOW:resetAA() end, spell.animationTime)
 		end
@@ -1033,6 +1058,9 @@ function ShadowVayne:Tumble()
 		(SVMainMenu.tumble.Qalways) then
 		local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
 		if GetDistance(AfterTumblePos, self.LastAATarget) < 650 and GetDistance(AfterTumblePos, self.LastAATarget) > 100 then
+			CastSpell(_Q, mousePos.x, mousePos.z)
+		end
+		if GetDistance(self.LastAATarget) > 650 and GetDistance(AfterTumblePos, self.LastAATarget) < 650 then
 			CastSpell(_Q, mousePos.x, mousePos.z)
 		end
 	end
@@ -1077,6 +1105,38 @@ function ShadowVayne:Draw_AARange()
 	if SVMainMenu.draw.DrawAARange then
 		self:CircleDraw(myHero.x, myHero.y, myHero.z, 655, ARGB(SVMainMenu.draw.drawaacolor[1], SVMainMenu.draw.drawaacolor[2],SVMainMenu.draw.drawaacolor[3],SVMainMenu.draw.drawaacolor[4]))
 	end
+
+--~ 	for i = 1, #LastPosTable do
+--~ 		if ValidTarget(LastPosTable[i].unit) and #self.wayPointManager:GetWayPoints(LastPosTable[i].unit) > 1 then
+--~ 			local DirDraw = Vector(LastPosTable[i].unit) + (LastPosTable[i].dir):normalized()*(100)
+--~ 			self:CircleDraw(DirDraw.x, DirDraw.y, DirDraw.z, 50, 0x00FFFFFF)
+--~ 		end
+--~ 	end
+
+
+--~ 	for i= 1,#ProdictionCircle do
+--~ 		for z, enemy in ipairs(GetEnemyHeroes()) do
+--~ 			self:CircleDraw(ProdictionCircle[enemy.charName].x, ProdictionCircle[enemy.charName].y, ProdictionCircle[enemy.charName].z, 50, 0x00FFFFFF)
+--~ 			self:CircleDraw(ProdictionCircle[enemy.charName].x, ProdictionCircle[enemy.charName].y, ProdictionCircle[enemy.charName].z, 55, 0x00FFFFFF)
+--~ 			self:CircleDraw(ProdictionCircle[enemy.charName].x, ProdictionCircle[enemy.charName].y, ProdictionCircle[enemy.charName].z, 60, 0x00FFFFFF)
+--~ 			self:CircleDraw(ProdictionCircle[enemy.charName].x, ProdictionCircle[enemy.charName].y, ProdictionCircle[enemy.charName].z, 65, 0x00FFFFFF)
+--~ 			print(ProdictionCircle[enemy.charName])
+--~ 		end
+--~ 	end
+end
+
+function ShadowVayne:UpdateLastPos()
+	for i = 1, #LastPosTable do
+		local NewPos = LastPosTable[i].unit.pos
+		local LastPosX = LastPosTable[i].posX
+		if NewPos.x ~= LastPosX then
+			LastPosTable[i].dir = (Vector(NewPos) - Vector(LastPosTable[i].posX,LastPosTable[i].posY,LastPosTable[i].posZ))
+			LastPosTable[i].posX = NewPos.x
+			LastPosTable[i].posY = NewPos.y
+			LastPosTable[i].posZ = NewPos.z
+		end
+	end
+
 end
 
 function ShadowVayne:CheckWallStun(PredictPos, Source, Hitchance)
@@ -1090,11 +1150,14 @@ function ShadowVayne:CheckWallStun(PredictPos, Source, Hitchance)
 				BushPos = CheckWallPos
 			end
 			if WorldType == 1 then
-				if UnderTurret(CheckVector, true) then
+				if UnderTurret(CheckWallPos, true) then
 					if SVMainMenu.autostunn.towerstunn then
 						AllowTumble = false
 						CastSpell(_E, Source)
-						print("Stunned: "..Source.charName..". HitChance: "..Hitchance)
+						print("Stunned: "..Source.charName..". HitChance: "..Hitchance ..". Tower: true")
+						ProdictionCircle[Source.charName].x = CheckWallPos.x
+						ProdictionCircle[Source.charName].y = CheckWallPos.y
+						ProdictionCircle[Source.charName].z = CheckWallPos.z
 						CondemnLastE = GetTickCount()
 						break
 					end
@@ -1102,6 +1165,9 @@ function ShadowVayne:CheckWallStun(PredictPos, Source, Hitchance)
 					AllowTumble = false
 					print("Stunned: "..Source.charName..". HitChance: "..Hitchance)
 					CastSpell(_E, Source)
+					ProdictionCircle[Source.charName].x = CheckWallPos.x
+					ProdictionCircle[Source.charName].y = CheckWallPos.y
+					ProdictionCircle[Source.charName].z = CheckWallPos.z
 					CondemnLastE = GetTickCount()
 					if BushFound and SVMainMenu.autostunn.trinket and myHero:CanUseSpell(ITEM_7) == 0 then
 						CastSpell(ITEM_7, BushPos.x, BushPos.z)
@@ -1114,16 +1180,16 @@ function ShadowVayne:CheckWallStun(PredictPos, Source, Hitchance)
 end
 
 function ShadowVayne:CondemnStun()
-	local Target = self:GetTarget()
+	local Target = self:GetTarget(true)
 	if myHero:CanUseSpell(_E) == READY and GetTickCount() > (CondemnLastE + 1000) then
 		for i, enemy in ipairs(GetEnemyHeroes()) do
 			if SVMainMenu.autostunn.target then enemy = Target end
 			if enemy == nil then return end
-			if 	(SVMainMenu.targets[enemy.charName][(enemy.charName).."AutoCarry"] and ShadowVayneAutoCarry) or
-			(SVMainMenu.targets[enemy.charName][(enemy.charName).."MixedMode"] and ShadowVayneMixedMode) or
-			(SVMainMenu.targets[enemy.charName][(enemy.charName).."LaneClear"] and ShadowVayneLaneClear) or
-			(SVMainMenu.targets[enemy.charName][(enemy.charName).."LastHit"]   and ShadowVayneLastHit) or
-			(SVMainMenu.targets[enemy.charName][(enemy.charName).."Always"])	then
+			if (SVMainMenu.targets[enemy.charName]["autocarry"] and ShadowVayneAutoCarry) or
+			(SVMainMenu.targets[enemy.charName]["mixedmode"] and ShadowVayneMixedMode) or
+			(SVMainMenu.targets[enemy.charName]["laneclear"] and ShadowVayneLaneClear) or
+			(SVMainMenu.targets[enemy.charName]["lasthit"] and ShadowVayneLastHit) or
+			(SVMainMenu.targets[enemy.charName]["always"]) then
 				if GetDistance(enemy) <= 1000 and not enemy.dead and enemy.visible then
 					if not VIP_USER then -- FREEUSER
 						StunPos = self:GetCondemCollisionTime(enemy)
@@ -1133,9 +1199,16 @@ function ShadowVayne:CondemnStun()
 					end
 
 					if VIP_USER then -- PR0D
-						StunPos, StunnInfo = Prodiction.GetPrediction(enemy, 710, 1200, 0.32, 10, myHero)
+						StunPos, StunnInfo = Prodiction.GetPrediction(enemy, 710, 1600, 0.25, 10, myHero)
 						if StunPos and GetDistanceSqr(StunPos) < 710*710 and StunnInfo and StunnInfo.hitchance > 1 then
-							self:CheckWallStun(StunPos, enemy, StunnInfo.hitchance)
+							for i=1,#LastPosTable do
+								if LastPosTable[i].unit.charName == enemy.charName then
+									if #self.wayPointManager:GetWayPoints(LastPosTable[i].unit) > 1 then
+										StunPos = Vector(StunPos) + (LastPosTable[i].dir):normalized()*(enemy.ms * 0.15)
+									end
+									self:CheckWallStun(StunPos, enemy, StunnInfo.hitchance)
+								end
+							end
 						end
 					end
 				end
