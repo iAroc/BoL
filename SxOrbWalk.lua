@@ -86,7 +86,7 @@ function SxOrb:__init()
 	self.KillAbleMinions = {}
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 0.9
+	self.Version = 1.0
 	print("<font color=\"#F0Ff8d\"><b>SxOrbWalk:</b></font> <font color=\"#FF0F0F\">Version "..self.Version.." loaded</font>")
 	self.LuaSocket = require("socket")
 	self.AutoUpdate = {["Host"] = "raw.githubusercontent.com", ["VersionLink"] = "/Superx321/BoL/master/SxOrbWalk.Version", ["ScriptLink"] = "/Superx321/BoL/master/SxOrbWalk.lua"}
