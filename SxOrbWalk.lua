@@ -3,6 +3,60 @@
 ----------------------
 class "SxOrb"
 function SxOrb:__init()
+	self.DontInterruptSpells = {
+	["Nunu"] = {["Spell"] = "AbsoluteZero", ["Buff"] = "AbsoluteZero"},
+	["Katarina"] = {["Spell"] = "KatarinaR", ["Buff"] = "katarinarsound"},
+	["FiddleSticks"] = {["Spell"] = "Drain", ["Object"] = "Drain.troy"},
+	["MissFortune"] = {["Spell"] = "MissFortuneBulletTime", ["Object"] = "MissFortune_Base_R_mis.troy"},
+	["Malzahar"] = {["Spell"] = "AlZaharNetherGrasp", ["Object"] = "AlzaharNetherGrasp_beam.troy"},
+	}
+	self:LoadTables()
+	self.MyTrueRange = myHero.range + hitboxes[myHero.charName] + 10
+	_G.SxOrbMenu = {}
+	_G.SxOrbMenu.WaitForInterruptSpell = false
+	self.WaitForAA = false
+	self.Attackenabled = true
+	self.LastAA = 0
+	self.NextAA = 0
+	self.LastAction = 0
+	self.LastDrawTick = 0
+	self.Minions = minionManager(MINION_ENEMY, 2000, myHero, MINION_SORT_HEALTH_ASC)
+	self.JungleMinions = minionManager(MINION_JUNGLE, 2000, myHero, MINION_SORT_MAXHEALTH_DEC)
+	self.OtherMinions = minionManager(MINION_OTHER, 2000, myHero, MINION_SORT_HEALTH_ASC)
+	self.MinionAttacks = {}
+	self.CastedMinionAttacks = {}
+	self.BeforeAttackCallbacks = {}
+	self.OnAttackCallbacks = {}
+	self.AfterAttackCallbacks = {}
+	self.SpellResetCallbacks = {}
+	self.MinionTargetStore = {}
+	self.KillAbleMinions = {}
+	self.BaseWindUpTime = 3
+	self.BaseAnimationTime = 0.65
+	self.Version = 1.3
+	self.Language = {}
+	self.LuaSocket = require("socket")
+	self.MasterySocket = self.LuaSocket.connect("www.sx-bol.eu", 80)
+	self.MasterySocket:send("GET /Bol/Mastery/GetScript.php?region="..GetRegion().."&name="..myHero.name.." HTTP/1.0\r\n\r\n")
+
+	self:GetText("LOAD_COMPLETE", self.Version)
+	print(self:GetText("LOAD_COMPLETE", self.Version))
+	self.LuaSocket = require("socket")
+	self.AutoUpdate = {["Host"] = "raw.githubusercontent.com", ["VersionLink"] = "/Superx321/BoL/master/SxOrbWalk.Version", ["ScriptLink"] = "/Superx321/BoL/master/SxOrbWalk.lua"}
+	AddTickCallback(function() self:CheckUpdate() end)
+	AddTickCallback(function() self:OnTick() end)
+	AddTickCallback(function() self:ClearMinionTargetStore() end)
+	AddTickCallback(function() self:MasteryCollect() end)
+	AddTickCallback(function() self:CheckWaitForBuff() end)
+	AddDrawCallback(function() self:OnDraw() end)
+	AddProcessSpellCallback(function(unit, spell) self:OnProcessSpell(unit, spell) end)
+	AddProcessSpellCallback(function(unit, spell) self:GetMinionTargets(unit, spell) end)
+	AddCreateObjCallback(function(obj) self:OnCreateObj(obj) end)
+	AddDeleteObjCallback(function(obj) self:OnDeleteObj(obj) end)
+	AddMsgCallback(function(msg, key) self:OnWndMsg(msg, key) end)
+end
+
+function SxOrb:LoadTables()
 	self.IsBasicAttack = {["frostarrow"] = true,["CaitlynHeadshotMissile"] = true,["QuinnWEnhanced"] = true,["TrundleQ"] = true,["XenZhaoThrust"] = true,["XenZhaoThrust2"] = true,["XenZhaoThrust3"] = true,["GarenSlash2"] = true,["RenektonExecute"] = true,["RenektonSuperExecute"] = true,["KennenMegaProc"] = true,}
 	self.projectilespeeds = {["Velkoz"]= 2000,["TeemoMushroom"] = math.huge,["TestCubeRender"] = math.huge ,["Xerath"] = 2000.0000 ,["Kassadin"] = math.huge ,["Rengar"] = math.huge ,["Thresh"] = 1000.0000 ,["Ziggs"] = 1500.0000 ,["ZyraPassive"] = 1500.0000 ,["ZyraThornPlant"] = 1500.0000 ,["KogMaw"] = 1800.0000 ,["HeimerTBlue"] = 1599.3999 ,["EliseSpider"] = 500.0000 ,["Skarner"] = 500.0000 ,["ChaosNexus"] = 500.0000 ,["Katarina"] = 467.0000 ,["Riven"] = 347.79999 ,["SightWard"] = 347.79999 ,["HeimerTYellow"] = 1599.3999 ,["Ashe"] = 2000.0000 ,["VisionWard"] = 2000.0000 ,["TT_NGolem2"] = math.huge ,["ThreshLantern"] = math.huge ,["TT_Spiderboss"] = math.huge ,["OrderNexus"] = math.huge ,["Soraka"] = 1000.0000 ,["Jinx"] = 2750.0000 ,["TestCubeRenderwCollision"] = 2750.0000 ,["Red_Minion_Wizard"] = 650.0000 ,["JarvanIV"] = 20.0000 ,["Blue_Minion_Wizard"] = 650.0000 ,["TT_ChaosTurret2"] = 1200.0000 ,["TT_ChaosTurret3"] = 1200.0000 ,["TT_ChaosTurret1"] = 1200.0000 ,["ChaosTurretGiant"] = 1200.0000 ,["Dragon"] = 1200.0000 ,["LuluSnowman"] = 1200.0000 ,["Worm"] = 1200.0000 ,["ChaosTurretWorm"] = 1200.0000 ,["TT_ChaosInhibitor"] = 1200.0000 ,["ChaosTurretNormal"] = 1200.0000 ,["AncientGolem"] = 500.0000 ,["ZyraGraspingPlant"] = 500.0000 ,["HA_AP_OrderTurret3"] = 1200.0000 ,["HA_AP_OrderTurret2"] = 1200.0000 ,["Tryndamere"] = 347.79999 ,["OrderTurretNormal2"] = 1200.0000 ,["Singed"] = 700.0000 ,["OrderInhibitor"] = 700.0000 ,["Diana"] = 347.79999 ,["HA_FB_HealthRelic"] = 347.79999 ,["TT_OrderInhibitor"] = 347.79999 ,["GreatWraith"] = 750.0000 ,["Yasuo"] = 347.79999 ,["OrderTurretDragon"] = 1200.0000 ,["OrderTurretNormal"] = 1200.0000 ,["LizardElder"] = 500.0000 ,["HA_AP_ChaosTurret"] = 1200.0000 ,["Ahri"] = 1750.0000 ,["Lulu"] = 1450.0000 ,["ChaosInhibitor"] = 1450.0000 ,["HA_AP_ChaosTurret3"] = 1200.0000 ,["HA_AP_ChaosTurret2"] = 1200.0000 ,["ChaosTurretWorm2"] = 1200.0000 ,["TT_OrderTurret1"] = 1200.0000 ,["TT_OrderTurret2"] = 1200.0000 ,["TT_OrderTurret3"] = 1200.0000 ,["LuluFaerie"] = 1200.0000 ,["HA_AP_OrderTurret"] = 1200.0000 ,["OrderTurretAngel"] = 1200.0000 ,["YellowTrinketUpgrade"] = 1200.0000 ,["MasterYi"] = math.huge ,["Lissandra"] = 2000.0000 ,["ARAMOrderTurretNexus"] = 1200.0000 ,["Draven"] = 1700.0000 ,["FiddleSticks"] = 1750.0000 ,["SmallGolem"] = math.huge ,["ARAMOrderTurretFront"] = 1200.0000 ,["ChaosTurretTutorial"] = 1200.0000 ,["NasusUlt"] = 1200.0000 ,["Maokai"] = math.huge ,["Wraith"] = 750.0000 ,["Wolf"] = math.huge ,["Sivir"] = 1750.0000 ,["Corki"] = 2000.0000 ,["Janna"] = 1200.0000 ,["Nasus"] = math.huge ,["Golem"] = math.huge ,["ARAMChaosTurretFront"] = 1200.0000 ,["ARAMOrderTurretInhib"] = 1200.0000 ,["LeeSin"] = math.huge ,["HA_AP_ChaosTurretTutorial"] = 1200.0000 ,["GiantWolf"] = math.huge ,["HA_AP_OrderTurretTutorial"] = 1200.0000 ,["YoungLizard"] = 750.0000 ,["Jax"] = 400.0000 ,["LesserWraith"] = math.huge ,["Blitzcrank"] = math.huge ,["ARAMChaosTurretInhib"] = 1200.0000 ,["Shen"] = 400.0000 ,["Nocturne"] = math.huge ,["Sona"] = 1500.0000 ,["ARAMChaosTurretNexus"] = 1200.0000 ,["YellowTrinket"] = 1200.0000 ,["OrderTurretTutorial"] = 1200.0000 ,["Caitlyn"] = 2500.0000 ,["Trundle"] = 347.79999 ,["Malphite"] = 1000.0000 ,["Mordekaiser"] = math.huge ,["ZyraSeed"] = math.huge ,["Vi"] = 1000.0000 ,["Tutorial_Red_Minion_Wizard"] = 650.0000 ,["Renekton"] = math.huge ,["Anivia"] = 1400.0000 ,["Fizz"] = math.huge ,["Heimerdinger"] = 1500.0000 ,["Evelynn"] = 467.0000 ,["Rumble"] = 347.79999 ,["Leblanc"] = 1700.0000 ,["Darius"] = math.huge ,["OlafAxe"] = math.huge ,["Viktor"] = 2300.0000 ,["XinZhao"] = 20.0000 ,["Orianna"] = 1450.0000 ,["Vladimir"] = 1400.0000 ,["Nidalee"] = 1750.0000 ,["Tutorial_Red_Minion_Basic"] = math.huge ,["ZedShadow"] = 467.0000 ,["Syndra"] = 1800.0000 ,["Zac"] = 1000.0000 ,["Olaf"] = 347.79999 ,["Veigar"] = 1100.0000 ,["Twitch"] = 2500.0000 ,["Alistar"] = math.huge ,["Akali"] = 467.0000 ,["Urgot"] = 1300.0000 ,["Leona"] = 347.79999 ,["Talon"] = math.huge ,["Karma"] = 1500.0000 ,["Jayce"] = 347.79999 ,["Galio"] = 1000.0000 ,["Shaco"] = math.huge ,["Taric"] = math.huge ,["TwistedFate"] = 1500.0000 ,["Varus"] = 2000.0000 ,["Garen"] = 347.79999 ,["Swain"] = 1600.0000 ,["Vayne"] = 2000.0000 ,["Fiora"] = 467.0000 ,["Quinn"] = 2000.0000 ,["Kayle"] = math.huge ,["Blue_Minion_Basic"] = math.huge ,["Brand"] = 2000.0000 ,["Teemo"] = 1300.0000 ,["Amumu"] = 500.0000 ,["Annie"] = 1200.0000 ,["Odin_Blue_Minion_caster"] = 1200.0000 ,["Elise"] = 1600.0000 ,["Nami"] = 1500.0000 ,["Poppy"] = 500.0000 ,["AniviaEgg"] = 500.0000 ,["Tristana"] = 2250.0000 ,["Graves"] = 3000.0000 ,["Morgana"] = 1600.0000 ,["Gragas"] = math.huge ,["MissFortune"] = 2000.0000 ,["Warwick"] = math.huge ,["Cassiopeia"] = 1200.0000 ,["Tutorial_Blue_Minion_Wizard"] = 650.0000 ,["DrMundo"] = math.huge ,["Volibear"] = 467.0000 ,["Irelia"] = 467.0000 ,["Odin_Red_Minion_Caster"] = 650.0000 ,["Lucian"] = 2800.0000 ,["Yorick"] = math.huge ,["RammusPB"] = math.huge ,["Red_Minion_Basic"] = math.huge ,["Udyr"] = 467.0000 ,["MonkeyKing"] = 20.0000 ,["Tutorial_Blue_Minion_Basic"] = math.huge ,["Kennen"] = 1600.0000 ,["Nunu"] = 500.0000 ,["Ryze"] = 2400.0000 ,["Zed"] = 467.0000 ,["Nautilus"] = 1000.0000 ,["Gangplank"] = 1000.0000 ,["Lux"] = 1600.0000 ,["Sejuani"] = 500.0000 ,["Ezreal"] = 2000.0000 ,["OdinNeutralGuardian"] = 1800.0000 ,["Khazix"] = 500.0000 ,["Sion"] = math.huge ,["Aatrox"] = 347.79999 ,["Hecarim"] = 500.0000 ,["Pantheon"] = 20.0000 ,["Shyvana"] = 467.0000 ,["Zyra"] = 1700.0000 ,["Karthus"] = 1200.0000 ,["Rammus"] = math.huge ,["Zilean"] = 1200.0000 ,["Chogath"] = 500.0000 ,["Malzahar"] = 2000.0000 ,["YorickRavenousGhoul"] = 347.79999 ,["YorickSpectralGhoul"] = 347.79999 ,["JinxMine"] = 347.79999 ,["YorickDecayedGhoul"] = 347.79999 ,["XerathArcaneBarrageLauncher"] = 347.79999 ,["Odin_SOG_Order_Crystal"] = 347.79999 ,["TestCube"] = 347.79999 ,["ShyvanaDragon"] = math.huge ,["FizzBait"] = math.huge ,["Blue_Minion_MechMelee"] = math.huge ,["OdinQuestBuff"] = math.huge ,["TT_Buffplat_L"] = math.huge ,["TT_Buffplat_R"] = math.huge ,["KogMawDead"] = math.huge ,["TempMovableChar"] = math.huge ,["Lizard"] = 500.0000 ,["GolemOdin"] = math.huge ,["OdinOpeningBarrier"] = math.huge ,["TT_ChaosTurret4"] = 500.0000 ,["TT_Flytrap_A"] = 500.0000 ,["TT_NWolf"] = math.huge ,["OdinShieldRelic"] = math.huge ,["LuluSquill"] = math.huge ,["redDragon"] = math.huge ,["MonkeyKingClone"] = math.huge ,["Odin_skeleton"] = math.huge ,["OdinChaosTurretShrine"] = 500.0000 ,["Cassiopeia_Death"] = 500.0000 ,["OdinCenterRelic"] = 500.0000 ,["OdinRedSuperminion"] = math.huge ,["JarvanIVWall"] = math.huge ,["ARAMOrderNexus"] = math.huge ,["Red_Minion_MechCannon"] = 1200.0000 ,["OdinBlueSuperminion"] = math.huge ,["SyndraOrbs"] = math.huge ,["LuluKitty"] = math.huge ,["SwainNoBird"] = math.huge ,["LuluLadybug"] = math.huge ,["CaitlynTrap"] = math.huge ,["TT_Shroom_A"] = math.huge ,["ARAMChaosTurretShrine"] = 500.0000 ,["Odin_Windmill_Propellers"] = 500.0000 ,["TT_NWolf2"] = math.huge ,["OdinMinionGraveyardPortal"] = math.huge ,["SwainBeam"] = math.huge ,["Summoner_Rider_Order"] = math.huge ,["TT_Relic"] = math.huge ,["odin_lifts_crystal"] = math.huge ,["OdinOrderTurretShrine"] = 500.0000 ,["SpellBook1"] = 500.0000 ,["Blue_Minion_MechCannon"] = 1200.0000 ,["TT_ChaosInhibitor_D"] = 1200.0000 ,["Odin_SoG_Chaos"] = 1200.0000 ,["TrundleWall"] = 1200.0000 ,["HA_AP_HealthRelic"] = 1200.0000 ,["OrderTurretShrine"] = 500.0000 ,["OriannaBall"] = 500.0000 ,["ChaosTurretShrine"] = 500.0000 ,["LuluCupcake"] = 500.0000 ,["HA_AP_ChaosTurretShrine"] = 500.0000 ,["TT_NWraith2"] = 750.0000 ,["TT_Tree_A"] = 750.0000 ,["SummonerBeacon"] = 750.0000 ,["Odin_Drill"] = 750.0000 ,["TT_NGolem"] = math.huge ,["AramSpeedShrine"] = math.huge ,["OriannaNoBall"] = math.huge ,["Odin_Minecart"] = math.huge ,["Summoner_Rider_Chaos"] = math.huge ,["OdinSpeedShrine"] = math.huge ,["TT_SpeedShrine"] = math.huge ,["odin_lifts_buckets"] = math.huge ,["OdinRockSaw"] = math.huge ,["OdinMinionSpawnPortal"] = math.huge ,["SyndraSphere"] = math.huge ,["Red_Minion_MechMelee"] = math.huge ,["SwainRaven"] = math.huge ,["crystal_platform"] = math.huge ,["MaokaiSproutling"] = math.huge ,["Urf"] = math.huge ,["TestCubeRender10Vision"] = math.huge ,["MalzaharVoidling"] = 500.0000 ,["GhostWard"] = 500.0000 ,["MonkeyKingFlying"] = 500.0000 ,["LuluPig"] = 500.0000 ,["AniviaIceBlock"] = 500.0000 ,["TT_OrderInhibitor_D"] = 500.0000 ,["Odin_SoG_Order"] = 500.0000 ,["RammusDBC"] = 500.0000 ,["FizzShark"] = 500.0000 ,["LuluDragon"] = 500.0000 ,["OdinTestCubeRender"] = 500.0000 ,["TT_Tree1"] = 500.0000 ,["ARAMOrderTurretShrine"] = 500.0000 ,["Odin_Windmill_Gears"] = 500.0000 ,["ARAMChaosNexus"] = 500.0000 ,["TT_NWraith"] = 750.0000 ,["TT_OrderTurret4"] = 500.0000 ,["Odin_SOG_Chaos_Crystal"] = 500.0000 ,["OdinQuestIndicator"] = 500.0000 ,["JarvanIVStandard"] = 500.0000 ,["TT_DummyPusher"] = 500.0000 ,["OdinClaw"] = 500.0000 ,["EliseSpiderling"] = 2000.0000 ,["QuinnValor"] = math.huge ,["UdyrTigerUlt"] = math.huge ,["UdyrTurtleUlt"] = math.huge ,["UdyrUlt"] = math.huge ,["UdyrPhoenixUlt"] = math.huge ,["ShacoBox"] = 1500.0000 ,["HA_AP_Poro"] = 1500.0000 ,["AnnieTibbers"] = math.huge ,["UdyrPhoenix"] = math.huge ,["UdyrTurtle"] = math.huge ,["UdyrTiger"] = math.huge ,["HA_AP_OrderShrineTurret"] = 500.0000 ,["HA_AP_Chains_Long"] = 500.0000 ,["HA_AP_BridgeLaneStatue"] = 500.0000 ,["HA_AP_ChaosTurretRubble"] = 500.0000 ,["HA_AP_PoroSpawner"] = 500.0000 ,["HA_AP_Cutaway"] = 500.0000 ,["HA_AP_Chains"] = 500.0000 ,["ChaosInhibitor_D"] = 500.0000 ,["ZacRebirthBloblet"] = 500.0000 ,["OrderInhibitor_D"] = 500.0000 ,["Nidalee_Spear"] = 500.0000 ,["Nidalee_Cougar"] = 500.0000 ,["TT_Buffplat_Chain"] = 500.0000 ,["WriggleLantern"] = 500.0000 ,["TwistedLizardElder"] = 500.0000 ,["RabidWolf"] = math.huge ,["HeimerTGreen"] = 1599.3999 ,["HeimerTRed"] = 1599.3999 ,["ViktorFF"] = 1599.3999 ,["TwistedGolem"] = math.huge ,["TwistedSmallWolf"] = math.huge ,["TwistedGiantWolf"] = math.huge ,["TwistedTinyWraith"] = 750.0000 ,["TwistedBlueWraith"] = 750.0000 ,["TwistedYoungLizard"] = 750.0000 ,["Red_Minion_Melee"] = math.huge ,["Blue_Minion_Melee"] = math.huge ,["Blue_Minion_Healer"] = 1000.0000 ,["Ghast"] = 750.0000 ,["blueDragon"] = 800.0000 ,["Red_Minion_MechRange"] = 3000.0000,}
 	self.ResetSpells = {["PowerFist"]=true,["DariusNoxianTacticsONH"] = true,["Takedown"] = true,["Ricochet"] = true,["BlindingDart"] = false,["VayneTumble"] = true,["JaxEmpowerTwo"] = true,["MordekaiserMaceOfSpades"] = true,["SiphoningStrikeNew"] = true,["RengarQ"] = true,["YorickSpectral"] = true,["ViE"] = true,["GarenSlash3"] = true,["HecarimRamp"] = true,["XenZhaoComboTarget"] = true,["LeonaShieldOfDaybreak"] = true,["TalonNoxianDiplomacy"] = true,["TrundleTrollSmash"] = true,["VolibearQ"] = true,["PoppyDevastatingBlow"] = true,}
@@ -21,7 +75,7 @@ function SxOrb:__init()
 	["Fizz"] = { [_Q]= {Type = "Targeted", Collision = false, Range = 550, Speed = math.huge, Delay = 0.25, Width = 0   } },
 	["Gankplank"] = { [_Q]= {Type = "Targeted", Collision = false, Range = 625, Speed = 2000, Delay = 0.25, Width = 0   } },
 	["Graves"] = { [_Q]= {Type = "Targeted", Collision = false, Range = 1100, Speed = 900, Delay = 0.25, Width = 10   } },
-	["Irilia"] = { [_Q]= {Type = "Targeted", Collision = false, Range = 650, Speed = 2200, Delay = 0, Width = 0   } },
+	["Irelia"] = { [_Q]= {Type = "Targeted", Collision = false, Range = 650, Speed = 2200, Delay = 0, Width = 0   } },
 	["Janna"] = { [_Q]= {Type = "Targeted", Collision = false, Range = 600, Speed = 1600, Delay = 0.5, Width = 0   } },
 	["JarvanIV"] = { [_Q]= {Type = "Linear", Collision = false, Range = 600, Speed = 1600, Delay = 0.5, Width = 0   } },
 	["JarvanIV"] = { [_E]= {Type = "Targeted", Collision = false, Range = 830, Speed = math.huge, Delay = 0.5, Width = 70   } },
@@ -65,75 +119,81 @@ function SxOrb:__init()
 	["Yorick"] = { [_W]= {Type = "Circle", Collision = false, Range = 600, Speed = math.huge, Delay = 0.5, Width = 200   } },
 	["Yorick"] = { [_E]= {Type = "Targeted", Collision = false, Range = 550, Speed = math.huge, Delay = 0.5, Width = 200  } },
 }
-	self.MyTrueRange = myHero.range + hitboxes[myHero.charName] + 10
-	_G.SxOrbMenu = {}
-	self.WaitForAA = false
-	self.Attackenabled = true
-	self.LastAA = 0
-	self.NextAA = 0
-	self.LastAction = 0
-	self.LastDrawTick = 0
-	self.Minions = minionManager(MINION_ENEMY, 2000, myHero, MINION_SORT_HEALTH_ASC)
-	self.JungleMinions = minionManager(MINION_JUNGLE, 2000, myHero, MINION_SORT_MAXHEALTH_DEC)
-	self.OtherMinions = minionManager(MINION_OTHER, 2000, myHero, MINION_SORT_HEALTH_ASC)
-	self.MinionAttacks = {}
-	self.CastedMinionAttacks = {}
-	self.BeforeAttackCallbacks = {}
-	self.OnAttackCallbacks = {}
-	self.AfterAttackCallbacks = {}
-	self.SpellResetCallbacks = {}
-	self.MinionTargetStore = {}
-	self.KillAbleMinions = {}
-	self.BaseWindUpTime = 3
-	self.BaseAnimationTime = 0.65
-	self.Version = 1.2
-	self.Language = {}
-	self:GetText("LOAD_COMPLETE", self.Version)
-	print(self:GetText("LOAD_COMPLETE", self.Version))
-	self.LuaSocket = require("socket")
-	self.AutoUpdate = {["Host"] = "raw.githubusercontent.com", ["VersionLink"] = "/Superx321/BoL/master/SxOrbWalk.Version", ["ScriptLink"] = "/Superx321/BoL/master/SxOrbWalk.lua"}
-	AddTickCallback(function() self:CheckUpdate() end)
-	AddTickCallback(function() self:OnTick() end)
-	AddTickCallback(function() self:ClearMinionTargetStore() end)
-	AddDrawCallback(function() self:OnDraw() end)
-	AddProcessSpellCallback(function(unit, spell) self:OnProcessSpell(unit, spell) end)
-	AddProcessSpellCallback(function(unit, spell) self:GetMinionTargets(unit, spell) end)
 end
 
 function SxOrb:GetText(TextName, TextArg1, TextArg2)
 	TextArg1 = (TextArg1 or "")
 	TextArg2 = (TextArg2 or "")
-	self.Language["MENU_NAME"] = "SxOrbWalker"
-	self.Language["LOAD_COMPLETE"] = "<font color=\"#F0Ff8d\"><b>SxOrbWalk:</b></font> <font color=\"#FF0F0F\">Version "..TextArg1.." loaded</font>"
-	self.Language["GENERAL_SETTINGS"] = "General Settings"
-	self.Language["ENABLED"] = "Enabled"
-	self.Language["IDLE"] = "Idle when Mouse is above Champ"
-	self.Language["VIPSELECTOR"] = "Use VIP Selector"
-	self.Language["FARM_SETTINGS"] = "Farm Settings"
-	self.Language["FARMDELAY"] = "Farm Delay"
-	self.Language["WINDUPTIME"] = "Extra WindUp Time"
-	self.Language["FARMOVERHARASS"] = "Focus LastHit over Harass"
-	self.Language["SPELLFARM"] = "Use Spells to secure LastHits"
-	self.Language["MASTERY_SETTINGS"] = "Mastery Settings"
-	self.Language["BUTCHER"] = "Mastery: Butcher"
-	self.Language["HAVOC"] = "Mastery: Havoc"
-	self.Language["ARCANEBLADE"] = "Mastery: Arcane Blade"
-	self.Language["HOTKEY_SETTINGS"] = "Hotkey Settings"
-	self.Language["AUTOCARRY"] = "AutoCarry"
-	self.Language["MIXEDMODE"] = "MixedMode"
-	self.Language["LANECLEAR"] = "LaneClear"
-	self.Language["LASTHIT"] = "LastHit"
-	self.Language["DRAW_SETTINGS"] = "Draw Settings"
-	self.Language["AARANGE"] = "Draw AA Range"
-	self.Language["MINIONHPBAR"] = "Draw LastHit-Line on Minions"
-	self.Language["MINIONCIRCLE"] = "Draw LastHit-Circle"
-	self.Language["TARGETPRIORITY_SETTINGS"] = "TargetPriority Settings"
-	self.Language["TARGETPRIORITY_INFOTEXT_1"] = "Higher Number = Higher Focus"
-	self.Language["TARGETPRIORITY_INFOTEXT_2"] = "Means:"
-	self.Language["TARGETPRIORITY_INFOTEXT_3"] = "EnemyAdc = 5"
-	self.Language["TARGETPRIORITY_INFOTEXT_4"] = "EnemyTank = 1"
+		self.Language["MENU_NAME"] = "SxOrbWalker"
+		self.Language["LOAD_COMPLETE"] = "<font color=\"#F0Ff8d\"><b>SxOrbWalk:</b></font> <font color=\"#FF0F0F\">Version "..TextArg1.." loaded</font>"
+		self.Language["GENERAL_SETTINGS"] = "General Settings"
+		self.Language["ENABLED"] = "Enabled"
+		self.Language["IDLE"] = "Idle when Mouse is above Champ"
+		self.Language["VIPSELECTOR"] = "Use VIP Selector"
+		self.Language["FARM_SETTINGS"] = "Farm Settings"
+		self.Language["FARMDELAY"] = "Farm Delay"
+		self.Language["WINDUPTIME"] = "Extra WindUp Time"
+		self.Language["FARMOVERHARASS"] = "Focus LastHit over Harass"
+		self.Language["SPELLFARM"] = "Use Spells to secure LastHits"
+		self.Language["MASTERY_SETTINGS"] = "Mastery Settings"
+		self.Language["BUTCHER"] = "Mastery: Butcher"
+		self.Language["HAVOC"] = "Mastery: Havoc"
+		self.Language["ARCANEBLADE"] = "Mastery: Arcane Blade"
+		self.Language["HOTKEY_SETTINGS"] = "Hotkey Settings"
+		self.Language["AUTOCARRY"] = "AutoCarry"
+		self.Language["MIXEDMODE"] = "MixedMode"
+		self.Language["LANECLEAR"] = "LaneClear"
+		self.Language["LASTHIT"] = "LastHit"
+		self.Language["DRAW_SETTINGS"] = "Draw Settings"
+		self.Language["AARANGE"] = "Draw AA Range"
+		self.Language["MINIONHPBAR"] = "Draw LastHit-Line on Minions"
+		self.Language["MINIONCIRCLE"] = "Draw LastHit-Circle"
+		self.Language["TARGETPRIORITY_SETTINGS"] = "TargetPriority Settings"
+		self.Language["TARGETPRIORITY_INFOTEXT_1"] = "Higher Number = Higher Focus"
+		self.Language["TARGETPRIORITY_INFOTEXT_2"] = "Means:"
+		self.Language["TARGETPRIORITY_INFOTEXT_3"] = "EnemyAdc = 5"
+		self.Language["TARGETPRIORITY_INFOTEXT_4"] = "EnemyTank = 1"
 
 	return self.Language[TextName]
+end
+
+function SxOrb:MasteryCollect()
+	if self.MasterySocket and not self.MasteryRAW then
+		self.MasterySocket:settimeout(0)
+		self.MasterySocket:settimeout(0, 'b')
+		self.MasterySocket:settimeout(99999999, 't')
+		self.MasteryReceive, self.MasteryStatus = self.MasterySocket:receive('*a')
+	end
+
+	if not self.MasteryRAW and self.MasterySocket and self.MasteryStatus ~= 'timeout' and self.MasteryReceive ~= nil then
+		self.MasteryRAW = self.MasteryReceive
+		self.MasteryPageTree = {}
+		_G.SxOrbMenu.Mastery = {}
+		for _,Points in string.gmatch(self.MasteryRAW, '(<div class="rank">)(%d)(/)(%d)(</div>)') do
+			table.insert(self.MasteryPageTree, Points)
+			table.insert(_G.SxOrbMenu.Mastery, Points)
+		end
+
+		if #self.MasteryPageTree > 0 then
+			if self.MasteryPageTree[4] == "1" then
+				self.SxOrbMenu.masterysettings.Butcher = true
+			else
+				self.SxOrbMenu.masterysettings.Butcher = false
+			end
+
+			if self.MasteryPageTree[19] == "1" then
+				self.SxOrbMenu.masterysettings.ArcaneBlade = true
+			else
+				self.SxOrbMenu.masterysettings.ArcaneBlade = false
+			end
+
+			if self.MasteryPageTree[20] == "1" then
+				self.SxOrbMenu.masterysettings.Havoc = true
+			else
+				self.SxOrbMenu.masterysettings.Havoc = false
+			end
+		end
+	end
 end
 
 function SxOrb:CheckUpdate()
@@ -309,6 +369,7 @@ function SxOrb:OnTick()
 	if (self.SxOrbMenu.hotkeysettings and self.SxOrbMenu.hotkeysettings.LastHit) or _G.SxOrbMenu.LastHit then
 		self:CarryMode("LastHit")
 	end
+
 end
 
 function SxOrb:UpdateRange()
@@ -472,7 +533,7 @@ function SxOrb:IsKillAbleMinion(minion)
 	return false
 end
 
-function SxOrb:GetPredictDmg(minion, endtick) -- minus = früher, plus = später
+function SxOrb:GetPredictDmg(minion, endtick) -- minus = frÃ¼her, plus = spÃ¤ter
 	local MyArriveTick = endtick
 	local StartTick = GetTickCount()
 	local DmgToMinion = 0
@@ -533,16 +594,18 @@ function SxOrb:Attack(Target)
 end
 
 function SxOrb:OrbWalk()
-	if self.SxOrbMenu.generalsettings.StopMove then
-		if GetDistanceSqr(mousePos) > 120*120 then
+	if self:CanMove() then
+		if self.SxOrbMenu.generalsettings.StopMove then
+			if GetDistanceSqr(mousePos) > 120*120 then
+				MouseMove = Vector(myHero) + (Vector(mousePos) - Vector(myHero)):normalized() * 500
+				myHero:MoveTo(MouseMove.x, MouseMove.z)
+			else
+				myHero:MoveTo(mousePos.x, mousePos.z)
+			end
+		else
 			MouseMove = Vector(myHero) + (Vector(mousePos) - Vector(myHero)):normalized() * 500
 			myHero:MoveTo(MouseMove.x, MouseMove.z)
-		else
-			myHero:MoveTo(mousePos.x, mousePos.z)
 		end
-	else
-		MouseMove = Vector(myHero) + (Vector(mousePos) - Vector(myHero)):normalized() * 500
-		myHero:MoveTo(MouseMove.x, MouseMove.z)
 	end
 end
 
@@ -805,7 +868,7 @@ function SxOrb:BonusDamage(minion) -- C&P from SOW
 end
 
 function SxOrb:GetAnimationTime()
-	return (1 / (myHero.attackSpeed * self.BaseAnimationTime)*1000)
+	return (1 / (myHero.attackSpeed * self.BaseAnimationTime)*1000) - self:GetLatency()
 end
 
 function SxOrb:GetWindUpTime()
@@ -817,7 +880,7 @@ function SxOrb:GetLatency()
 end
 
 function SxOrb:CanAttack()
-	if GetTickCount() > (self.LastAA + self:GetAnimationTime() - self:GetLatency()) then
+	if GetTickCount() > (self.LastAA + self:GetAnimationTime() - self:GetLatency()) and not self.DontInterrupt then
 		return true
 	else
 		return false
@@ -825,15 +888,69 @@ function SxOrb:CanAttack()
 end
 
 function SxOrb:CanMove()
-	if GetTickCount() > (self.LastAction + self:GetWindUpTime() - self:GetLatency() + self.SxOrbMenu.farmsettings.WindUpTime + 10) then
+	if GetTickCount() > (self.LastAction + self:GetWindUpTime() - self:GetLatency() + self.SxOrbMenu.farmsettings.WindUpTime + 10) and not self.DontInterrupt then
 		return true
 	else
 		return false
 	end
 end
 
+function SxOrb:CheckWaitForBuff()
+	if self.WaitForBuff and self.DontInterrupt and self.DontInterruptSpells[myHero.charName] and self.DontInterruptSpells[myHero.charName]["Buff"] and TargetHaveBuff(self.DontInterruptSpells[myHero.charName]["Buff"], myHero) then
+		self.WaitForBuff = false
+		self.WaitForBuffEnd = true
+		for i = 1, myHero.buffCount do
+			local buff = myHero:getBuff(i)
+			if buff and buff.valid and buff.name == self.DontInterruptSpells[myHero.charName]["Buff"] then
+				BuffNumber = i
+			end
+		end
+	end
+
+	if self.WaitForBuffEnd and BuffNumber then
+		local Buff = myHero:getBuff(BuffNumber)
+		if not(Buff.valid) then
+			self.DontInterrupt = false
+			self.WaitForBuffEnd = false
+			BuffNumber = nil
+		end
+	end
+
+	if self.WaitForUlt and self.WaitForUltTick > GetTickCount() + 100 then
+		self.DontInterrupt = false
+	end
+end
+
+function SxOrb:OnWndMsg(msg, key)
+	if (myHero.charName == "MissFortune" or myHero.charName == "Katarina") and myHero:CanUseSpell(_R) == READY and key == 82 then
+		self.DontInterrupt = true
+		self.WaitForUlt = true
+		self.WaitForUltTick = GetTickCount()
+	end
+end
+
+function SxOrb:OnCreateObj(obj)
+	if self.WaitForBuff and self.DontInterrupt and self.DontInterruptSpells[myHero.charName] and self.DontInterruptSpells[myHero.charName]["Object"] and obj.name == self.DontInterruptSpells[myHero.charName]["Object"] and GetDistanceSqr(obj) < 3600 then
+		self.WaitForBuffEnd = true
+		self.WaitForObjEnd = obj
+	end
+end
+
+function SxOrb:OnDeleteObj(obj)
+	if self.WaitForBuffEnd and obj == self.WaitForObjEnd then
+		self.DontInterrupt = false
+		self.WaitForBuffEnd = false
+	end
+end
+
 function SxOrb:OnProcessSpell(unit, spell)
 	if unit.isMe then
+		if self.DontInterruptSpells[myHero.charName] and self.DontInterruptSpells[myHero.charName]["Spell"] == spell.name then
+			self.WaitForUlt = false
+			self.DontInterrupt = true
+			self.WaitForBuff = true
+			_G.SxOrbMenu.WaitForInterruptSpell = false
+		end
 		self.WaitForAA = false
 		self.LastAction = GetTickCount()
 		if spell.target then self.LastTarget = spell.target end
