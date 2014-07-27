@@ -880,7 +880,7 @@ function SxOrb:GetLatency()
 end
 
 function SxOrb:CanAttack()
-	if GetTickCount() > (self.LastAA + self:GetAnimationTime() - self:GetLatency()) and not self.DontInterrupt then
+	if GetTickCount() > (self.LastAA + self:GetAnimationTime() - self:GetLatency()) and not self.DontInterrupt and not _G.SxOrbMenu.WaitForInterruptSpell then
 		return true
 	else
 		return false
@@ -888,7 +888,7 @@ function SxOrb:CanAttack()
 end
 
 function SxOrb:CanMove()
-	if GetTickCount() > (self.LastAction + self:GetWindUpTime() - self:GetLatency() + self.SxOrbMenu.farmsettings.WindUpTime + 10) and not self.DontInterrupt then
+	if GetTickCount() > (self.LastAction + self:GetWindUpTime() - self:GetLatency() + self.SxOrbMenu.farmsettings.WindUpTime + 10) and not self.DontInterrupt and not _G.SxOrbMenu.WaitForInterruptSpell then
 		return true
 	else
 		return false
