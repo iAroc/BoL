@@ -86,8 +86,10 @@ function SxOrb:__init()
 	self.KillAbleMinions = {}
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.1
-	print("<font color=\"#F0Ff8d\"><b>SxOrbWalk:</b></font> <font color=\"#FF0F0F\">Version "..self.Version.." loaded</font>")
+	self.Version = 1.2
+	self.Language = {}
+	self:GetText("LOAD_COMPLETE", self.Version)
+	print(self:GetText("LOAD_COMPLETE", self.Version))
 	self.LuaSocket = require("socket")
 	self.AutoUpdate = {["Host"] = "raw.githubusercontent.com", ["VersionLink"] = "/Superx321/BoL/master/SxOrbWalk.Version", ["ScriptLink"] = "/Superx321/BoL/master/SxOrbWalk.lua"}
 	AddTickCallback(function() self:CheckUpdate() end)
@@ -96,6 +98,42 @@ function SxOrb:__init()
 	AddDrawCallback(function() self:OnDraw() end)
 	AddProcessSpellCallback(function(unit, spell) self:OnProcessSpell(unit, spell) end)
 	AddProcessSpellCallback(function(unit, spell) self:GetMinionTargets(unit, spell) end)
+end
+
+function SxOrb:GetText(TextName, TextArg1, TextArg2)
+	TextArg1 = (TextArg1 or "")
+	TextArg2 = (TextArg2 or "")
+	self.Language["MENU_NAME"] = "SxOrbWalker"
+	self.Language["LOAD_COMPLETE"] = "<font color=\"#F0Ff8d\"><b>SxOrbWalk:</b></font> <font color=\"#FF0F0F\">Version "..TextArg1.." loaded</font>"
+	self.Language["GENERAL_SETTINGS"] = "General Settings"
+	self.Language["ENABLED"] = "Enabled"
+	self.Language["IDLE"] = "Idle when Mouse is above Champ"
+	self.Language["VIPSELECTOR"] = "Use VIP Selector"
+	self.Language["FARM_SETTINGS"] = "Farm Settings"
+	self.Language["FARMDELAY"] = "Farm Delay"
+	self.Language["WINDUPTIME"] = "Extra WindUp Time"
+	self.Language["FARMOVERHARASS"] = "Focus LastHit over Harass"
+	self.Language["SPELLFARM"] = "Use Spells to secure LastHits"
+	self.Language["MASTERY_SETTINGS"] = "Mastery Settings"
+	self.Language["BUTCHER"] = "Mastery: Butcher"
+	self.Language["HAVOC"] = "Mastery: Havoc"
+	self.Language["ARCANEBLADE"] = "Mastery: Arcane Blade"
+	self.Language["HOTKEY_SETTINGS"] = "Hotkey Settings"
+	self.Language["AUTOCARRY"] = "AutoCarry"
+	self.Language["MIXEDMODE"] = "MixedMode"
+	self.Language["LANECLEAR"] = "LaneClear"
+	self.Language["LASTHIT"] = "LastHit"
+	self.Language["DRAW_SETTINGS"] = "Draw Settings"
+	self.Language["AARANGE"] = "Draw AA Range"
+	self.Language["MINIONHPBAR"] = "Draw LastHit-Line on Minions"
+	self.Language["MINIONCIRCLE"] = "Draw LastHit-Circle"
+	self.Language["TARGETPRIORITY_SETTINGS"] = "TargetPriority Settings"
+	self.Language["TARGETPRIORITY_INFOTEXT_1"] = "Higher Number = Higher Focus"
+	self.Language["TARGETPRIORITY_INFOTEXT_2"] = "Means:"
+	self.Language["TARGETPRIORITY_INFOTEXT_3"] = "EnemyAdc = 5"
+	self.Language["TARGETPRIORITY_INFOTEXT_4"] = "EnemyTank = 1"
+
+	return self.Language[TextName]
 end
 
 function SxOrb:CheckUpdate()
@@ -130,48 +168,49 @@ function SxOrb:LoadToMenu(MainMenu, NoMenuKeys)
 	if MainMenu then
 		self.SxOrbMenu = MainMenu
 	else
-		self.SxOrbMenu = scriptConfig("SxOrbwalker", "SxOrb")
+		self.SxOrbMenu = scriptConfig(self:GetText("MENU_NAME"), "SxOrb")
 	end
 	_G.SxOrbMenu = self.SxOrbMenu
-	self.SxOrbMenu:addSubMenu("General Settings", "generalsettings")
-	self.SxOrbMenu.generalsettings:addParam("Enabled", "Enabled", SCRIPT_PARAM_ONOFF, true)
+	self.SxOrbMenu:addSubMenu(self:GetText("GENERAL_SETTINGS"), "generalsettings")
+	self.SxOrbMenu.generalsettings:addParam("Enabled", self:GetText("ENABLED"), SCRIPT_PARAM_ONOFF, true)
+	self.SxOrbMenu.generalsettings:addParam("StopMove", self:GetText("IDLE"), SCRIPT_PARAM_ONOFF, true)
 	if VIP_USER and FileExist(LIB_PATH.."Selector.lua") then
-		self.SxOrbMenu.generalsettings:addParam("Selector", "Use VIP Selector", SCRIPT_PARAM_ONOFF, false)
+		self.SxOrbMenu.generalsettings:addParam("Selector", self:GetText("VIPSELECTOR"), SCRIPT_PARAM_ONOFF, false)
 	end
 
-	self.SxOrbMenu:addSubMenu("Farm Settings", "farmsettings")
-	self.SxOrbMenu.farmsettings:addParam("FarmDelay", "Farm Delay", SCRIPT_PARAM_SLICE, 0, -150, 150)
-	self.SxOrbMenu.farmsettings:addParam("WindUpTime", "Extra WindUp Time", SCRIPT_PARAM_SLICE, 0,  -150, 150)
-	self.SxOrbMenu.farmsettings:addParam("farmoverharass", "Focus LastHit over Harass", SCRIPT_PARAM_ONOFF, true)
-	self.SxOrbMenu.farmsettings:addParam("spellfarm", "Use Spells to secure LastHits", SCRIPT_PARAM_ONOFF, true)
+	self.SxOrbMenu:addSubMenu(self:GetText("FARM_SETTINGS"), "farmsettings")
+	self.SxOrbMenu.farmsettings:addParam("FarmDelay", self:GetText("FARMDELAY"), SCRIPT_PARAM_SLICE, 0, -150, 150)
+	self.SxOrbMenu.farmsettings:addParam("WindUpTime", self:GetText("WINDUPTIME"), SCRIPT_PARAM_SLICE, 0,  -150, 150)
+	self.SxOrbMenu.farmsettings:addParam("farmoverharass", self:GetText("FARMOVERHARASS"), SCRIPT_PARAM_ONOFF, true)
+	self.SxOrbMenu.farmsettings:addParam("spellfarm", self:GetText("SPELLFARM"), SCRIPT_PARAM_ONOFF, true)
 
-	self.SxOrbMenu:addSubMenu("Mastery Settings", "masterysettings")
-	self.SxOrbMenu.masterysettings:addParam("Butcher", "Mastery: Butcher", SCRIPT_PARAM_ONOFF, false)
-	self.SxOrbMenu.masterysettings:addParam("Havoc", "Mastery: Havoc", SCRIPT_PARAM_ONOFF, false)
-	self.SxOrbMenu.masterysettings:addParam("ArcaneBlade", "Mastery: ArcaneBlade", SCRIPT_PARAM_ONOFF, false)
+	self.SxOrbMenu:addSubMenu(self:GetText("MASTERY_SETTINGS"), "masterysettings")
+	self.SxOrbMenu.masterysettings:addParam("Butcher", self:GetText("BUTCHER"), SCRIPT_PARAM_ONOFF, false)
+	self.SxOrbMenu.masterysettings:addParam("Havoc", self:GetText("HAVOC"), SCRIPT_PARAM_ONOFF, false)
+	self.SxOrbMenu.masterysettings:addParam("ArcaneBlade", self:GetText("ARCANEBLADE"), SCRIPT_PARAM_ONOFF, false)
 
 	if not NoMenuKeys then
-		self.SxOrbMenu:addSubMenu("Hotkey Settings", "hotkeysettings")
-		self.SxOrbMenu.hotkeysettings:addParam("AutoCarry", "AutoCarry", SCRIPT_PARAM_ONKEYDOWN, false, 32)
-		self.SxOrbMenu.hotkeysettings:addParam("MixedMode", "MixedMode", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("C"))
-		self.SxOrbMenu.hotkeysettings:addParam("LaneClear", "LaneClear", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("X"))
-		self.SxOrbMenu.hotkeysettings:addParam("LastHit", "LastHit", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
+		self.SxOrbMenu:addSubMenu(self:GetText("HOTKEY_SETTINGS"), "hotkeysettings")
+		self.SxOrbMenu.hotkeysettings:addParam("AutoCarry", self:GetText("AUTOCARRY"), SCRIPT_PARAM_ONKEYDOWN, false, 32)
+		self.SxOrbMenu.hotkeysettings:addParam("MixedMode", self:GetText("MIXEDMODE"), SCRIPT_PARAM_ONKEYDOWN, false, string.byte("C"))
+		self.SxOrbMenu.hotkeysettings:addParam("LaneClear", self:GetText("LANECLEAR"), SCRIPT_PARAM_ONKEYDOWN, false, string.byte("X"))
+		self.SxOrbMenu.hotkeysettings:addParam("LastHit", self:GetText("LASTHIT"), SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
 	end
 
-	self.SxOrbMenu:addSubMenu("Draw Settings", "drawsettings")
-	self.SxOrbMenu.drawsettings:addParam("AARange", "Draw AA Range", SCRIPT_PARAM_ONOFF, false)
-	self.SxOrbMenu.drawsettings:addParam("MinionHPBar", "Draw LastHit-Line on Minions", SCRIPT_PARAM_ONOFF, false)
-	self.SxOrbMenu.drawsettings:addParam("MinionCircle", "Draw LastHit-Circle", SCRIPT_PARAM_ONOFF, false)
+	self.SxOrbMenu:addSubMenu(self:GetText("DRAW_SETTINGS"), "drawsettings")
+	self.SxOrbMenu.drawsettings:addParam("AARange", self:GetText("AARANGE"), SCRIPT_PARAM_ONOFF, false)
+	self.SxOrbMenu.drawsettings:addParam("MinionHPBar", self:GetText("MINIONHPBAR"), SCRIPT_PARAM_ONOFF, false)
+	self.SxOrbMenu.drawsettings:addParam("MinionCircle", self:GetText("MINIONCIRCLE"), SCRIPT_PARAM_ONOFF, false)
 
-	self.SxOrbMenu:addSubMenu("TargetPriority Settings", "targetsettings")
+	self.SxOrbMenu:addSubMenu(self:GetText("TARGETPRIORITY_SETTINGS"), "targetsettings")
 	for i, enemy in pairs(GetEnemyHeroes()) do
 		self.SxOrbMenu.targetsettings:addParam(enemy.charName,enemy.charName, SCRIPT_PARAM_SLICE, 1, 1, #GetEnemyHeroes(), 0)
 	end
 	self.SxOrbMenu.targetsettings:addParam("fap","", SCRIPT_PARAM_INFO, "")
-	self.SxOrbMenu.targetsettings:addParam("fap","Higher Number = Higher Focus", SCRIPT_PARAM_INFO, "")
-	self.SxOrbMenu.targetsettings:addParam("fap","Means:", SCRIPT_PARAM_INFO, "")
-	self.SxOrbMenu.targetsettings:addParam("fap","EnemyAdc = 5", SCRIPT_PARAM_INFO, "")
-	self.SxOrbMenu.targetsettings:addParam("fap","EnemyTank = 1", SCRIPT_PARAM_INFO, "")
+	self.SxOrbMenu.targetsettings:addParam("fap",self:GetText("TARGETPRIORITY_INFOTEXT_1"), SCRIPT_PARAM_INFO, "")
+	self.SxOrbMenu.targetsettings:addParam("fap",self:GetText("TARGETPRIORITY_INFOTEXT_2"), SCRIPT_PARAM_INFO, "")
+	self.SxOrbMenu.targetsettings:addParam("fap",self:GetText("TARGETPRIORITY_INFOTEXT_3"), SCRIPT_PARAM_INFO, "")
+	self.SxOrbMenu.targetsettings:addParam("fap",self:GetText("TARGETPRIORITY_INFOTEXT_4"), SCRIPT_PARAM_INFO, "")
 	self:LoadPriority()
 
 	self.NoMenuKeys = NoMenuKeys
@@ -394,21 +433,15 @@ function SxOrb:LaneClear()
 	for index, minion in pairs(self.Minions.objects) do
 		if self:ValidTarget(minion) and not self.WaitForMinion then
 			local MyAADmg = self:CalcAADmg(minion)
-			local MyArriveTick = GetTickCount() + self:GetFlyTicks(minion)
-			local MyArriveTick2 = MyArriveTick + self:GetAnimationTime() + self:GetFlyTicks(minion) + 70
-			DmgToMinion, DmgToMinion2 = self:GetPredictDmg(minion, MyArriveTick2)
+			local MyArriveTick = GetTickCount() + self:GetAnimationTime() + self:GetFlyTicks(minion) + 150
+			DmgToMinion, DmgToMinion2 = self:GetPredictDmg(minion, MyArriveTick)
 
-			if DmgToMinion + DmgToMinion2 > minion.health then
+			if DmgToMinion + DmgToMinion2 > minion.health then -- Minion will be dead on my Next AA => Wait for minion
 				self.WaitForMinion = minion
 				break
-			else
-				if DmgToMinion > 0 then CalcDmg = (MyAADmg * 1.1) + DmgToMinion else CalcDmg = MyAADmg end
-				if CalcDmg < minion.health then
-					self:StartAttack(minion)
-					break
-				else
-					self.WaitForMinion = minion
-				end
+			elseif DmgToMinion + DmgToMinion2 + MyAADmg < minion.health then -- Minion will be alive until my Next AA, so its attackable
+				self:StartAttack(minion)
+				break
 			end
 		end
 	end
@@ -448,10 +481,10 @@ function SxOrb:GetPredictDmg(minion, endtick) -- minus = früher, plus = später
 		if minion.networkID == self.MinionTargetStore[i].LastTarget then
 			local Source = objManager:GetObjectByNetworkId(self.MinionTargetStore[i].SourceMinion)
 			local Target = objManager:GetObjectByNetworkId(self.MinionTargetStore[i].LastTarget)
-			if Source and Source.valid and Target and Target.valid then
+			if Source and Source.valid and Source.health > 0 and Target and Target.valid and Target.health > 0 then
 				local FlyTime = GetDistance(Source, Target) / self.MinionTargetStore[i].ProjectileSpeed
 				local NextAAStart = self.MinionTargetStore[i].LastAttack + (self.MinionTargetStore[i].LastAttackCD * 1000)
-				if Source.charName:lower():find("wizard") then Extra = 10 else Extra = 30 end
+				if Source.charName:lower():find("wizard") then Extra = 0 else Extra = 0 end
 				local ArriveTick = self.MinionTargetStore[i].LastAttack + math.round((FlyTime + self.MinionTargetStore[i].LastWindUpTime)*1000,0) + Extra
 				local ArriveTick2 = NextAAStart + math.round((FlyTime + self.MinionTargetStore[i].LastWindUpTime)*1000,0) + Extra
 
@@ -471,24 +504,23 @@ end
 
 function SxOrb:GetFlyTicks(Target)
 	-- + = Shoot earlier, - = Shoot later
-	return math.round((((GetDistance(myHero, Target) / (self.projectilespeeds[myHero.charName])) + (1 / (myHero.attackSpeed * self.BaseWindUpTime)))*1000),0) - 250
+	return math.round((((GetDistance(myHero, Target) / (self.projectilespeeds[myHero.charName])) + (1 / (myHero.attackSpeed * self.BaseWindUpTime)))*1000),0) - 200
 end
 
 function SxOrb:StartAttack(Target, NoDelay)
---~ 	if not (self.BlockedMinion and self:ValidTarget(self.BlockedMinion)) then
-		table.insert(self.KillAbleMinions, Target)
-		self.BlockedMinion = nil
+	if NoDelay then
+		Delay = 0
+	else
+		Delay = self.SxOrbMenu.farmsettings.FarmDelay/1000
+	end
 		self.WaitForAA = true
-		self.LastAA = GetTickCount() + self:GetWindUpTime()
+	DelayAction(function()
 		self:Attack(Target)
 		self:BeforeAttack(Target)
 		self.MinionToLastHit = Target
-		if NoDelay then
-			self:Attack(Target)
-		else
-			DelayAction(function() self:Attack(Target) end, 0.07)
-		end
---~ 	end
+		self:Attack(Target)
+	end, Delay)
+
 end
 
 function SxOrb:Attack(Target)
@@ -501,8 +533,17 @@ function SxOrb:Attack(Target)
 end
 
 function SxOrb:OrbWalk()
-	MouseMove = Vector(myHero) + (Vector(mousePos) - Vector(myHero)):normalized() * 500
-	myHero:MoveTo(MouseMove.x, MouseMove.z)
+	if self.SxOrbMenu.generalsettings.StopMove then
+		if GetDistanceSqr(mousePos) > 120*120 then
+			MouseMove = Vector(myHero) + (Vector(mousePos) - Vector(myHero)):normalized() * 500
+			myHero:MoveTo(MouseMove.x, MouseMove.z)
+		else
+			myHero:MoveTo(mousePos.x, mousePos.z)
+		end
+	else
+		MouseMove = Vector(myHero) + (Vector(mousePos) - Vector(myHero)):normalized() * 500
+		myHero:MoveTo(MouseMove.x, MouseMove.z)
+	end
 end
 
 function SxOrb:CheckAACancel(AANetwordID)
@@ -536,9 +577,9 @@ function SxOrb:OnDraw()
 	end
 
 
---~ 	if self.WaitForMinion then
---~ 		self:CircleDraw(self.WaitForMinion.x, self.WaitForMinion.y, self.WaitForMinion.z, 100, 4294967295)
---~ 	end
+	if self.WaitForMinion then
+		self:CircleDraw(self.WaitForMinion.x, self.WaitForMinion.y, self.WaitForMinion.z, 100, 4294967295)
+	end
 
 --~ 	if self.TrackMinion then
 --~ 		local Source = objManager:GetObjectByNetworkId(self.TrackMinion.SourceMinion)
@@ -763,9 +804,6 @@ function SxOrb:BonusDamage(minion) -- C&P from SOW
 	return BONUS
 end
 
-function OnGainBuff(unit, buff)
-print(buff.name)
-end
 function SxOrb:GetAnimationTime()
 	return (1 / (myHero.attackSpeed * self.BaseAnimationTime)*1000)
 end
@@ -809,7 +847,7 @@ function SxOrb:OnProcessSpell(unit, spell)
 		end
 
 		if self.ResetSpells[spell.name] then
-				self.LastAA = GetTickCount() - self:GetAnimationTime() + self:GetWindUpTime() - self:GetLatency()
+			self.LastAA = GetTickCount() - self:GetAnimationTime() + self:GetWindUpTime() - self:GetLatency()
 			DelayAction(function() self:SpellResetCallback() end, spell.windUpTime - (GetLatency()/2000) + self.SxOrbMenu.farmsettings.WindUpTime / 1000)
 		end
 	end
