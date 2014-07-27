@@ -65,7 +65,7 @@ function SxOrb:__init()
 	["Yorick"] = { [_W]= {Type = "Circle", Collision = false, Range = 600, Speed = math.huge, Delay = 0.5, Width = 200   } },
 	["Yorick"] = { [_E]= {Type = "Targeted", Collision = false, Range = 550, Speed = math.huge, Delay = 0.5, Width = 200  } },
 }
-	MyTrueRange = myHero.range + hitboxes[myHero.charName] + 10
+	self.MyTrueRange = myHero.range + hitboxes[myHero.charName] + 10
 	_G.SxOrbMenu = {}
 	self.WaitForAA = false
 	self.Attackenabled = true
@@ -86,7 +86,7 @@ function SxOrb:__init()
 	self.KillAbleMinions = {}
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.0
+	self.Version = 1.1
 	print("<font color=\"#F0Ff8d\"><b>SxOrbWalk:</b></font> <font color=\"#FF0F0F\">Version "..self.Version.." loaded</font>")
 	self.LuaSocket = require("socket")
 	self.AutoUpdate = {["Host"] = "raw.githubusercontent.com", ["VersionLink"] = "/Superx321/BoL/master/SxOrbWalk.Version", ["ScriptLink"] = "/Superx321/BoL/master/SxOrbWalk.lua"}
@@ -254,6 +254,7 @@ end
 function SxOrb:OnTick()
 	if not self.SxOrbMenu.generalsettings.Enabled then return end
 	self:UpdateMinions()
+	self:UpdateRange()
 	if (self.SxOrbMenu.hotkeysettings and self.SxOrbMenu.hotkeysettings.AutoCarry) or _G.SxOrbMenu.AutoCarry then
 		self:CarryMode("AutoCarry")
 	end
@@ -269,6 +270,10 @@ function SxOrb:OnTick()
 	if (self.SxOrbMenu.hotkeysettings and self.SxOrbMenu.hotkeysettings.LastHit) or _G.SxOrbMenu.LastHit then
 		self:CarryMode("LastHit")
 	end
+end
+
+function SxOrb:UpdateRange()
+	self.MyTrueRange = myHero.range + hitboxes[myHero.charName] + 10
 end
 
 function SxOrb:ClearMinionTargetStore()
@@ -466,7 +471,7 @@ end
 
 function SxOrb:GetFlyTicks(Target)
 	-- + = Shoot earlier, - = Shoot later
-	return math.round((((GetDistance(myHero, Target) / (self.projectilespeeds[myHero.charName])) + (1 / (myHero.attackSpeed * self.BaseWindUpTime)))*1000),0)
+	return math.round((((GetDistance(myHero, Target) / (self.projectilespeeds[myHero.charName])) + (1 / (myHero.attackSpeed * self.BaseWindUpTime)))*1000),0) - 250
 end
 
 function SxOrb:StartAttack(Target, NoDelay)
@@ -515,7 +520,7 @@ end
 
 function SxOrb:OnDraw()
 	if self.SxOrbMenu.drawsettings.AARange then
-		self:CircleDraw(myHero.x, myHero.y, myHero.z, MyTrueRange, 4294967295)
+		self:CircleDraw(myHero.x, myHero.y, myHero.z, self.MyTrueRange, 4294967295)
 	end
 
 	if self.SxOrbMenu.drawsettings.MinionHPBar then
@@ -711,17 +716,8 @@ function SxOrb:BonusDamage(minion) -- C&P from SOW
 				BONUS = BONUS + math.max(myHero:CalcMagicDamage(minion, myHero:GetSpellData(_W).level * 20 + 20 + 0.5 * myHero.ap) - 40, 0)
 			end
 	elseif myHero.charName == 'Draven' then
-			if not CallbackDravenAdded then
-				function DravenParticle(obj)
-					if GetDistance(obj) < 100 and obj.name:lower():find("draven_q_buf") then
-							DravenParticleo = obj
-					end
-				end
-				AddCreateObjCallback(DravenParticle)
-				CallbackDravenAdded = true
-			end
-			if DravenParticleo and DravenParticleo.valid then
-				BONUS = BONUS + AD * (0.3 + (0.10 * myHero:GetSpellData(_Q).level))
+			if TargetHaveBuff("dravenspinning", myHero) then
+				BONUS = BONUS + AD * (0.35 + (0.10 * myHero:GetSpellData(_Q).level))
 			end
 	elseif myHero.charName == 'Nasus' and VIP_USER then
 		if myHero:GetSpellData(_Q).level > 0 and myHero:CanUseSpell(_Q) == SUPRESSED then
@@ -759,11 +755,17 @@ function SxOrb:BonusDamage(minion) -- C&P from SOW
 			local base = {20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 80, 88, 100, 112, 124, 136, 148, 160}
 			BONUS = BONUS + myHero:CalcMagicDamage(minion, base[myHero.level] + (0.25 + 0.05 * (myHero.level % 7)) * myHero.ap)
 		end
+	elseif myHero.charName == "KogMaw" then
+		if TargetHaveBuff("KogMawBioArcaneBarrage", myHero) then
+			BONUS = BONUS + myHero:CalcMagicDamage(minion, minion.health * (0.01 + (myHero.level * 0.01) + (myHero.ap * 0.01)))
+		end
 	end
-
 	return BONUS
 end
 
+function OnGainBuff(unit, buff)
+print(buff.name)
+end
 function SxOrb:GetAnimationTime()
 	return (1 / (myHero.attackSpeed * self.BaseAnimationTime)*1000)
 end
@@ -849,7 +851,7 @@ function SxOrb:GetAACount(enemy)
 end
 
 function SxOrb:ValidTarget(Target)
-	if Target and Target.health > 0 and ValidTarget(Target) and Target.team ~= myHero.team and GetDistance(Target) < (myHero.range + hitboxes[myHero.charName] + (hitboxes[Target.charName] and hitboxes[Target.charName] or 0) - 20) then
+	if Target and Target.health > 0 and ValidTarget(Target) and Target.team ~= myHero.team and GetDistance(Target) < (self.MyTrueRange + (hitboxes[Target.charName] and hitboxes[Target.charName] or 0) - 20) then
 		return true
 	else
 		return false
@@ -871,7 +873,7 @@ function SxOrb:GetTarget()
 				Selector.Instance()
 				SelectorInit = true
 			end
-			SelectorTarget = Selector.GetTarget(SelectorMenu.Get().mode, nil, {distance = myHero.range + hitboxes[myHero.charName] + 20})
+			SelectorTarget = Selector.GetTarget(SelectorMenu.Get().mode, nil, {distance = self.MyTrueRange + 20})
 			if SelectorTarget and self:ValidTarget(SelectorTarget) then
 				return SelectorTarget
 			end
