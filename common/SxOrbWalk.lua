@@ -46,16 +46,16 @@ function SxOrbRaw:__init()
 	self.LuaSocket = require("socket")
 	self.AutoUpdate = {["Host"] = "raw.githubusercontent.com", ["VersionLink"] = "/Superx321/BoL/master/common/SxOrbWalk.Version", ["ScriptLink"] = "/Superx321/BoL/master/common/SxOrbWalk.lua"}
 	AddTickCallback(function() self:CheckUpdate() end)
-	AddTickCallback(function() self:OnTick() end)
-	AddTickCallback(function() self:ClearMinionTargetStore() end)
 	AddTickCallback(function() self:MasteryCollect() end)
-	AddTickCallback(function() self:CheckWaitForBuff() end)
-	AddDrawCallback(function() self:OnDraw() end)
-	AddProcessSpellCallback(function(unit, spell) self:OnProcessSpell(unit, spell) end)
-	AddProcessSpellCallback(function(unit, spell) self:GetMinionTargets(unit, spell) end)
-	AddCreateObjCallback(function(obj) self:OnCreateObj(obj) end)
-	AddDeleteObjCallback(function(obj) self:OnDeleteObj(obj) end)
-	AddMsgCallback(function(msg, key) self:OnWndMsg(msg, key) end)
+	AddTickCallback(function() if self.SxOrbMenu then self:OnTick() end end)
+	AddTickCallback(function() if self.SxOrbMenu then self:ClearMinionTargetStore() end end)
+	AddTickCallback(function() if self.SxOrbMenu then self:CheckWaitForBuff() end end)
+	AddDrawCallback(function() if self.SxOrbMenu then self:OnDraw() end end)
+	AddProcessSpellCallback(function(unit, spell) if self.SxOrbMenu then self:OnProcessSpell(unit, spell) end end)
+	AddProcessSpellCallback(function(unit, spell) if self.SxOrbMenu then self:GetMinionTargets(unit, spell) end end)
+	AddCreateObjCallback(function(obj) if self.SxOrbMenu then self:OnCreateObj(obj) end end)
+	AddDeleteObjCallback(function(obj) if self.SxOrbMenu then self:OnDeleteObj(obj) end end)
+	AddMsgCallback(function(msg, key) if self.SxOrbMenu then self:OnWndMsg(msg, key) end end)
 end
 
 function SxOrbRaw:LoadTables()
@@ -1095,6 +1095,4 @@ function SxOrbRaw:DrawMinionHPBar()
 	end
 end
 
-function OnLoad()
-	SxOrb = SxOrbRaw()
-end
+SxOrb = SxOrbRaw()
