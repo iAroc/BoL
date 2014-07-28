@@ -11,7 +11,9 @@ function SxOrbRaw:__init()
 	["Malzahar"] = {["Spell"] = "AlZaharNetherGrasp", ["Object"] = "AlzaharNetherGrasp_beam.troy"},
 	}
 	self:LoadTables()
-	self.MyTrueRange = myHero.range + hitboxes[myHero.charName] + 10
+	self.SxOrbSettings = { ["ForceSelector"] = false, ["TargetRange"] = myHero.range + hitboxes[myHero.charName] + 10, ["RangeChanged"] = false, ["LastHitRange"] = myHero.range + hitboxes[myHero.charName] + 10}
+	self.HotKeys = { ["AutoCarry"] = {}, ["MixedMode"] = {}, ["LaneClear"] = {}, ["LastHit"] = {}, }
+
 	_G.SxOrbMenu = {}
 	_G.SxOrbMenu.WaitForInterruptSpell = false
 	self.WaitForAA = false
@@ -34,7 +36,7 @@ function SxOrbRaw:__init()
 	self.KillAbleMinions = {}
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.41
+	self.Version = 1.42
 	self.Language = {}
 	self.LuaSocket = require("socket")
 	self.MasterySocket = self.LuaSocket.connect("www.sx-bol.eu", 80)
@@ -50,6 +52,7 @@ function SxOrbRaw:__init()
 	AddTickCallback(function() if self.SxOrbMenu then self:OnTick() end end)
 	AddTickCallback(function() if self.SxOrbMenu then self:ClearMinionTargetStore() end end)
 	AddTickCallback(function() if self.SxOrbMenu then self:CheckWaitForBuff() end end)
+	AddTickCallback(function() if self.SxOrbMenu then self:HotKeyCallback() end end)
 	AddDrawCallback(function() if self.SxOrbMenu then self:OnDraw() end end)
 	AddProcessSpellCallback(function(unit, spell) if self.SxOrbMenu then self:OnProcessSpell(unit, spell) end end)
 	AddProcessSpellCallback(function(unit, spell) if self.SxOrbMenu then self:GetMinionTargets(unit, spell) end end)
@@ -131,6 +134,8 @@ function SxOrbRaw:GetText(TextName, TextArg1, TextArg2)
 		self.Language["GENERAL_SETTINGS"] = "General Settings"
 		self.Language["ENABLED"] = "Enabled"
 		self.Language["IDLE"] = "Idle when Mouse is above Champ"
+		self.Language["IDLE2"] = "Show Idle-Range Cirlce"
+		self.Language["IDLE3"] = "Idle-Circle-Range"
 		self.Language["VIPSELECTOR"] = "Use VIP Selector"
 		self.Language["FARM_SETTINGS"] = "Farm Settings"
 		self.Language["FARMDELAY"] = "Farm Delay"
@@ -237,6 +242,8 @@ function SxOrbRaw:LoadToMenu(MainMenu, NoMenuKeys)
 	self.SxOrbMenu:addSubMenu(self:GetText("GENERAL_SETTINGS"), "generalsettings")
 	self.SxOrbMenu.generalsettings:addParam("Enabled", self:GetText("ENABLED"), SCRIPT_PARAM_ONOFF, true)
 	self.SxOrbMenu.generalsettings:addParam("StopMove", self:GetText("IDLE"), SCRIPT_PARAM_ONOFF, true)
+	self.SxOrbMenu.generalsettings:addParam("StopMoveCircle", self:GetText("IDLE2"), SCRIPT_PARAM_ONOFF, false)
+	self.SxOrbMenu.generalsettings:addParam("StopMoveSlider", self:GetText("IDLE3"), SCRIPT_PARAM_SLICE, 100, 50, 500)
 	if VIP_USER and FileExist(LIB_PATH.."Selector.lua") then
 		self.SxOrbMenu.generalsettings:addParam("Selector", self:GetText("VIPSELECTOR"), SCRIPT_PARAM_ONOFF, false)
 	end
@@ -376,7 +383,12 @@ function SxOrbRaw:OnTick()
 end
 
 function SxOrbRaw:UpdateRange()
-	self.MyTrueRange = myHero.range + hitboxes[myHero.charName] + 10
+	if not self.SxOrbSettings["RangeChanged"] then
+		self.SxOrbSettings["TargetRange"] = myHero.range + hitboxes[myHero.charName] + 10
+		self.SxOrbSettings["LastHitRange"] = myHero.range + hitboxes[myHero.charName] + 10
+	else
+		self.SxOrbSettings["LastHitRange"] = myHero.range + hitboxes[myHero.charName] + 10
+	end
 end
 
 function SxOrbRaw:ClearMinionTargetStore()
@@ -437,7 +449,7 @@ function SxOrbRaw:CarryMode(Mode)
 		if not self:CanAttack() and self.Attackenabled and self.SxOrbMenu.farmsettings.spellfarm then
 			if Mode == "MixedMode" or Mode == "LaneClear" or Mode == "LastHit" then
 				for index, minion in pairs(self.Minions.objects) do
-					if self:ValidTarget(minion) and self.MinionToLastHit ~= minion then
+					if self:ValidTarget(minion, true) and self.MinionToLastHit ~= minion then
 						local NextAAArriveTick = (self.LastAA + self:GetAnimationTime()) + self:GetFlyTicks(minion) - self:GetLatency() - self:GetWindUpTime()
 						DmgToMinion, DmgToMinion2 = self:GetPredictDmg(minion, NextAAArriveTick)
 						if DmgToMinion + DmgToMinion2 > minion.health then
@@ -481,21 +493,21 @@ end
 
 function SxOrbRaw:LastHit()
 	for index, minion in pairs(self.Minions.objects) do
-		if self:ValidTarget(minion) then
+		if self:ValidTarget(minion, true) then
 			if self:IsKillAbleMinion(minion) then break end
 		end
 	end
 end
 
 function SxOrbRaw:LaneClear()
-	if self.WaitForMinion and self:ValidTarget(self.WaitForMinion) then
+	if self.WaitForMinion and self:ValidTarget(self.WaitForMinion, true) then
 		if self:IsKillAbleMinion(self.WaitForMinion) then self.WaitForMinion = false end
 	else
 		self.WaitForMinion = false
 	end
 
 	for index, minion in pairs(self.Minions.objects) do
-		if self:ValidTarget(minion) and not self.WaitForMinion then
+		if self:ValidTarget(minion, true) and not self.WaitForMinion then
 			local MyAADmg = self:CalcAADmg(minion)
 			local MyArriveTick = GetTickCount() + self:GetAnimationTime() + self:GetFlyTicks(minion) + 150
 			DmgToMinion, DmgToMinion2 = self:GetPredictDmg(minion, MyArriveTick)
@@ -511,14 +523,14 @@ function SxOrbRaw:LaneClear()
 	end
 
 	for index, minion in pairs(self.JungleMinions.objects) do
-		if self:ValidTarget(minion) then
+		if self:ValidTarget(minion, true) then
 			self:StartAttack(minion)
 			break
 		end
 	end
 
 	for index, minion in pairs(self.OtherMinions.objects) do
-		if self:ValidTarget(minion) then
+		if self:ValidTarget(minion, true) then
 			self:StartAttack(minion)
 			break
 		end
@@ -606,10 +618,7 @@ end
 function SxOrbRaw:OrbWalk()
 	if self:CanMove() then
 		if self.SxOrbMenu.generalsettings.StopMove then
-			if GetDistanceSqr(mousePos) > 120*120 then
-				MouseMove = Vector(myHero) + (Vector(mousePos) - Vector(myHero)):normalized() * 500
-				myHero:MoveTo(MouseMove.x, MouseMove.z)
-			else
+			if GetDistance(mousePos) > self.SxOrbMenu.generalsettings.StopMoveSlider - 20 then
 				myHero:MoveTo(mousePos.x, mousePos.z)
 			end
 		else
@@ -634,7 +643,7 @@ end
 
 function SxOrbRaw:OnDraw()
 	if self.SxOrbMenu.drawsettings.AARange then
-		self:CircleDraw(myHero.x, myHero.y, myHero.z, self.MyTrueRange, 4294967295)
+		self:CircleDraw(myHero.x, myHero.y, myHero.z, self.SxOrbSettings["LastHitRange"], 4294967295)
 	end
 
 	if self.SxOrbMenu.drawsettings.MinionHPBar then
@@ -643,11 +652,16 @@ function SxOrbRaw:OnDraw()
 
 	if self.SxOrbMenu.drawsettings.MinionCircle then
 		for i=1,#self.KillAbleMinions do
-			if self:ValidTarget(self.KillAbleMinions[i]) then
+			if self:ValidTarget(self.KillAbleMinions[i], true) then
 				self:CircleDraw(self.KillAbleMinions[i].x, self.KillAbleMinions[i].y, self.KillAbleMinions[i].z, 150, 4294967295)
 			end
 		end
 	end
+
+	if self.SxOrbMenu.generalsettings.StopMoveCircle then
+		self:CircleDraw(myHero.x, myHero.y, myHero.z, self.SxOrbMenu.generalsettings.StopMoveSlider, 4294967295)
+	end
+
 
 
 	if self.WaitForMinion then
@@ -725,6 +739,52 @@ end
 
 function SxOrbRaw:RegisterSpellResetCallback(f)
 	table.insert(self.SpellResetCallbacks, f)
+end
+
+function SxOrbRaw:RegisterHotKey(Mode, MainMenu, SubMenu)
+	if Mode:lower() == "autocarry" or Mode:lower() == "mixedmode" or Mode:lower() == "laneclear" or Mode:lower() == "lasthit" then
+		if Mode:lower() == "autocarry" then table.insert(self.HotKeys["AutoCarry"], {MainMenu,SubMenu}) end
+		if Mode:lower() == "mixedmode" then table.insert(self.HotKeys["MixedMode"], {MainMenu,SubMenu}) end
+		if Mode:lower() == "laneclear" then table.insert(self.HotKeys["LaneClear"], {MainMenu,SubMenu}) end
+		if Mode:lower() == "lasthit" then table.insert(self.HotKeys["LastHit"], {MainMenu,SubMenu}) end
+	else
+		print("Error: Unknown Mode: "..Mode)
+	end
+end
+
+function SxOrbRaw:HotKeyCallback()
+	for i=1,#self.HotKeys["AutoCarry"] do
+		if not self.HotKeys["AutoCarry"][i][1][tostring(self.HotKeys["AutoCarry"][i][2])] then
+			_G.SxOrbMenu.AutoCarry = false
+			break
+		else
+			_G.SxOrbMenu.AutoCarry = true
+		end
+	end
+	for i=1,#self.HotKeys["MixedMode"] do
+		if not self.HotKeys["MixedMode"][i][1][tostring(self.HotKeys["MixedMode"][i][2])] then
+			_G.SxOrbMenu.MixedMode = false
+			break
+		else
+			_G.SxOrbMenu.MixedMode = true
+		end
+	end
+	for i=1,#self.HotKeys["LaneClear"] do
+		if not self.HotKeys["LaneClear"][i][1][tostring(self.HotKeys["LaneClear"][i][2])] then
+			_G.SxOrbMenu.LaneClear = false
+			break
+		else
+			_G.SxOrbMenu.LaneClear = true
+		end
+	end
+	for i=1,#self.HotKeys["LastHit"] do
+		if not self.HotKeys["LastHit"][i][1][tostring(self.HotKeys["LastHit"][i][2])] then
+			_G.SxOrbMenu.LastHit = false
+			break
+		else
+			_G.SxOrbMenu.LastHit = true
+		end
+	end
 end
 
 function SxOrbRaw:DrawCircleNextLvl(x, y, z, radius, width, color, chordlength)
@@ -963,6 +1023,10 @@ function SxOrbRaw:ResetAA()
 	self:SpellResetCallback()
 end
 
+function SxOrbRaw:GetHitBox(name)
+	return hitboxes[name] or 0
+end
+
 function SxOrbRaw:OnProcessSpell(unit, spell)
 	if unit.isMe then
 		if self.DontInterruptSpells[myHero.charName] and self.DontInterruptSpells[myHero.charName]["Spell"] == spell.name then
@@ -1036,24 +1100,33 @@ function SxOrbRaw:GetAACount(enemy)
 	end
 end
 
-function SxOrbRaw:ValidTarget(Target)
-	if Target and Target.health > 0 and ValidTarget(Target) and Target.team ~= myHero.team and GetDistance(Target) < (self.MyTrueRange + (hitboxes[Target.charName] and hitboxes[Target.charName] or 0) - 20) then
+function SxOrbRaw:ValidTarget(Target,LastHitRange)
+	if LastHitRange then MyRange = self.SxOrbSettings["LastHitRange"] - 20 else MyRange = self.SxOrbSettings["TargetRange"] end
+	if Target and Target.health > 0 and ValidTarget(Target) and Target.team ~= myHero.team and GetDistanceSqr(Target) < MyRange * MyRange then
 		return true
 	else
 		return false
 	end
 end
 
-function SxOrbRaw:GetTarget()
-	if not self.SxOrbMenu then
-		self.SxOrbMenu = _G.SxOrbMenu
+function SxOrbRaw:ChangeSettings(SettingsName, SettingValue)
+	if self.SxOrbSettings and self.SxOrbSettings[SettingsName] then
+		if SettingValue then
+			if SettingsName == "TargetRange" then self.SxOrbSettings["RangeChanged"] = true end
+			self.SxOrbSettings[SettingsName] = SettingValue
+		else
+			return self.SxOrbSettings[SettingsName]
+		end
 	end
+end
+
+function SxOrbRaw:GetTarget()
 	local SelectedTarget = GetTarget()
 	local TargetTable = { ["Hero"] = nil, ["AA"] = math.huge }
 	if SelectedTarget and SelectedTarget.type == myHero.type and self:ValidTarget(SelectedTarget) then
 		return SelectedTarget
 	else
-		if self.SxOrbMenu.generalsettings.Selector and FileExist(LIB_PATH.."Selector.lua") then
+		if (self.SxOrbMenu.generalsettings.Selector or self.SxOrbSettings["ForceSelector"]) and FileExist(LIB_PATH.."Selector.lua") and VIP_USER then
 			if not SelectorInit then
 				require("Selector")
 				Selector.Instance()
