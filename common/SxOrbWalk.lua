@@ -34,7 +34,7 @@ function SxOrbRaw:__init()
 	self.KillAbleMinions = {}
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.3
+	self.Version = 1.4
 	self.Language = {}
 	self.LuaSocket = require("socket")
 	self.MasterySocket = self.LuaSocket.connect("www.sx-bol.eu", 80)
