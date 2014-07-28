@@ -34,7 +34,7 @@ function SxOrbRaw:__init()
 	self.KillAbleMinions = {}
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.4
+	self.Version = 1.41
 	self.Language = {}
 	self.LuaSocket = require("socket")
 	self.MasterySocket = self.LuaSocket.connect("www.sx-bol.eu", 80)
@@ -958,9 +958,9 @@ end
 
 function SxOrbRaw:ResetAA()
 	self.WaitForAA = false
-	self.LastAction = GetTickCount()
-	self.LastAA = GetTickCount() - self:GetAnimationTime() + self:GetWindUpTime() - self:GetLatency()
-	DelayAction(function() self:SpellResetCallback() end, (self:GetWindUpTime() - self:GetLatency() + self.SxOrbMenu.farmsettings.WindUpTime)/1000)
+	self.LastAction = 0
+	self.LastAA = 0
+	self:SpellResetCallback()
 end
 
 function SxOrbRaw:OnProcessSpell(unit, spell)
@@ -984,7 +984,10 @@ function SxOrbRaw:OnProcessSpell(unit, spell)
 		end
 
 		if self.ResetSpells[spell.name] then
-			self:ResetAA()
+			self.WaitForAA = false
+			self.LastAction = GetTickCount()
+			self.LastAA = GetTickCount() - self:GetAnimationTime() + self:GetWindUpTime() - self:GetLatency()
+			DelayAction(function() self:SpellResetCallback() end, (self:GetWindUpTime() - self:GetLatency() + self.SxOrbMenu.farmsettings.WindUpTime)/1000)
 		end
 
 		if myHero.charName == "Lulu" and spell.name == "LuluE" and not spell.target.isMe then
