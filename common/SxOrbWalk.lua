@@ -3,20 +3,12 @@
 ----------------------
 class "SxOrbRaw"
 function SxOrbRaw:__init()
-	self.DontInterruptSpells = {
-	["Nunu"] = {["Spell"] = "AbsoluteZero", ["Buff"] = "AbsoluteZero"},
-	["Katarina"] = {["Spell"] = "KatarinaR", ["Buff"] = "katarinarsound"},
-	["FiddleSticks"] = {["Spell"] = "Drain", ["Object"] = "Drain.troy"},
-	["MissFortune"] = {["Spell"] = "MissFortuneBulletTime", ["Object"] = "MissFortune_Base_R_mis.troy"},
-	["Malzahar"] = {["Spell"] = "AlZaharNetherGrasp", ["Object"] = "AlzaharNetherGrasp_beam.troy"},
-	}
 	self:LoadTables()
 	self.SxOrbSettings = { ["ForceSelector"] = false, ["TargetRange"] = myHero.range + hitboxes[myHero.charName] + 10, ["RangeChanged"] = false, ["LastHitRange"] = myHero.range + hitboxes[myHero.charName] + 10}
 	self.HotKeys = { ["AutoCarry"] = {}, ["MixedMode"] = {}, ["LaneClear"] = {}, ["LastHit"] = {}, }
 
 	_G.SxOrbMenu = {}
 	_G.SxOrbMenu.WaitForInterruptSpell = false
-self.MyTrueRange = myHero.range + hitboxes[myHero.charName] + 10
 	self.WaitForAA = false
 	self.Attackenabled = true
 	self.DeactivateLuluPassive = false
@@ -37,11 +29,9 @@ self.MyTrueRange = myHero.range + hitboxes[myHero.charName] + 10
 	self.KillAbleMinions = {}
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.43
+	self.Version = 1.44
 	self.Language = {}
-	self.LuaSocket = require("socket")
-	self.MasterySocket = self.LuaSocket.connect("www.sx-bol.eu", 80)
-	self.MasterySocket:send("GET /Bol/Mastery/GetScript.php?region="..GetRegion().."&name="..myHero.name.." HTTP/1.0\r\n\r\n")
+	self:SxDownloadString('http://www.lolskill.net/game/'..GetRegion()..'/'..myHero.name, function(data) self:ParseLolSkill(data) end)
 
 	self:LoadExtraFarmSettings()
 	self:GetText("LOAD_COMPLETE", self.Version)
@@ -49,7 +39,6 @@ self.MyTrueRange = myHero.range + hitboxes[myHero.charName] + 10
 	self.LuaSocket = require("socket")
 	self.AutoUpdate = {["Host"] = "raw.githubusercontent.com", ["VersionLink"] = "/Superx321/BoL/master/common/SxOrbWalk.Version", ["ScriptLink"] = "/Superx321/BoL/master/common/SxOrbWalk.lua"}
 	AddTickCallback(function() self:CheckUpdate() end)
-	AddTickCallback(function() self:MasteryCollect() end)
 	AddTickCallback(function() if self.SxOrbMenu then self:OnTick() end end)
 	AddTickCallback(function() if self.SxOrbMenu then self:ClearMinionTargetStore() end end)
 	AddTickCallback(function() if self.SxOrbMenu then self:CheckWaitForBuff() end end)
@@ -125,6 +114,15 @@ function SxOrbRaw:LoadTables()
 	["Yorick"] = { [_W]= {Type = "Circle", Collision = false, Range = 600, Speed = math.huge, Delay = 0.5, Width = 200   } },
 	["Yorick"] = { [_E]= {Type = "Targeted", Collision = false, Range = 550, Speed = math.huge, Delay = 0.5, Width = 200  } },
 }
+
+	self.DontInterruptSpells = {
+	["Nunu"] = {["Spell"] = "AbsoluteZero", ["Buff"] = "AbsoluteZero"},
+	["Katarina"] = {["Spell"] = "KatarinaR", ["Buff"] = "katarinarsound"},
+	["FiddleSticks"] = {["Spell"] = "Drain", ["Object"] = "Drain.troy"},
+	["MissFortune"] = {["Spell"] = "MissFortuneBulletTime", ["Object"] = "MissFortune_Base_R_mis.troy"},
+	["Malzahar"] = {["Spell"] = "AlZaharNetherGrasp", ["Object"] = "AlzaharNetherGrasp_beam.troy"},
+	}
+
 end
 
 function SxOrbRaw:GetText(TextName, TextArg1, TextArg2)
@@ -165,42 +163,78 @@ function SxOrbRaw:GetText(TextName, TextArg1, TextArg2)
 	return self.Language[TextName]
 end
 
-function SxOrbRaw:MasteryCollect()
-	if self.MasterySocket and not self.MasteryRAW then
-		self.MasterySocket:settimeout(0)
-		self.MasterySocket:settimeout(0, 'b')
-		self.MasterySocket:settimeout(99999999, 't')
-		self.MasteryReceive, self.MasteryStatus = self.MasterySocket:receive('*a')
+function SxOrbRaw:SxDownloadString(source, callback, working, OldLenght)
+	if not working then
+		if FileExist(LIB_PATH.."SxDownloadString") then os.remove(LIB_PATH.."SxDownloadString") end
+		os.executePowerShellAsync([[$webClient = New-Object System.Net.WebClient;$webClient.DownloadFile(']]..source..[[', ']]..LIB_PATH.."SxDownloadString"..[[');exit;]])
+		DelayAction(function() self:SxDownloadString(source, callback, true, 0) end)
+	else
+		if FileExist(LIB_PATH.."SxDownloadString") then
+			FileOpen = io.open(LIB_PATH.."SxDownloadString", "r")
+			FileString = FileOpen:read("*a")
+			FileOpen:close()
+			if #FileString > 0 and #FileString == OldLenght then
+				os.remove(LIB_PATH.."SxDownloadString")
+				callback(FileString)
+			else
+				DelayAction(function() self:SxDownloadString(source, callback, true, #FileString) end, 0.2)
+			end
+		else
+			DelayAction(function() self:SxDownloadString(source, callback, true, 0) end)
+		end
 	end
+end
 
-	if not self.MasteryRAW and self.MasterySocket and self.MasteryStatus ~= 'timeout' and self.MasteryReceive ~= nil then
-		self.MasteryRAW = self.MasteryReceive
-		self.MasteryPageTree = {}
-		_G.SxOrbMenu.Mastery = {}
-		for _,Points in string.gmatch(self.MasteryRAW, '(<div class="rank">)(%d)(/)(%d)(</div>)') do
-			table.insert(self.MasteryPageTree, Points)
-			table.insert(_G.SxOrbMenu.Mastery, Points)
+function SxOrbRaw:ParseLolSkill(data)
+	SummonerInfo = {}
+	for i=1,10 do
+		FindSummonerStart = string.find(data, '<div class="summonername">')
+		if FindSummonerStart then
+			SummonerStartCut = string.sub(data,FindSummonerStart+2)
+			NextSummoner = string.find(SummonerStartCut, '<div class="summonername">')
+			if NextSummoner then
+				SummonerSub = string.sub(SummonerStartCut, 0, NextSummoner)
+				data = string.sub(data,NextSummoner-10)
+			else
+				SummonerSub = SummonerStartCut
+			end
+				NameStart = string.find(SummonerSub, '<a href=\"summoner/')
+				NameEnd = string.find(SummonerSub, '</a></div>\n')
+				NameRaw = string.sub(SummonerSub, NameStart, NameEnd-1)
+				_,SummonerName = string.match(NameRaw, '(\">)(.*)')
+				SummonerInfo[SummonerName] = {}
+				SummonerInfo[SummonerName]["Masteries"] = {}
+				for _,Points in string.gmatch(SummonerSub, '(<div class="rank">)(%d)(/)(%d)(</div>)') do
+					table.insert(SummonerInfo[SummonerName]["Masteries"], Points)
+				end
+				_,League = string.match(SummonerSub, '(is currently ranked <b>)(.*)(</b> in Solo)')
+				_,LP = string.match(SummonerSub, '( in SoloQueue and has <b>)(%d+)(</b> League Points)')
+				_,SkillScore = string.match(SummonerSub, '( has performed <b>)(.*)(</b> with )')
+				_,Games = string.match(SummonerSub, '( has played <b>)(.*)(</b> games with )')
+				_,Performance = string.match(SummonerSub, '( has played <b>)(.*)(</b> than the average player with )')
+				SummonerInfo[SummonerName]["League"] = League or "Unknown"
+				SummonerInfo[SummonerName]["LP"] = LP or 0
+				SummonerInfo[SummonerName]["SkillScore"] = SkillScore or 0
+				SummonerInfo[SummonerName]["Games"] = Games or 0
+				SummonerInfo[SummonerName]["Performance"] = Performance or "Unknown"
+				if string.find(SummonerSub, '; queued up <b>alone</b>') then
+					SummonerInfo[SummonerName]["Premade"] = "0"
+				else
+					_,PremadeTeam = string.match(SummonerSub, '(is <b>premade</b> as Premade Team )(%d)')
+					SummonerInfo[SummonerName]["Premade"] = PremadeTeam
+				end
+		else
+			break
 		end
-
-		if #self.MasteryPageTree > 0 then
-			if self.MasteryPageTree[4] == "1" then
-				self.SxOrbMenu.masterysettings.Butcher = true
-			else
-				self.SxOrbMenu.masterysettings.Butcher = false
-			end
-
-			if self.MasteryPageTree[19] == "1" then
-				self.SxOrbMenu.masterysettings.ArcaneBlade = true
-			else
-				self.SxOrbMenu.masterysettings.ArcaneBlade = false
-			end
-
-			if self.MasteryPageTree[20] == "1" then
-				self.SxOrbMenu.masterysettings.Havoc = true
-			else
-				self.SxOrbMenu.masterysettings.Havoc = false
-			end
-		end
+	end
+	self.GotMasteries = true
+	self.GotButcher = SummonerInfo[myHero.name]["Masteries"][4]
+	self.GotHavoc = SummonerInfo[myHero.name]["Masteries"][20]
+	self.GotBlade = SummonerInfo[myHero.name]["Masteries"][19]
+	if self.SxOrbMenu and self.SxOrbMenu.masterysettings then
+		self.SxOrbMenu.masterysettings.Butcher = self.GotButcher == "1"
+		self.SxOrbMenu.masterysettings.Havoc = self.GotHavoc == "1"
+		self.SxOrbMenu.masterysettings.ArcaneBlade = self.GotBlade == "1"
 	end
 end
 
@@ -259,6 +293,11 @@ function SxOrbRaw:LoadToMenu(MainMenu, NoMenuKeys)
 	self.SxOrbMenu.masterysettings:addParam("Butcher", self:GetText("BUTCHER"), SCRIPT_PARAM_ONOFF, false)
 	self.SxOrbMenu.masterysettings:addParam("Havoc", self:GetText("HAVOC"), SCRIPT_PARAM_ONOFF, false)
 	self.SxOrbMenu.masterysettings:addParam("ArcaneBlade", self:GetText("ARCANEBLADE"), SCRIPT_PARAM_ONOFF, false)
+	if self.GotMasteries then
+		self.SxOrbMenu.masterysettings.Butcher = self.GotButcher == "1"
+		self.SxOrbMenu.masterysettings.Havoc = self.GotHavoc == "1"
+		self.SxOrbMenu.masterysettings.ArcaneBlade = self.GotBlade == "1"
+	end
 
 	if not NoMenuKeys then
 		self.SxOrbMenu:addSubMenu(self:GetText("HOTKEY_SETTINGS"), "hotkeysettings")
@@ -285,6 +324,18 @@ function SxOrbRaw:LoadToMenu(MainMenu, NoMenuKeys)
 	self:LoadPriority()
 
 	self.NoMenuKeys = NoMenuKeys
+end
+
+function SxOrbRaw:GetSummonerInfo(Name, Type, Value)
+	if Name and Type then
+		if (Type == "Masteries" or "Mastery") and Value then
+			return SummonerInfo[Name]["Masteries"][Value]
+		else
+			return SummonerInfo[Name][Type]
+		end
+	else
+		return 0
+	end
 end
 
 function SxOrbRaw:LoadPriority()
@@ -450,7 +501,7 @@ function SxOrbRaw:CarryMode(Mode)
 		if not self:CanAttack() and self.Attackenabled and self.SxOrbMenu.farmsettings.spellfarm then
 			if Mode == "MixedMode" or Mode == "LaneClear" or Mode == "LastHit" then
 				for index, minion in pairs(self.Minions.objects) do
-					if self:ValidTarget(minion, true) and self.MinionToLastHit ~= minion then
+					if self:ValidTarget(minion) and self.MinionToLastHit ~= minion then
 						local NextAAArriveTick = (self.LastAA + self:GetAnimationTime()) + self:GetFlyTicks(minion) - self:GetLatency() - self:GetWindUpTime()
 						DmgToMinion, DmgToMinion2 = self:GetPredictDmg(minion, NextAAArriveTick)
 						if DmgToMinion + DmgToMinion2 > minion.health then
@@ -487,28 +538,28 @@ end
 
 function SxOrbRaw:AutoCarry()
 	local Target = self:GetTarget()
-	if Target and self:ValidTarget(Target) then
-		self:StartAttack(Target, true)
+	if Target and self:ValidTarget(Target, true) then
+		self:StartAttack(Target, true, true)
 	end
 end
 
 function SxOrbRaw:LastHit()
 	for index, minion in pairs(self.Minions.objects) do
-		if self:ValidTarget(minion, true) then
+		if self:ValidTarget(minion) then
 			if self:IsKillAbleMinion(minion) then break end
 		end
 	end
 end
 
 function SxOrbRaw:LaneClear()
-	if self.WaitForMinion and self:ValidTarget(self.WaitForMinion, true) then
+	if self.WaitForMinion and self:ValidTarget(self.WaitForMinion) then
 		if self:IsKillAbleMinion(self.WaitForMinion) then self.WaitForMinion = false end
 	else
 		self.WaitForMinion = false
 	end
 
 	for index, minion in pairs(self.Minions.objects) do
-		if self:ValidTarget(minion, true) and not self.WaitForMinion then
+		if self:ValidTarget(minion) and not self.WaitForMinion then
 			local MyAADmg = self:CalcAADmg(minion)
 			local MyArriveTick = GetTickCount() + self:GetAnimationTime() + self:GetFlyTicks(minion) + 150
 			DmgToMinion, DmgToMinion2 = self:GetPredictDmg(minion, MyArriveTick)
@@ -524,14 +575,14 @@ function SxOrbRaw:LaneClear()
 	end
 
 	for index, minion in pairs(self.JungleMinions.objects) do
-		if self:ValidTarget(minion, true) then
+		if self:ValidTarget(minion) then
 			self:StartAttack(minion)
 			break
 		end
 	end
 
 	for index, minion in pairs(self.OtherMinions.objects) do
-		if self:ValidTarget(minion, true) then
+		if self:ValidTarget(minion) then
 			self:StartAttack(minion)
 			break
 		end
@@ -541,8 +592,18 @@ end
 function SxOrbRaw:IsKillAbleMinion(minion)
 	local MyAADmg = self:CalcAADmg(minion)
 	local MyArriveTick = GetTickCount() + self:GetFlyTicks(minion) - self:GetLatency()
+	local MyArriveTick2 = GetTickCount() + self:GetAnimationTime() + self:GetFlyTicks(minion) + 150
+
 	local DmgToMinion = self:GetPredictDmg(minion, MyArriveTick)
-	if (MyAADmg + DmgToMinion) > minion.health and DmgToMinion < minion.health then
+	local DmgToMinion2, DmgToMinion3 = self:GetPredictDmg(minion, MyArriveTick2)
+	local VIPMinion = false
+	if (MyAADmg + DmgToMinion) > minion.health and DmgToMinion < minion.health and (DmgToMinion2 + DmgToMinion3) > minion.health then
+		VIPMinion = true
+		self:StartAttack(minion)
+		return true
+	end
+
+	if not VIPMinion and (MyAADmg + DmgToMinion) > minion.health and DmgToMinion < minion.health and (DmgToMinion2 + DmgToMinion3) < minion.health then
 		self:StartAttack(minion)
 		return true
 	end
@@ -591,7 +652,7 @@ function SxOrbRaw:GetFlyTicks(Target)
 	return math.round((((GetDistance(myHero, Target) / (self.projectilespeeds[myHero.charName])) + (1 / (myHero.attackSpeed * self.BaseWindUpTime)))*1000),0) - 200 + self.ExtraFarm
 end
 
-function SxOrbRaw:StartAttack(Target, NoDelay)
+function SxOrbRaw:StartAttack(Target, NoDelay, AutoCarry)
 	if NoDelay then
 		Delay = 0
 	else
@@ -599,17 +660,15 @@ function SxOrbRaw:StartAttack(Target, NoDelay)
 	end
 		self.WaitForAA = true
 	DelayAction(function()
-		self:Attack(Target)
+		self:Attack(Target,AutoCarry)
 		self:BeforeAttack(Target)
 		self.MinionToLastHit = Target
-		self:Attack(Target)
 	end, Delay)
-
 end
 
-function SxOrbRaw:Attack(Target)
+function SxOrbRaw:Attack(Target, AutoCarry)
 	myHero:Attack(Target)
-	if self:ValidTarget(Target) and self.WaitForAA then
+	if self:ValidTarget(Target,AutoCarry) and self.WaitForAA then
 		DelayAction(function() self:Attack(Target) end, 0)
 	else
 		self.WaitForAA = false
@@ -652,9 +711,33 @@ function SxOrbRaw:OnDraw()
 	end
 
 	if self.SxOrbMenu.drawsettings.MinionCircle then
+		for index, minion in pairs(self.Minions.objects) do
+			if ValidTarget(minion, 2000) and minion.health > 0 then
+				local MyAADmg = self:CalcAADmg(minion)
+				local MyArriveTick = GetTickCount() + self:GetFlyTicks(minion) - self:GetLatency()
+				local DmgToMinion = self:GetPredictDmg(minion, MyArriveTick)
+				if (MyAADmg + DmgToMinion) > math.floor(minion.health) then
+					local MinionFound = false
+					for i=1,#self.KillAbleMinions do
+						if self.KillAbleMinions[1] == minion then
+							MinionFound = true
+							break
+						end
+					end
+					if not MinionFound then
+						table.insert(self.KillAbleMinions, minion)
+					end
+				end
+			end
+		end
+
 		for i=1,#self.KillAbleMinions do
-			if self:ValidTarget(self.KillAbleMinions[i], true) then
-				self:CircleDraw(self.KillAbleMinions[i].x, self.KillAbleMinions[i].y, self.KillAbleMinions[i].z, 150, 4294967295)
+			if self.KillAbleMinions[i] and self.KillAbleMinions[i].health == 0 then
+				table.remove(self.KillAbleMinions, i)
+			else
+				if self.KillAbleMinions[i] and self.KillAbleMinions[i].x and self.KillAbleMinions[i].y and self.KillAbleMinions[i].z then
+					self:CircleDraw(self.KillAbleMinions[i].x, self.KillAbleMinions[i].y, self.KillAbleMinions[i].z, 150, 4294967295)
+				end
 			end
 		end
 	end
@@ -663,11 +746,9 @@ function SxOrbRaw:OnDraw()
 		self:CircleDraw(myHero.x, myHero.y, myHero.z, self.SxOrbMenu.generalsettings.StopMoveSlider, 4294967295)
 	end
 
-
-
-	if self.WaitForMinion then
-		self:CircleDraw(self.WaitForMinion.x, self.WaitForMinion.y, self.WaitForMinion.z, 100, 4294967295)
-	end
+--~ 	if self.WaitForMinion then
+--~ 		self:CircleDraw(self.WaitForMinion.x, self.WaitForMinion.y, self.WaitForMinion.z, 100, 4294967295)
+--~ 	end
 
 --~ 	if self.TrackMinion then
 --~ 		local Source = objManager:GetObjectByNetworkId(self.TrackMinion.SourceMinion)
@@ -969,6 +1050,14 @@ function SxOrbRaw:CanMove()
 	end
 end
 
+function SxOrbRaw:IsCasting()
+	if GetTickCount() > (self.LastAction + self:GetWindUpTime() - self:GetLatency() + self.SxOrbMenu.farmsettings.WindUpTime + 10) and not self.DontInterrupt and not _G.SxOrbMenu.WaitForInterruptSpell and not self.WaitForAA then
+		return true
+	else
+		return false
+	end
+end
+
 function SxOrbRaw:CheckWaitForBuff()
 	if self.WaitForBuff and self.DontInterrupt and self.DontInterruptSpells[myHero.charName] and self.DontInterruptSpells[myHero.charName]["Buff"] and TargetHaveBuff(self.DontInterruptSpells[myHero.charName]["Buff"], myHero) then
 		self.WaitForBuff = false
@@ -1101,8 +1190,8 @@ function SxOrbRaw:GetAACount(enemy)
 	end
 end
 
-function SxOrbRaw:ValidTarget(Target,LastHitRange)
-	if LastHitRange then MyRange = self.SxOrbSettings["LastHitRange"] - 20 else MyRange = self.SxOrbSettings["TargetRange"] end
+function SxOrbRaw:ValidTarget(Target,AutoCarry)
+	if AutoCarry then MyRange = self.SxOrbSettings["TargetRange"] else MyRange = self.SxOrbSettings["LastHitRange"] - 20 end
 	if Target and Target.health > 0 and ValidTarget(Target) and Target.team ~= myHero.team and GetDistanceSqr(Target) < MyRange * MyRange then
 		return true
 	else
@@ -1133,7 +1222,7 @@ function SxOrbRaw:GetTarget()
 				Selector.Instance()
 				SelectorInit = true
 			end
-			SelectorTarget = Selector.GetTarget(SelectorMenu.Get().mode, nil, {distance = self.MyTrueRange + 20})
+			SelectorTarget = Selector.GetTarget(SelectorMenu.Get().mode, nil, {distance = self.SxOrbSettings["TargetRange"]})
 			if SelectorTarget and self:ValidTarget(SelectorTarget) then
 				return SelectorTarget
 			end
