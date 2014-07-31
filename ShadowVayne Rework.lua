@@ -23,12 +23,18 @@ function OnLoad()
 	else
 		_G.LibsLoaded["Prod"] = true
 	end
+	if VIP_USER and not FileExist(LIB_PATH.."SxOrbWalk.lua") then
+		SxDownloadFile("https://raw.githubusercontent.com/Superx321/BoL/master/common/SxOrbWalk.lua", LIB_PATH.."SxOrbWalk.lua", function() _G.LibsLoaded["SxOrbWalk"] = true end)
+	else
+		_G.LibsLoaded["SxOrbWalk"] = true
+	end
 end
 
 function OnTick()
-	if _G.LibsLoaded and _G.LibsLoaded["CPS"] and _G.LibsLoaded["Prod"] and not _G.ShadowVayneLoaded then
+	if _G.LibsLoaded and _G.LibsLoaded["CPS"] and _G.LibsLoaded["Prod"] and _G.LibsLoaded["SxOrbWalk"] and not _G.ShadowVayneLoaded then
 		_G.ShadowVayneLoaded = true
 		require "CustomPermaShow"
+		require "SxOrbWalk"
 		if VIP_USER and FileExist(LIB_PATH.."Prodiction.lua") then require "Prodiction" end
 		ShadowVayne()
 	end
@@ -313,7 +319,6 @@ function ShadowVayne:LoadSxOrb()
 end
 
 function ShadowVayne:LoadSxOrbFinal()
-	require "SxOrbWalk"
 	SVSxOrbMenu = scriptConfig("[ShadowVayne] SxOrbwalker Settings", "SV_SXORB")
 	SxOrb:LoadToMenu(SVSxOrbMenu, true)
 end
