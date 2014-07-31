@@ -18,11 +18,6 @@ function OnLoad()
 	else
 		_G.LibsLoaded["CPS"] = true
 	end
-	if VIP_USER and not FileExist(LIB_PATH.."Prodiction.lua") then
-		SxDownloadFile("https://bitbucket.org/Klokje/public-klokjes-bol-scripts/raw/ec830facccefb3b52212dba5696c08697c3c2854/Test/Prodiction/Prodiction.lua", LIB_PATH.."Prodiction.lua", function() _G.LibsLoaded["Prod"] = true end)
-	else
-		_G.LibsLoaded["Prod"] = true
-	end
 	if VIP_USER and not FileExist(LIB_PATH.."SxOrbWalk.lua") then
 		SxDownloadFile("https://raw.githubusercontent.com/Superx321/BoL/master/common/SxOrbWalk.lua", LIB_PATH.."SxOrbWalk.lua", function() _G.LibsLoaded["SxOrbWalk"] = true end)
 	else
@@ -31,11 +26,10 @@ function OnLoad()
 end
 
 function OnTick()
-	if _G.LibsLoaded and _G.LibsLoaded["CPS"] and _G.LibsLoaded["Prod"] and _G.LibsLoaded["SxOrbWalk"] and not _G.ShadowVayneLoaded then
+	if _G.LibsLoaded and _G.LibsLoaded["CPS"] and _G.LibsLoaded["SxOrbWalk"] and not _G.ShadowVayneLoaded then
 		_G.ShadowVayneLoaded = true
 		require "CustomPermaShow"
 		require "SxOrbWalk"
-		if VIP_USER and FileExist(LIB_PATH.."Prodiction.lua") then require "Prodiction" end
 		ShadowVayne()
 	end
 end
@@ -87,7 +81,10 @@ function ShadowVayne:__init()
 	HOWLING_ABYSS    = 12
 	print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Version "..self.ShadowTable.version.." loaded</font>")
 
+	self.LuaSocket = require("socket")
+	self.AutoUpdate = {["Host"] = "raw.githubusercontent.com", ["VersionLink"] = "/Superx321/BoL/master/common/ShadowVayneRework.Version", ["ScriptLink"] = "/Superx321/BoL/master/ShadowVayneRework.lua"}
 	self:CheckUpdate()
+
 	self:LoadMap()
 	self:GenerateTables()
 
@@ -169,6 +166,35 @@ function ShadowVayne:GetMapName()
     else
         return "Unknown map"
     end
+end
+
+function ShadowVayne:CheckUpdate()
+	if not self.AutoUpdate["VersionSocket"] then
+		self.AutoUpdate["VersionSocket"] = self.LuaSocket.connect("sx-bol.de", 80)
+		self.AutoUpdate["VersionSocket"]:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.AutoUpdate["Host"]..self.AutoUpdate["VersionLink"].."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
+	end
+
+	if not self.AutoUpdate["ServerVersion"] and self.AutoUpdate["VersionSocket"] then
+			self.AutoUpdate["VersionSocket"]:settimeout(0, 'b')
+			self.AutoUpdate["VersionSocket"]:settimeout(99999999, 't')
+			self.AutoUpdate["VersionReceive"], self.AutoUpdate["VersionStatus"] = self.AutoUpdate["VersionSocket"]:receive('*a')
+	end
+
+	if not self.AutoUpdate["ServerVersion"] and self.AutoUpdate["VersionSocket"] and self.AutoUpdate["VersionStatus"] ~= 'timeout' and self.AutoUpdate["VersionReceive"] ~= nil then
+		self.AutoUpdate["ServerVersion"] = tonumber(string.sub(self.AutoUpdate["VersionReceive"], string.find(self.AutoUpdate["VersionReceive"], "<bols".."cript>")+11, string.find(self.AutoUpdate["VersionReceive"], "</bols".."cript>")-1))
+	end
+
+	if self.AutoUpdate["ServerVersion"] and type(self.AutoUpdate["ServerVersion"]) == "number" and self.AutoUpdate["ServerVersion"] > self.Version and not self.AutoUpdate["Finished"] then
+		self.AutoUpdate["ScriptSocket"] = self.LuaSocket.connect("sx-bol.de", 80)
+		self.AutoUpdate["ScriptSocket"]:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.AutoUpdate["Host"]..self.AutoUpdate["ScriptLink"].."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
+		self.AutoUpdate["ScriptReceive"], self.AutoUpdate["ScriptStatus"] = self.AutoUpdate["ScriptSocket"]:receive('*a')
+		self.AutoUpdate["ScriptRAW"] = string.sub(self.AutoUpdate["ScriptReceive"], string.find(self.AutoUpdate["ScriptReceive"], "<bols".."cript>")+11, string.find(self.AutoUpdate["ScriptReceive"], "</bols".."cript>")-1)
+		ScriptFileOpen = io.open(LIB_PATH.._ENV.FILE_NAME, "w+")
+		ScriptFileOpen:write(self.AutoUpdate["ScriptRAW"])
+		ScriptFileOpen:close()
+		self.AutoUpdate["Finished"] = true
+		print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">New Version("..self.AutoUpdate["ServerVersion"]..") downloaded, load it with F9!</font>")
+	end
 end
 
 function ShadowVayne:LoadMap()
@@ -309,19 +335,6 @@ function ShadowVayne:GenerateTables()
 		["CastPos_1"] = { ["x"] = 11334.74, ["y"] = 4517.47 },
 		["CastPos_2"] = { ["x"] = 6010.5869140625, ["y"] = 8508.8740234375 }
 	}
-end
-
-function ShadowVayne:LoadSxOrb()
-	if not FileExist(LIB_PATH.."SxOrbWalk.lua") then
-		self:DownloadFile("https://raw.githubusercontent.com/Superx321/BoL/master/common/SxOrbWalk.lua", LIB_PATH.."SxOrbWalk.lua", function() self:LoadSxOrbFinal() end)
-	else
-		self:LoadSxOrbFinal()
-	end
-end
-
-function ShadowVayne:LoadSxOrbFinal()
-	SVSxOrbMenu = scriptConfig("[ShadowVayne] SxOrbwalker Settings", "SV_SXORB")
-	SxOrb:LoadToMenu(SVSxOrbMenu, true)
 end
 
 function ShadowVayne:LoadMainMenu()
@@ -981,19 +994,19 @@ function ShadowVayne:CondemnStun()
 			(SVMainMenu.targets[enemy.charName]["lasthit"] and ShadowVayneLastHit) or
 			(SVMainMenu.targets[enemy.charName]["always"]) then
 				if GetDistance(enemy) <= 1000 and not enemy.dead and enemy.visible then
-					if not VIP_USER then -- FREEUSER
+--~ 					if not VIP_USER then -- FREEUSER
 						StunPos = self:GetCondemCollisionTime(enemy)
 						if StunPos ~= nil and GetDistance(StunPos) < 710 then
 							self:CheckWallStun(StunPos, enemy, 0)
 						end
-					end
+--~ 					end
 
-					if VIP_USER then -- PR0D
-						StunPos, StunnInfo = Prodiction.GetPrediction(enemy, 710, 1600, 0.25, 10, myHero)
-						if StunPos and GetDistanceSqr(StunPos) < 710*710 and StunnInfo and StunnInfo.hitchance > 1 then
-							self:CheckWallStun(StunPos, enemy, StunnInfo.hitchance)
-						end
-					end
+--~ 					if VIP_USER then -- PR0D
+--~ 						StunPos, StunnInfo = Prodiction.GetPrediction(enemy, 710, 1600, 0.25, 10, myHero)
+--~ 						if StunPos and GetDistanceSqr(StunPos) < 710*710 and StunnInfo and StunnInfo.hitchance > 1 then
+--~ 							self:CheckWallStun(StunPos, enemy, StunnInfo.hitchance)
+--~ 						end
+--~ 					end
 				end
 			end
 		end
