@@ -1119,7 +1119,7 @@ end
 
 function SxOrbRaw:OnProcessSpell(unit, spell)
 	if unit.isMe then
-print(spell.name)
+--~ print(spell.name)
 		if self.DontInterruptSpells[myHero.charName] and self.DontInterruptSpells[myHero.charName]["Spell"] == spell.name then
 			self.WaitForUlt = false
 			self.DontInterrupt = true
@@ -1139,7 +1139,7 @@ print(spell.name)
 		end
 
 		if self.ResetSpells[spell.name] then
-			print("reset")
+--~ 			print("reset")
 			self.WaitForAA = false
 			self.LastAction = GetTickCount()
 			self.LastAA = GetTickCount() - self:GetAnimationTime() + self:GetWindUpTime() - self:GetLatency()
