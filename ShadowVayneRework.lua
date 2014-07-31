@@ -70,7 +70,7 @@ end
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 4.00
+	self.ShadowTable.version = 4.01
 	self.ShadowTable.LastLevelCheck = 0
 	self.ShadowTable.LastHeroLevel = 0
 	self.ShadowTable.CurSkin = 0
@@ -87,6 +87,7 @@ function ShadowVayne:__init()
 	HOWLING_ABYSS    = 12
 	print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Version "..self.ShadowTable.version.." loaded</font>")
 
+	self:CheckUpdate()
 	self:LoadMap()
 	self:GenerateTables()
 
@@ -198,7 +199,7 @@ function ShadowVayne:DownloadFile(source, destination, callback, working, OldLen
 	if not working then
 		if FileExist(destination) then os.remove(destination) end
 		os.executePowerShellAsync([[$webClient = New-Object System.Net.WebClient;$webClient.DownloadFile(']]..source..[[', ']]..destination..[[');exit;]])
-		DelayAction(function() self:SxDownloadFile(source, destination, callback, true, 0) end)
+		DelayAction(function() self:DownloadFile(source, destination, callback, true, 0) end)
 	else
 		if FileExist(destination) then
 			FileOpen = io.open(destination, "r")
@@ -209,10 +210,10 @@ function ShadowVayne:DownloadFile(source, destination, callback, working, OldLen
 					callback()
 				end
 			else
-				DelayAction(function() self:SxDownloadFile(source, destination, callback, true, #FileString) end, 0.2)
+				DelayAction(function() self:DownloadFile(source, destination, callback, true, #FileString) end, 0.2)
 			end
 		else
-			DelayAction(function() self:SxDownloadFile(source, destination, callback, true, 0) end)
+			DelayAction(function() self:DownloadFile(source, destination, callback, true, 0) end)
 		end
 	end
 end
