@@ -64,7 +64,7 @@ end
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 4.01
+	self.ShadowTable.version = 4.02
 	self.ShadowTable.LastLevelCheck = 0
 	self.ShadowTable.LastHeroLevel = 0
 	self.ShadowTable.CurSkin = 0
@@ -107,7 +107,8 @@ function ShadowVayne:__init()
 
 	self:LoadRengar()
 	self:LoadCustomPermaShow()
-	self:LoadSxOrb()
+	SVSxOrbMenu = scriptConfig("[ShadowVayne] SxOrbwalker Settings", "SV_SXORB")
+	SxOrb:LoadToMenu(SVSxOrbMenu, true)
 
 	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.activatemodes then self:ActivateModes() end end)
 	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.checklevelchange then self:CheckLevelChange() end end)
