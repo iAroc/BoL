@@ -5,20 +5,20 @@
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
 	]]
-
 ------------------------
 ------ MainScript ------
 ------------------------
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 3.40
+	self.ShadowTable.version = 3.41
 	self.ShadowTable.LastLevelCheck = 0
 	self.ShadowTable.LastHeroLevel = 0
 	self.LastTumble = 0
 	self.CurSkin = 0
 	self.ForceAA = false
 	self.hitboxmode = true
+	self.WaitForR84 = false
 	self.wayPointManager = WayPointManager()
 	CondemnLastE = 0
 	SUMMONERS_RIFT   = { 1, 2 }
@@ -56,39 +56,39 @@ function ShadowVayne:__init()
 	self:LoadRengar()
 	self:LoadCustomPermaShow()
 
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.activatemodes then self:ActivateModes() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.checklevelchange then self:CheckLevelChange() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.permashows then self:PermaShows() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.botrk then self:BotRK() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.bilgewater then self:BilgeWater() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.gapcloseraftercast then self:GapCloserAfterCast() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.gapcloserrengar then self:GapCloserRengar() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.switchtogglemode then self:SwitchToggleMode() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.threshlantern then self:TreshLantern() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.condemnstun then self:CondemnStun() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.twalltumble then self:WallTumble() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.updateherodirection then self:UpdateHeroDirection() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.generatetarget then self:GenerateTarget() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.skinhack then self:SkinHack() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.activatemodes then self:ActivateModes() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.checklevelchange then self:CheckLevelChange() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.permashows then self:PermaShows() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.botrk then self:BotRK() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.bilgewater then self:BilgeWater() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.gapcloseraftercast then self:GapCloserAfterCast() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.gapcloserrengar then self:GapCloserRengar() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.switchtogglemode then self:SwitchToggleMode() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.threshlantern then self:TreshLantern() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.condemnstun then self:CondemnStun() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.twalltumble then self:WallTumble() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.updateherodirection then self:UpdateHeroDirection() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.generatetarget then self:GenerateTarget() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.skinhack then self:SkinHack() end end)
 	AddTickCallback(function() self:ForceScriptReset() end)
 	AddTickCallback(function() self:UpdateLastPos() end)
 
-	AddCreateObjCallback(function(Obj) if not SVMainMenu.debugsettings.createobj.rengarobject then self:RengarObject(Obj) end end)
-	AddCreateObjCallback(function(Obj) if not SVMainMenu.debugsettings.createobj.threshobject then self:ThreshObject(Obj) end end)
+	AddCreateObjCallback(function(Obj) if not self.WaitForR84 and not SVMainMenu.debugsettings.createobj.rengarobject then self:RengarObject(Obj) end end)
+	AddCreateObjCallback(function(Obj) if not self.WaitForR84 and not SVMainMenu.debugsettings.createobj.threshobject then self:ThreshObject(Obj) end end)
 
-	AddProcessSpellCallback(function(unit, spell) if not SVMainMenu.debugsettings.processspell.gapcloser then self:ProcessSpell_GapCloser(unit, spell) end end)
-	AddProcessSpellCallback(function(unit, spell) if not SVMainMenu.debugsettings.processspell.interrupt then self:ProcessSpell_Interrupt(unit, spell) end end)
-	AddProcessSpellCallback(function(unit, spell) if not SVMainMenu.debugsettings.processspell.basicattack then self:ProcessSpell_BasicAttack(unit, spell) end end)
-	AddProcessSpellCallback(function(unit, spell) if not SVMainMenu.debugsettings.processspell.recall then self:ProcessSpell_Recall(unit, spell) end end)
+	AddProcessSpellCallback(function(unit, spell) if not self.WaitForR84 and not SVMainMenu.debugsettings.processspell.gapcloser then self:ProcessSpell_GapCloser(unit, spell) end end)
+	AddProcessSpellCallback(function(unit, spell) if not self.WaitForR84 and not SVMainMenu.debugsettings.processspell.interrupt then self:ProcessSpell_Interrupt(unit, spell) end end)
+	AddProcessSpellCallback(function(unit, spell) if not self.WaitForR84 and not SVMainMenu.debugsettings.processspell.basicattack then self:ProcessSpell_BasicAttack(unit, spell) end end)
+	AddProcessSpellCallback(function(unit, spell) if not self.WaitForR84 and not SVMainMenu.debugsettings.processspell.recall then self:ProcessSpell_Recall(unit, spell) end end)
 
-	AddDrawCallback(function() if not SVMainMenu.debugsettings.draw.dwalltumble then self:Draw_WallTumble() end end)
-	AddDrawCallback(function() if not SVMainMenu.debugsettings.draw.condemnrange then self:Draw_CondemnRange() end end)
-	AddDrawCallback(function() if not SVMainMenu.debugsettings.draw.aarange then self:Draw_AARange() end end)
-	AddDrawCallback(function() self:DebugDraw() end)
+	AddDrawCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.draw.dwalltumble then self:Draw_WallTumble() end end)
+	AddDrawCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.draw.condemnrange then self:Draw_CondemnRange() end end)
+	AddDrawCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.draw.aarange then self:Draw_AARange() end end)
+	AddDrawCallback(function() if not self.WaitForR84 then self:DebugDraw() end end)
 
-	AddSendPacketCallback(function(p) if not SVMainMenu.debugsettings.sendpacket.pwalltumble then self:SendPacket_WallTumble(p) end end)
+	AddSendPacketCallback(function(p) if not self.WaitForR84 and not SVMainMenu.debugsettings.sendpacket.pwalltumble then self:SendPacket_WallTumble(p) end end)
 
-	AddMsgCallback(function(msg,key) if not SVMainMenu.debugsettings.msg.doublemodeprotection then self:DoubleModeProtection(msg, key) end end)
+	AddMsgCallback(function(msg,key) if not self.WaitForR84 and not SVMainMenu.debugsettings.msg.doublemodeprotection then self:DoubleModeProtection(msg, key) end end)
 
 end
 
@@ -164,8 +164,10 @@ function ShadowVayne:GetOrbWalkers()
 	table.insert(self.ShadowTable.OrbWalkers, "SOW")
 
 	if _G.Reborn_Loaded then
-		Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
 		table.insert(self.ShadowTable.OrbWalkers, "Reborn R84")
+		print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Waiting for SAC:R84 Auth</font>")
+		DelayAction(function() self:GetR84Keys() end)
+		self.WaitForR84 = true
 	end
 
 	if _G.MMA_Loaded then
@@ -181,6 +183,19 @@ function ShadowVayne:GetOrbWalkers()
 				table.insert(self.ShadowTable.OrbWalkers, "Revamped")
 			end
 		end
+	end
+end
+
+function ShadowVayne:GetR84Keys()
+	if _G.AutoCarry then
+		Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACAutoCarry", AutoCarry.MODE_AUTOCARRY)
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACMixedMode", AutoCarry.MODE_MIXEDMODE)
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLaneClear", AutoCarry.MODE_LANECLEAR)
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLastHit", AutoCarry.MODE_LASTHIT)
+		self.WaitForR84 = false
+	else
+		DelayAction(function() self:GetR84Keys() end)
 	end
 end
 
@@ -350,12 +365,6 @@ function ShadowVayne:FillMenu_KeySetting()
 	SVMainMenu.keysetting:addParam("SACMixedMode","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
 	SVMainMenu.keysetting:addParam("SACLaneClear","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
 	SVMainMenu.keysetting:addParam("SACLastHit","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
-	if _G.Reborn_Loaded then
-		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACAutoCarry", AutoCarry.MODE_AUTOCARRY)
-		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACMixedMode", AutoCarry.MODE_MIXEDMODE)
-		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLaneClear", AutoCarry.MODE_LANECLEAR)
-		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLastHit", AutoCarry.MODE_LASTHIT)
-	end
 
 	if SVMainMenu.keysetting._param[12].listTable[SVMainMenu.keysetting.AutoCarryOrb] == nil then SVMainMenu.keysetting.AutoCarryOrb = 1 end
 	if SVMainMenu.keysetting._param[13].listTable[SVMainMenu.keysetting.MixedModeOrb] == nil then SVMainMenu.keysetting.MixedModeOrb = 1 end
