@@ -29,7 +29,7 @@ function SxOrbRaw:__init()
 	self.KillAbleMinions = {}
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.45
+	self.Version = 1.46
 	self.Language = {}
 	self:SxDownloadString('http://www.lolskill.net/game/'..GetRegion()..'/'..myHero.name, function(data) self:ParseLolSkill(data) end)
 
@@ -775,7 +775,7 @@ function SxOrbRaw:DisableAttacks()
 end
 
 function SxOrbRaw:EnableAttacks()
-	self.Attackenabled = false
+	self.Attackenabled = true
 end
 
 function SxOrbRaw:BeforeAttack(target)
