@@ -7,7 +7,6 @@
 	]]
 if myHero.charName ~= "Vayne" then return end
 
-
 ------------------------
 ------ MainScript ------
 ------------------------
@@ -57,14 +56,13 @@ function SxDownloadFile(source, destination, callback, working, OldLenght)
 	end
 end
 
-
 ------------------------
 ------ ShadowVayne -----
 ------------------------
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 4.02
+	self.ShadowTable.version = 4.03
 	self.ShadowTable.LastLevelCheck = 0
 	self.ShadowTable.LastHeroLevel = 0
 	self.ShadowTable.CurSkin = 0
@@ -72,6 +70,7 @@ function ShadowVayne:__init()
 	self.CurSkin = 0
 	self.ForceAA = false
 	self.hitboxmode = true
+	self.WaitForR84 = false
 	self.wayPointManager = WayPointManager()
 	CondemnLastE = 0
 	SUMMONERS_RIFT   = { 1, 2 }
@@ -87,6 +86,7 @@ function ShadowVayne:__init()
 
 	self:LoadMap()
 	self:GenerateTables()
+	self:GetOrbWalkers()
 
 	self:LoadMainMenu()
 	self:FillMenu_KeySetting()
@@ -110,34 +110,35 @@ function ShadowVayne:__init()
 	SVSxOrbMenu = scriptConfig("[ShadowVayne] SxOrbwalker Settings", "SV_SXORB")
 	SxOrb:LoadToMenu(SVSxOrbMenu, true)
 
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.activatemodes then self:ActivateModes() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.checklevelchange then self:CheckLevelChange() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.permashows then self:PermaShows() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.botrk then self:BotRK() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.bilgewater then self:BilgeWater() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.gapcloseraftercast then self:GapCloserAfterCast() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.gapcloserrengar then self:GapCloserRengar() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.switchtogglemode then self:SwitchToggleMode() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.threshlantern then self:TreshLantern() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.condemnstun then self:CondemnStun() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.twalltumble then self:WallTumble() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.updateherodirection then self:UpdateHeroDirection() end end)
-	AddTickCallback(function() if not SVMainMenu.debugsettings.tick.skinhack then self:SkinHack() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.activatemodes then self:ActivateModes() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.checklevelchange then self:CheckLevelChange() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.permashows then self:PermaShows() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.botrk then self:BotRK() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.bilgewater then self:BilgeWater() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.gapcloseraftercast then self:GapCloserAfterCast() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.gapcloserrengar then self:GapCloserRengar() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.switchtogglemode then self:SwitchToggleMode() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.threshlantern then self:TreshLantern() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.condemnstun then self:CondemnStun() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.twalltumble then self:WallTumble() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.updateherodirection then self:UpdateHeroDirection() end end)
+	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.skinhack then self:SkinHack() end end)
 
-	AddCreateObjCallback(function(Obj) if not SVMainMenu.debugsettings.createobj.rengarobject then self:RengarObject(Obj) end end)
-	AddCreateObjCallback(function(Obj) if not SVMainMenu.debugsettings.createobj.threshobject then self:ThreshObject(Obj) end end)
+	AddCreateObjCallback(function(Obj) if not self.WaitForR84 and not SVMainMenu.debugsettings.createobj.rengarobject then self:RengarObject(Obj) end end)
+	AddCreateObjCallback(function(Obj) if not self.WaitForR84 and not SVMainMenu.debugsettings.createobj.threshobject then self:ThreshObject(Obj) end end)
 
-	AddProcessSpellCallback(function(unit, spell) if not SVMainMenu.debugsettings.processspell.gapcloser then self:ProcessSpell_GapCloser(unit, spell) end end)
-	AddProcessSpellCallback(function(unit, spell) if not SVMainMenu.debugsettings.processspell.interrupt then self:ProcessSpell_Interrupt(unit, spell) end end)
-	AddProcessSpellCallback(function(unit, spell) if not SVMainMenu.debugsettings.processspell.recall then self:ProcessSpell_Recall(unit, spell) end end)
+	AddProcessSpellCallback(function(unit, spell) if not self.WaitForR84 and not SVMainMenu.debugsettings.processspell.gapcloser then self:ProcessSpell_GapCloser(unit, spell) end end)
+	AddProcessSpellCallback(function(unit, spell) if not self.WaitForR84 and not SVMainMenu.debugsettings.processspell.interrupt then self:ProcessSpell_Interrupt(unit, spell) end end)
+	AddProcessSpellCallback(function(unit, spell) if not self.WaitForR84 and not SVMainMenu.debugsettings.processspell.recall then self:ProcessSpell_Recall(unit, spell) end end)
+	AddProcessSpellCallback(function(unit, spell) if not self.WaitforR84 then self:ProcessSpellAfterAA(unit, spell) end end)
 
-	AddDrawCallback(function() if not SVMainMenu.debugsettings.draw.dwalltumble then self:Draw_WallTumble() end end)
-	AddDrawCallback(function() if not SVMainMenu.debugsettings.draw.condemnrange then self:Draw_CondemnRange() end end)
+	AddDrawCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.draw.dwalltumble then self:Draw_WallTumble() end end)
+	AddDrawCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.draw.condemnrange then self:Draw_CondemnRange() end end)
 	AddDrawCallback(function() self:DebugDraw() end)
 
-	AddSendPacketCallback(function(p) if not SVMainMenu.debugsettings.sendpacket.pwalltumble then self:SendPacket_WallTumble(p) end end)
+	AddSendPacketCallback(function(p) if not self.WaitForR84 and not SVMainMenu.debugsettings.sendpacket.pwalltumble then self:SendPacket_WallTumble(p) end end)
 
-	AddMsgCallback(function(msg,key) if not SVMainMenu.debugsettings.msg.doublemodeprotection then self:DoubleModeProtection(msg, key) end end)
+	AddMsgCallback(function(msg,key) if not self.WaitForR84 and not SVMainMenu.debugsettings.msg.doublemodeprotection then self:DoubleModeProtection(msg, key) end end)
 	SxOrb:RegisterAfterAttackCallback(function(target) self:CondemnAfterAA(target) end)
 	SxOrb:RegisterAfterAttackCallback(function(target) self:Tumble(target) end)
 end
@@ -338,6 +339,48 @@ function ShadowVayne:GenerateTables()
 	}
 end
 
+function ShadowVayne:GetOrbWalkers()
+	self.ShadowTable.OrbWalkers = {}
+	table.insert(self.ShadowTable.OrbWalkers, "SxOrb")
+
+	if _G.Reborn_Loaded then
+		table.insert(self.ShadowTable.OrbWalkers, "Reborn R84")
+		print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Waiting for SAC:R84 Auth</font>")
+		DelayAction(function() self:GetR84Keys() end)
+		self.WaitForR84 = true
+	end
+
+	if _G.MMA_Loaded then
+		table.insert(self.ShadowTable.OrbWalkers, "MMA")
+	end
+
+	if _G.AutoCarry ~= nil and not _G.Reborn_Loaded then
+		if _G.AutoCarry.Helper ~= nil then
+			Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
+			table.insert(self.ShadowTable.OrbWalkers, "Reborn R83")
+		else
+			if _G.AutoCarry.AutoCarry ~= nil then
+				table.insert(self.ShadowTable.OrbWalkers, "Revamped")
+			end
+		end
+	end
+end
+
+function ShadowVayne:GetR84Keys()
+	if _G.AutoCarry then
+		DelayAction(function()
+		Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACAutoCarry", AutoCarry.MODE_AUTOCARRY)
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACMixedMode", AutoCarry.MODE_MIXEDMODE)
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLaneClear", AutoCarry.MODE_LANECLEAR)
+		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLastHit", AutoCarry.MODE_LASTHIT)
+		self.WaitForR84 = false
+		end, 0.25)
+	else
+		DelayAction(function() self:GetR84Keys() end)
+	end
+end
+
 function ShadowVayne:LoadMainMenu()
 	SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
 	SVMainMenu:addSubMenu("[Condemn]: AntiGapCloser Settings", "anticapcloser")
@@ -364,31 +407,25 @@ function ShadowVayne:FillMenu_KeySetting()
 	SVMainMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
 	SVMainMenu.keysetting:addParam("nil","General Key Settings", SCRIPT_PARAM_INFO, "")
 	SVMainMenu.keysetting:addParam("togglemode","ToggleMode:", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.keysetting:addParam("autocarry","Auto Carry Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "V" ))
-	SVMainMenu.keysetting:addParam("mixedmode","Mixed Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "C" ))
+	SVMainMenu.keysetting:addParam("autocarry","FightMode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "V" ))
+	SVMainMenu.keysetting:addParam("mixedmode","HarassMode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "C" ))
 	SVMainMenu.keysetting:addParam("laneclear","Lane Clear Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "M" ))
 	SVMainMenu.keysetting:addParam("lasthit","Last Hit Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "N" ))
---~ 	SVMainMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
---~ 	SVMainMenu.keysetting:addParam("AutoCarryOrb", "Orbwalker in AutoCarry: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
---~ 	SVMainMenu.keysetting:addParam("MixedModeOrb", "Orbwalker in MixedMode: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
---~ 	SVMainMenu.keysetting:addParam("LaneClearOrb", "Orbwalker in LaneClear: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
---~ 	SVMainMenu.keysetting:addParam("LastHitOrb", "Orbwalker in LastHit: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
-	--~ SAC R84 FIX
---~ 	SVMainMenu.keysetting:addParam("SACAutoCarry","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
---~ 	SVMainMenu.keysetting:addParam("SACMixedMode","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
---~ 	SVMainMenu.keysetting:addParam("SACLaneClear","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
---~ 	SVMainMenu.keysetting:addParam("SACLastHit","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
---~ 	if _G.Reborn_Loaded then
---~ 		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACAutoCarry", AutoCarry.MODE_AUTOCARRY)
---~ 		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACMixedMode", AutoCarry.MODE_MIXEDMODE)
---~ 		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLaneClear", AutoCarry.MODE_LANECLEAR)
---~ 		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLastHit", AutoCarry.MODE_LASTHIT)
---~ 	end
+	SVMainMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
+	SVMainMenu.keysetting:addParam("AutoCarryOrb", "Orbwalker in AutoCarry: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
+	SVMainMenu.keysetting:addParam("MixedModeOrb", "Orbwalker in MixedMode: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
+	SVMainMenu.keysetting:addParam("LaneClearOrb", "Orbwalker in LaneClear: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
+	SVMainMenu.keysetting:addParam("LastHitOrb", "Orbwalker in LastHit: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
+ 	--~ SAC R84 FIX
+	SVMainMenu.keysetting:addParam("SACAutoCarry","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.keysetting:addParam("SACMixedMode","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.keysetting:addParam("SACLaneClear","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.keysetting:addParam("SACLastHit","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
 
---~ 	if SVMainMenu.keysetting._param[12].listTable[SVMainMenu.keysetting.AutoCarryOrb] == nil then SVMainMenu.keysetting.AutoCarryOrb = 1 end
---~ 	if SVMainMenu.keysetting._param[13].listTable[SVMainMenu.keysetting.MixedModeOrb] == nil then SVMainMenu.keysetting.MixedModeOrb = 1 end
---~ 	if SVMainMenu.keysetting._param[14].listTable[SVMainMenu.keysetting.LaneClearOrb] == nil then SVMainMenu.keysetting.LaneClearOrb = 1 end
---~ 	if SVMainMenu.keysetting._param[15].listTable[SVMainMenu.keysetting.LastHitOrb] == nil then SVMainMenu.keysetting.LastHitOrb = 1 end
+	if SVMainMenu.keysetting._param[12].listTable[SVMainMenu.keysetting.AutoCarryOrb] == nil then SVMainMenu.keysetting.AutoCarryOrb = 1 end
+	if SVMainMenu.keysetting._param[13].listTable[SVMainMenu.keysetting.MixedModeOrb] == nil then SVMainMenu.keysetting.MixedModeOrb = 1 end
+	if SVMainMenu.keysetting._param[14].listTable[SVMainMenu.keysetting.LaneClearOrb] == nil then SVMainMenu.keysetting.LaneClearOrb = 1 end
+	if SVMainMenu.keysetting._param[15].listTable[SVMainMenu.keysetting.LastHitOrb] == nil then SVMainMenu.keysetting.LastHitOrb = 1 end
 end
 
 function ShadowVayne:FillMenu_GapCloser()
@@ -643,35 +680,35 @@ function ShadowVayne:ActivateModes()
 		ShadowVayneLastHit = false
 	end
 
-	--~ Get The Selected Orbwalker
---~ 	AutoCarryOrbText = SVMainMenu.keysetting._param[12].listTable[SVMainMenu.keysetting.AutoCarryOrb]
---~ 	MixedModeOrbText = SVMainMenu.keysetting._param[13].listTable[SVMainMenu.keysetting.MixedModeOrb]
---~ 	LaneClearOrbText = SVMainMenu.keysetting._param[14].listTable[SVMainMenu.keysetting.LaneClearOrb]
---~ 	LastHitOrbText = SVMainMenu.keysetting._param[15].listTable[SVMainMenu.keysetting.LastHitOrb]
+--~ 	--~ Get The Selected Orbwalker
+	AutoCarryOrbText = SVMainMenu.keysetting._param[12].listTable[SVMainMenu.keysetting.AutoCarryOrb]
+	MixedModeOrbText = SVMainMenu.keysetting._param[13].listTable[SVMainMenu.keysetting.MixedModeOrb]
+	LaneClearOrbText = SVMainMenu.keysetting._param[14].listTable[SVMainMenu.keysetting.LaneClearOrb]
+	LastHitOrbText = SVMainMenu.keysetting._param[15].listTable[SVMainMenu.keysetting.LastHitOrb]
 
-	--~ Activate MMA
---~ 	if AutoCarryOrbText == "MMA" then _G.MMA_Orbwalker = ShadowVayneAutoCarry end
---~ 	if MixedModeOrbText == "MMA" then _G.MMA_HybridMode = ShadowVayneMixedMode end
---~ 	if LaneClearOrbText == "MMA" then _G.MMA_LaneClear = ShadowVayneLaneClear end
---~ 	if LastHitOrbText == "MMA" then _G.MMA_LastHit = ShadowVayneLastHit end
+--~ 	--~ Activate MMA
+	if AutoCarryOrbText == "MMA" then _G.MMA_Orbwalker = ShadowVayneAutoCarry end
+	if MixedModeOrbText == "MMA" then _G.MMA_HybridMode = ShadowVayneMixedMode end
+	if LaneClearOrbText == "MMA" then _G.MMA_LaneClear = ShadowVayneLaneClear end
+	if LastHitOrbText == "MMA" then _G.MMA_LastHit = ShadowVayneLastHit end
 
-	--~ Activate SAC:Reborn R83
---~ 	if AutoCarryOrbText == "Reborn R83" then Keys.AutoCarry = ShadowVayneAutoCarry end
---~ 	if MixedModeOrbText == "Reborn R83" then Keys.MixedMode = ShadowVayneMixedMode end
---~ 	if LaneClearOrbText == "Reborn R83" then Keys.LaneClear = ShadowVayneLaneClear end
---~ 	if LastHitOrbText   == "Reborn R83" then Keys.LastHit = ShadowVayneLastHit end
+--~ 	--~ Activate SAC:Reborn R83
+	if AutoCarryOrbText == "Reborn R83" then Keys.AutoCarry = ShadowVayneAutoCarry end
+	if MixedModeOrbText == "Reborn R83" then Keys.MixedMode = ShadowVayneMixedMode end
+	if LaneClearOrbText == "Reborn R83" then Keys.LaneClear = ShadowVayneLaneClear end
+	if LastHitOrbText   == "Reborn R83" then Keys.LastHit = ShadowVayneLastHit end
 
-	--~ Activate SAC:Reborn R84
---~ 	if AutoCarryOrbText == "Reborn R84" then SVMainMenu.keysetting.SACAutoCarry = ShadowVayneAutoCarry end
---~ 	if MixedModeOrbText == "Reborn R84" then SVMainMenu.keysetting.SACMixedMode = ShadowVayneMixedMode end
---~ 	if LaneClearOrbText == "Reborn R84" then SVMainMenu.keysetting.SACLaneClear = ShadowVayneLaneClear end
---~ 	if LastHitOrbText   == "Reborn R84" then SVMainMenu.keysetting.SACLastHit = ShadowVayneLastHit end
+--~ 	--~ Activate SAC:Reborn R84
+	if AutoCarryOrbText == "Reborn R84" then SVMainMenu.keysetting.SACAutoCarry = ShadowVayneAutoCarry end
+	if MixedModeOrbText == "Reborn R84" then SVMainMenu.keysetting.SACMixedMode = ShadowVayneMixedMode end
+	if LaneClearOrbText == "Reborn R84" then SVMainMenu.keysetting.SACLaneClear = ShadowVayneLaneClear end
+	if LastHitOrbText   == "Reborn R84" then SVMainMenu.keysetting.SACLastHit = ShadowVayneLastHit end
 
 	--~ Activate SxOrbWalker
-	_G.SxOrbMenu.AutoCarry = ShadowVayneAutoCarry
-	_G.SxOrbMenu.MixedMode = ShadowVayneMixedMode
-	_G.SxOrbMenu.LaneClear = ShadowVayneLaneClear
-	_G.SxOrbMenu.LastHit = ShadowVayneLastHit
+	if AutoCarryOrbText == "SxOrb" then _G.SxOrbMenu.Mode.Fight = ShadowVayneAutoCarry end
+	if MixedModeOrbText == "SxOrb" then _G.SxOrbMenu.Mode.Harass = ShadowVayneMixedMode end
+	if LaneClearOrbText == "SxOrb" then _G.SxOrbMenu.Mode.LaneClear = ShadowVayneLaneClear end
+	if LastHitOrbText   == "SxOrb" then _G.SxOrbMenu.Mode.LastHit = ShadowVayneLastHit end
 
 	--~ Activate SOW
 --~ 	if AutoCarryOrbText == "SOW" then SVSOWMenu.Mode0 = ShadowVayneAutoCarry end
@@ -714,10 +751,10 @@ function ShadowVayne:SkinHack()
 end
 
 function ShadowVayne:PermaShows()
-	CustomPermaShow("AutoCarry (Using SxOrbWalk)", SVMainMenu.keysetting.autocarry, SVMainMenu.permashowsettings.carrypermashow, nil, 1426521024, nil, 1)
-	CustomPermaShow("MixedMode (Using SxOrbWalk)", SVMainMenu.keysetting.mixedmode, SVMainMenu.permashowsettings.mixedpermashow, nil, 1426521024, nil, 2)
-	CustomPermaShow("LaneClear (Using SxOrbWalk)", SVMainMenu.keysetting.laneclear, SVMainMenu.permashowsettings.laneclearpermashow, nil, 1426521024, nil, 3)
-	CustomPermaShow("LastHit (Using SxOrbWalk)", SVMainMenu.keysetting.lasthit, SVMainMenu.permashowsettings.lasthitpermashow, nil, 1426521024, nil, 4)
+	CustomPermaShow("AutoCarry (Using "..AutoCarryOrbText..")", SVMainMenu.keysetting.autocarry, SVMainMenu.permashowsettings.carrypermashow, nil, 1426521024, nil, 1)
+	CustomPermaShow("MixedMode (Using "..MixedModeOrbText..")", SVMainMenu.keysetting.mixedmode, SVMainMenu.permashowsettings.mixedpermashow, nil, 1426521024, nil, 2)
+	CustomPermaShow("LaneClear (Using "..LaneClearOrbText..")", SVMainMenu.keysetting.laneclear, SVMainMenu.permashowsettings.laneclearpermashow, nil, 1426521024, nil, 3)
+	CustomPermaShow("LastHit (Using "..LastHitOrbText..")", SVMainMenu.keysetting.lasthit, SVMainMenu.permashowsettings.lasthitpermashow, nil, 1426521024, nil, 4)
 	CustomPermaShow("Auto-E after next BasicAttack", SVMainMenu.keysetting.basiccondemn, SVMainMenu.permashowsettings.epermashow, nil, 1426521024, nil,  5)
 end
 
@@ -881,6 +918,16 @@ function ShadowVayne:ProcessSpell_Interrupt(unit, spell)
 			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then CastSpell(_E, unit) end
 			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then CastSpell(_E, unit) end
 			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."Always"] then CastSpell(_E, unit) end
+		end
+	end
+end
+
+function ShadowVayne:ProcessSpellAfterAA(unit, spell)
+	if unit.isMe then
+		if spell.name:lower():find("attack") then
+			if spell.target then self.LastTarget = spell.target end
+			DelayAction(function() self:CondemnAfterAA(self.LastTarget) end, spell.windUpTime - (GetLatency()/2000))
+			DelayAction(function() self:Tumble(self.LastTarget) end, spell.windUpTime - (GetLatency()/2000))
 		end
 	end
 end
@@ -1256,4 +1303,102 @@ end
 
 function ShadowVayne:GetTarget()
 	return SxOrb:GetTarget()
+end
+
+------------------------
+---- AddParam Hooks ----
+------------------------
+_G.scriptConfig.CustomaddParam = _G.scriptConfig.addParam
+_G.scriptConfig.addParam = function(self, pVar, pText, pType, defaultValue, a, b, c, d)
+ -- MMA Hook
+if self.name == "MMA2013" and pText:find("OnHold") then
+	pType = 5
+end
+
+-- SAC:Reborn r83 Hook
+if self.name:find("sidasacsetup_sidasac") and (pText == "Auto Carry" or pText == "Mixed Mode" or pText == "Lane Clear" or pText == "Last Hit") then
+	pType=5
+end
+
+-- SAC:Reborn r84 Hook
+if self.name:find("sidasacsetup_sidasac") and (pText == "Hotkey") then
+	pType=5
+end
+
+-- SAC:Reborn VayneMenu Hook
+if self.name:find("sidasacvayne") then
+	pType=5
+end
+
+-- SOW Hook
+if self.name == "SV_SOW" and pVar:find("Mode") then
+	pType=5
+end
+
+ _G.scriptConfig.CustomaddParam(self, pVar, pText, pType, defaultValue, a, b, c, d)
+end
+
+-------------------------
+---- DrawParam Hooks ----
+-------------------------
+_G.scriptConfig.CustomDrawParam = _G.scriptConfig._DrawParam
+_G.scriptConfig._DrawParam = function(self, varIndex)
+	local HideParam = false
+
+	if self.name:find("sidasacsetup_sidasac") and (self._param[varIndex].text == "Hotkey") then
+		self._param[varIndex].text = "ShadowVayne found. Set the Keysettings there!"
+		self._param[varIndex].var = "sep"
+	end
+
+	if self.name == "MMA2014" and (self._param[varIndex].text:find("Spells on") or self._param[varIndex].text:find("Version")) then
+	HideParam = true
+		if not MMAParams then
+			MMAParams = true
+			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
+			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
+			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
+			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
+			self:addParam(self._param[varIndex].var, "Use Spells On", SCRIPT_PARAM_LIST,1, {"None","All Units","Heroes Only","Minion Only"})
+			self:addParam("mmaVersion","MMA - version:", SCRIPT_PARAM_INFO, "0.1416")
+		end
+	end
+
+	if self.name:find("sidasacvayne") and not self._param[varIndex].text:find("ShadowVayne") then
+		if not SACVayneParam then
+			SACVayneParam = true
+			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
+		end
+		HideParam = true
+	end
+
+	if self.name == "SV_MAIN_keysetting" and self._param[varIndex].text:find("Hidden") then
+		HideParam = true
+	end
+
+	if self.name == "SV_SOW" and (self._param[varIndex].var == "Hotkeys" or self._param[varIndex].var:find("Mode")) then HideParam = true end
+
+	if (self.name == "MMA2014" and self._param[varIndex].text:find("OnHold")) then HideParam = true end
+	if not HideParam then
+		_G.scriptConfig.CustomDrawParam(self, varIndex)
+	end
+end
+
+-------------------------
+----- SubMenu Hooks -----
+-------------------------
+_G.scriptConfig.CustomDrawSubInstance = _G.scriptConfig._DrawSubInstance
+_G.scriptConfig._DrawSubInstance = function(self, index)
+	if not self.name:find("sidasacvayne") then
+		_G.scriptConfig.CustomDrawSubInstance(self, index)
+	end
+end
+
+-------------------------
+---- PermaShow Hooks ----
+-------------------------
+_G.scriptConfig.CustompermaShow = _G.scriptConfig.permaShow
+_G.scriptConfig.permaShow = function(self, pVar)
+	if not (self.name:find("sidasacvayne") or self.name == "MMA2014") then
+		_G.scriptConfig.CustompermaShow(self, pVar)
+	end
 end
