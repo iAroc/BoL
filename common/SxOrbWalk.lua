@@ -722,13 +722,13 @@ function SxOrbWalk:GetTarget() -- iUser99 ftw
 				return SelectorTarget
 			end
 		else
-			local best, damage = nil, 0
+			local best, damage = nil, 99
 
 			for index, unit in pairs(GetEnemyHeroes()) do
 				if unit.team ~= myHero.team and self:ValidTarget(unit, self.OverRideRange or self.MyRange) then
-					local d = myHero:CalcDamage(unit, myHero.totalDamage)
-
-					if (best == nil) or d > damage then
+					local e = myHero:CalcDamage(unit, myHero.totalDamage)
+					local d = unit.health / e
+					if (best == nil) or d < damage then
 						best = unit
 						damage = d
 					end
