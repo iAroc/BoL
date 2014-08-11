@@ -10,49 +10,39 @@ if myHero.charName ~= "Vayne" then return end
 ------------------------
 ------ MainScript ------
 ------------------------
-function OnLoad()
-	_G.LibsLoaded = {}
-	if not FileExist(LIB_PATH.."CustomPermaShow.lua") then
-		SxDownloadFile("https://raw.githubusercontent.com/Superx321/BoL/master/common/CustomPermaShow.lua", LIB_PATH.."CustomPermaShow.lua", function() _G.LibsLoaded["CPS"] = true end)
-	else
-		_G.LibsLoaded["CPS"] = true
-	end
-	if VIP_USER and not FileExist(LIB_PATH.."SxOrbWalk.lua") then
-		SxDownloadFile("https://raw.githubusercontent.com/Superx321/BoL/master/common/SxOrbWalk.lua", LIB_PATH.."SxOrbWalk.lua", function() _G.LibsLoaded["SxOrbWalk"] = true end)
-	else
-		_G.LibsLoaded["SxOrbWalk"] = true
-	end
-end
-
 function OnTick()
-	if _G.LibsLoaded and _G.LibsLoaded["CPS"] and _G.LibsLoaded["SxOrbWalk"] and not _G.ShadowVayneLoaded then
+	if not _G.ShadowVayneLoaded then
 		_G.ShadowVayneLoaded = true
-		require "CustomPermaShow"
-		require "SxOrbWalk"
-		ShadowVayne()
+		if loadfile(LIB_PATH..'SxOrbWalk.lua') then
+			require "SxOrbWalk"
+		else
+			SxDownloadFile("SxOrbWalk", "raw.githubusercontent.com","/Superx321/BoL/master/common/SxOrbWalk.lua", LIB_PATH.."SxOrbWalk.lua", function() require "SxOrbWalk" end)
+		end
+		if loadfile(LIB_PATH..'CustomPermaShow.lua') then
+			require "CustomPermaShow"
+		else
+			SxDownloadFile("CustomPermaShow", "raw.githubusercontent.com","/Superx321/BoL/master/common/CustomPermaShow.lua", LIB_PATH.."CustomPermaShow.lua", function() require "CustomPermaShow" end)
+		end
+			ShadowVayne()
 	end
 end
 
-function SxDownloadFile(source, destination, callback, working, OldLenght)
-	if not working then
-		if FileExist(destination) then os.remove(destination) end
-		os.executePowerShellAsync([[$webClient = New-Object System.Net.WebClient;$webClient.DownloadFile(']]..source..[[', ']]..destination..[[');exit;]])
-		DelayAction(function() SxDownloadFile(source, destination, callback, true, 0) end)
+function SxDownloadFile(name, host, link, destination, callback)
+	LuaSocket = require 'socket'
+	TcpDownload = {}
+	TcpDownload.Socket = LuaSocket.connect("sx-bol.eu", 80)
+	TcpDownload.Socket:send("GET /BoL/TCPUpdater/GetScript.php?script="..host..link.."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
+	TcpDownload.Receive, TcpDownload.Status = TcpDownload.Socket:receive('*a')
+	TcpDownload.ScriptStart = string.find(TcpDownload.Receive, "<bols".."cript>")
+	TcpDownload.ScriptEnd = string.find(TcpDownload.Receive, "</bols".."cript>")
+	if TcpDownload.ScriptStart and TcpDownload.ScriptEnd then
+		TcpDownload.CompleteScript = string.sub(TcpDownload.Receive, TcpDownload.ScriptStart+11, TcpDownload.ScriptEnd-1)
+		ScriptFileOpen = io.open(destination, "w+")
+		ScriptFileOpen:write(TcpDownload.CompleteScript)
+		ScriptFileOpen:close()
+		callback()
 	else
-		if FileExist(destination) then
-			FileOpen = io.open(destination, "r")
-			FileString = FileOpen:read("*a")
-			FileOpen:close()
-			if #FileString > 0 and #FileString == OldLenght then
-				if callback then
-					callback()
-				end
-			else
-				DelayAction(function() SxDownloadFile(source, destination, callback, true, #FileString) end, 0.2)
-			end
-		else
-			DelayAction(function() SxDownloadFile(source, destination, callback, true, 0) end)
-		end
+		print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Failed to Load Module "..name.."</font>")
 	end
 end
 
@@ -62,7 +52,7 @@ end
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 4.03
+	self.ShadowTable.version = 4.04
 	self.ShadowTable.LastLevelCheck = 0
 	self.ShadowTable.LastHeroLevel = 0
 	self.ShadowTable.CurSkin = 0
@@ -940,17 +930,19 @@ function ShadowVayne:CondemnAfterAA(Target)
 end
 
 function ShadowVayne:Tumble(Target)
-	if  (SVMainMenu.tumble.Qautocarry and ShadowVayneAutoCarry and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaAutoCarry)) or
-		(SVMainMenu.tumble.Qmixedmode and ShadowVayneMixedMode and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaMixedMode)) or
-		(SVMainMenu.tumble.Qlaneclear and ShadowVayneLaneClear and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLaneClear)) or
-		(SVMainMenu.tumble.Qlasthit and  ShadowVayneLastHit and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLastHit)) or
-		(SVMainMenu.tumble.Qalways) then
-		local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
-		if GetDistance(AfterTumblePos, Target) < 650 and GetDistance(AfterTumblePos, Target) > 100 then
-			CastSpell(_Q, mousePos.x, mousePos.z)
-		end
-		if GetDistance(Target) > 650 and GetDistance(AfterTumblePos, Target) < 650 then
-			CastSpell(_Q, mousePos.x, mousePos.z)
+	if Target and Target.type ~= 'obj_AI_Turret' then
+		if  (SVMainMenu.tumble.Qautocarry and ShadowVayneAutoCarry and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaAutoCarry)) or
+			(SVMainMenu.tumble.Qmixedmode and ShadowVayneMixedMode and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaMixedMode)) or
+			(SVMainMenu.tumble.Qlaneclear and ShadowVayneLaneClear and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLaneClear)) or
+			(SVMainMenu.tumble.Qlasthit and  ShadowVayneLastHit and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLastHit)) or
+			(SVMainMenu.tumble.Qalways) then
+			local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
+			if GetDistance(AfterTumblePos, Target) < 650 and GetDistance(AfterTumblePos, Target) > 100 then
+				CastSpell(_Q, mousePos.x, mousePos.z)
+			end
+			if GetDistance(Target) > 650 and GetDistance(AfterTumblePos, Target) < 650 then
+				CastSpell(_Q, mousePos.x, mousePos.z)
+			end
 		end
 	end
 --~ 	if GetTickCount() < self.EndTumbleTime then DelayAction(function() self:Tumble() end, 0) end
@@ -992,7 +984,6 @@ end
 
 function ShadowVayne:CheckWallStun(PredictPos, Source, Hitchance)
 	local BushFound, Bushpos = false, nil
-	if CondemnLastE + 1000 < GetTickCount() then
 		for i = 1, SVMainMenu.autostunn.pushDistance, 20  do
 			local CheckWallPos = Vector(PredictPos) + (Vector(PredictPos) - myHero):normalized()*(i)
 			local WorldType = self:GetWorldType(CheckWallPos.x, CheckWallPos.z)
@@ -1005,7 +996,6 @@ function ShadowVayne:CheckWallStun(PredictPos, Source, Hitchance)
 					if SVMainMenu.autostunn.towerstunn then
 						AllowTumble = false
 						CastSpell(_E, Source)
---~ 						print("Stunned: "..Source.charName..". HitChance: "..Hitchance ..". Tower: true")
 						ProdictionCircle[Source.charName].x = CheckWallPos.x
 						ProdictionCircle[Source.charName].y = CheckWallPos.y
 						ProdictionCircle[Source.charName].z = CheckWallPos.z
@@ -1014,7 +1004,6 @@ function ShadowVayne:CheckWallStun(PredictPos, Source, Hitchance)
 					end
 				else
 					AllowTumble = false
---~ 					print("Stunned: "..Source.charName..". HitChance: "..Hitchance)
 					CastSpell(_E, Source)
 					ProdictionCircle[Source.charName].x = CheckWallPos.x
 					ProdictionCircle[Source.charName].y = CheckWallPos.y
@@ -1027,14 +1016,13 @@ function ShadowVayne:CheckWallStun(PredictPos, Source, Hitchance)
 				end
 			end
 		end
-	end
 end
 
 function ShadowVayne:CondemnStun()
 	local Target = self:GetTarget(true)
-	if myHero:CanUseSpell(_E) == READY and GetTickCount() > (CondemnLastE + 1000) then
+	if myHero:CanUseSpell(_E) == READY then
 		for i, enemy in ipairs(GetEnemyHeroes()) do
-			if SVMainMenu.autostunn.target then enemy = Target end
+			if SVMainMenu.autostunn.target and Target and Target.type == myHero.type then enemy = Target end
 			if enemy == nil then return end
 			if (SVMainMenu.targets[enemy.charName]["autocarry"] and ShadowVayneAutoCarry) or
 			(SVMainMenu.targets[enemy.charName]["mixedmode"] and ShadowVayneMixedMode) or
@@ -1175,7 +1163,7 @@ function ShadowVayne:GetCondemCollisionTime(target) --Function done by Yomie fro
 
 
 	local windupPos = Vector(target) + heroObj.dir * (target.ms * 250/1000)
-	local timeElapsed = self:GetCollisionTime(windupPos, heroObj.dir, target.ms, myHero, 1600 )
+	local timeElapsed = self:GetCollisionTime(windupPos, heroObj.dir, target.ms, myHero, 1200 )
 
 	if timeElapsed == nil then
 		return nil
@@ -1258,27 +1246,29 @@ function ShadowVayne:CircleDraw(x,y,z,radius, color)
 end
 
 function ShadowVayne:SkinChanger(champ, skinId) -- Credits to shalzuth
-    p = CLoLPacket(0x97)
-    p:EncodeF(myHero.networkID)
-    p.pos = 1
-    t1 = p:Decode1()
-    t2 = p:Decode1()
-    t3 = p:Decode1()
-    t4 = p:Decode1()
-    p:Encode1(t1)
-    p:Encode1(t2)
-    p:Encode1(t3)
-    p:Encode1(bit32.band(t4,0xB))
-    p:Encode1(1)--hardcode 1 bitfield
-    p:Encode4(skinId)
-    for i = 1, #champ do
-        p:Encode1(string.byte(champ:sub(i,i)))
-    end
-    for i = #champ + 1, 64 do
-        p:Encode1(0)
-    end
-    p:Hide()
-    RecvPacket(p)
+	if VIP_USER then
+		p = CLoLPacket(0x97)
+		p:EncodeF(myHero.networkID)
+		p.pos = 1
+		t1 = p:Decode1()
+		t2 = p:Decode1()
+		t3 = p:Decode1()
+		t4 = p:Decode1()
+		p:Encode1(t1)
+		p:Encode1(t2)
+		p:Encode1(t3)
+		p:Encode1(bit32.band(t4,0xB))
+		p:Encode1(1)--hardcode 1 bitfield
+		p:Encode4(skinId)
+		for i = 1, #champ do
+			p:Encode1(string.byte(champ:sub(i,i)))
+		end
+		for i = #champ + 1, 64 do
+			p:Encode1(0)
+		end
+		p:Hide()
+		RecvPacket(p)
+	end
 end
 
 function ShadowVayne:DebugDraw()
@@ -1298,6 +1288,9 @@ function ShadowVayne:DebugDraw()
 	    local p = WorldToScreen(D3DXVECTOR3(myHero.x, myHero.y, myHero.z))
 		DrawText("Current Target: "..PrintTarget, 15, p.x - GetTextArea("Current Target: "..PrintTarget, 15).x / 2, p.y, color or 4294967295)
 		DrawText("Current Distance: "..PrintDistance, 15, p.x - GetTextArea("Current Distance: "..PrintDistance, 15).x / 2, p.y + 15, color or 4294967295)
+		DrawText("CanAttack: "..tostring(SxOrb:CanAttack()), 15, p.x - GetTextArea("CanAttack: "..tostring(SxOrb:CanAttack()), 15).x / 2, p.y + 30, color or 4294967295)
+		DrawText("CanMove: "..tostring(SxOrb:CanMove()), 15, p.x - GetTextArea("CanMove: "..tostring(SxOrb:CanMove()), 15).x / 2, p.y + 45, color or 4294967295)
+		DrawText("IsWaitForAA: "..tostring(SxOrb:IsWaitForAA()), 15, p.x - GetTextArea("IsWaitForAA: "..tostring(SxOrb:IsWaitForAA()), 15).x / 2, p.y + 60, color or 4294967295)
 	end
 end
 
