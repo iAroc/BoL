@@ -18,7 +18,7 @@ function SxOrbWalk:__init()
 	self.MyRange = myHero.range + myHero.boundingRadius
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.50
+	self.Version = 1.51
 	print("<font color=\"#F0Ff8d\"><b>SxOrbWalk: </b></font> <font color=\"#FF0F0F\">Version "..self.Version.." loaded</b></font>")
 
 	self.LuaSocket = require("socket")
@@ -97,9 +97,9 @@ function SxOrbWalk:LoadToMenu(MainMenu, NoMenuKeys)
 		self.SxOrbMenu.Keys.Toggle:addParam("Harass", "Make HarassMode as Toggle", SCRIPT_PARAM_ONOFF, false)
 		self.SxOrbMenu.Keys.Toggle:addParam("LaneClear", "Make LaneClear as Toggle", SCRIPT_PARAM_ONOFF, false)
 		self.SxOrbMenu.Keys.Toggle:addParam("LastHit", "Make LastHit as Toggle", SCRIPT_PARAM_ONOFF, false)
-		self.NoMenuKeys = true
-	end
 
+	end
+	if NoMenuKeys then self.NoMenuKeys = true end
 	self.SxOrbMenu:addSubMenu('Farm-Settings', 'Farm')
 	self.SxOrbMenu.Farm:addParam("FarmOverHarass", "Focus Farm over Harass", SCRIPT_PARAM_ONOFF, true)
 --~ 	self.SxOrbMenu.Farm:addParam("SpellFarm", "Use Spells to Secure LastHits", SCRIPT_PARAM_ONOFF, true)
