@@ -18,7 +18,7 @@ function SxOrbWalk:__init()
 	self.MyRange = myHero.range + myHero.boundingRadius
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.49
+	self.Version = 1.50
 	print("<font color=\"#F0Ff8d\"><b>SxOrbWalk: </b></font> <font color=\"#FF0F0F\">Version "..self.Version.." loaded</b></font>")
 
 	self.LuaSocket = require("socket")
@@ -97,6 +97,7 @@ function SxOrbWalk:LoadToMenu(MainMenu, NoMenuKeys)
 		self.SxOrbMenu.Keys.Toggle:addParam("Harass", "Make HarassMode as Toggle", SCRIPT_PARAM_ONOFF, false)
 		self.SxOrbMenu.Keys.Toggle:addParam("LaneClear", "Make LaneClear as Toggle", SCRIPT_PARAM_ONOFF, false)
 		self.SxOrbMenu.Keys.Toggle:addParam("LastHit", "Make LastHit as Toggle", SCRIPT_PARAM_ONOFF, false)
+		self.NoMenuKeys = true
 	end
 
 	self.SxOrbMenu:addSubMenu('Farm-Settings', 'Farm')
@@ -138,43 +139,47 @@ function SxOrbWalk:LoadToMenu(MainMenu, NoMenuKeys)
 end
 
 function SxOrbWalk:CheckToggleMode()
-	if self.SxOrbMenu.Keys.Toggle.Fight ~= self.LastToggle.Fight then
-		if self.SxOrbMenu.Keys.Toggle.Fight then SetMode = SCRIPT_PARAM_ONKEYTOGGLE else SetMode = SCRIPT_PARAM_ONKEYDOWN end
-		self.SxOrbMenu.Keys._param[1].pType = SetMode
-		self.LastToggle.Fight = self.SxOrbMenu.Keys.Toggle.Fight
-	end
-	if self.SxOrbMenu.Keys.Toggle.Harass ~= self.LastToggle.Harass then
-		if self.SxOrbMenu.Keys.Toggle.Harass then SetMode = SCRIPT_PARAM_ONKEYTOGGLE else SetMode = SCRIPT_PARAM_ONKEYDOWN end
-		self.SxOrbMenu.Keys._param[2].pType = SetMode
-		self.LastToggle.Harass = self.SxOrbMenu.Keys.Toggle.Harass
-	end
-	if self.SxOrbMenu.Keys.Toggle.LaneClear ~= self.LastToggle.LaneClear then
-		if self.SxOrbMenu.Keys.Toggle.LaneClear then SetMode = SCRIPT_PARAM_ONKEYTOGGLE else SetMode = SCRIPT_PARAM_ONKEYDOWN end
-		self.SxOrbMenu.Keys._param[3].pType = SetMode
-		self.LastToggle.LaneClear = self.SxOrbMenu.Keys.Toggle.LaneClear
-	end
-	if self.SxOrbMenu.Keys.Toggle.LastHit ~= self.LastToggle.LastHit then
-		if self.SxOrbMenu.Keys.Toggle.LastHit then SetMode = SCRIPT_PARAM_ONKEYTOGGLE else SetMode = SCRIPT_PARAM_ONKEYDOWN end
-		self.SxOrbMenu.Keys._param[4].pType = SetMode
-		self.LastToggle.LastHit = self.SxOrbMenu.Keys.Toggle.LastHit
+	if not self.NoMenuKeys then
+		if self.SxOrbMenu.Keys.Toggle.Fight ~= self.LastToggle.Fight then
+			if self.SxOrbMenu.Keys.Toggle.Fight then SetMode = SCRIPT_PARAM_ONKEYTOGGLE else SetMode = SCRIPT_PARAM_ONKEYDOWN end
+			self.SxOrbMenu.Keys._param[1].pType = SetMode
+			self.LastToggle.Fight = self.SxOrbMenu.Keys.Toggle.Fight
+		end
+		if self.SxOrbMenu.Keys.Toggle.Harass ~= self.LastToggle.Harass then
+			if self.SxOrbMenu.Keys.Toggle.Harass then SetMode = SCRIPT_PARAM_ONKEYTOGGLE else SetMode = SCRIPT_PARAM_ONKEYDOWN end
+			self.SxOrbMenu.Keys._param[2].pType = SetMode
+			self.LastToggle.Harass = self.SxOrbMenu.Keys.Toggle.Harass
+		end
+		if self.SxOrbMenu.Keys.Toggle.LaneClear ~= self.LastToggle.LaneClear then
+			if self.SxOrbMenu.Keys.Toggle.LaneClear then SetMode = SCRIPT_PARAM_ONKEYTOGGLE else SetMode = SCRIPT_PARAM_ONKEYDOWN end
+			self.SxOrbMenu.Keys._param[3].pType = SetMode
+			self.LastToggle.LaneClear = self.SxOrbMenu.Keys.Toggle.LaneClear
+		end
+		if self.SxOrbMenu.Keys.Toggle.LastHit ~= self.LastToggle.LastHit then
+			if self.SxOrbMenu.Keys.Toggle.LastHit then SetMode = SCRIPT_PARAM_ONKEYTOGGLE else SetMode = SCRIPT_PARAM_ONKEYDOWN end
+			self.SxOrbMenu.Keys._param[4].pType = SetMode
+			self.LastToggle.LastHit = self.SxOrbMenu.Keys.Toggle.LastHit
+		end
 	end
 end
 
 function SxOrbWalk:DoubleModeProtection(msg, key)
-	if key == self.SxOrbMenu.Keys._param[1].key then -- Fight
-		self.SxOrbMenu.Keys.Harass,self.SxOrbMenu.Keys.LaneClear,self.SxOrbMenu.Keys.LastHit = false,false,false
-	end
+	if not self.NoMenuKeys then
+		if key == self.SxOrbMenu.Keys._param[1].key then -- Fight
+			self.SxOrbMenu.Keys.Harass,self.SxOrbMenu.Keys.LaneClear,self.SxOrbMenu.Keys.LastHit = false,false,false
+		end
 
-	if key == self.SxOrbMenu.Keys._param[2].key then -- Harass
-		self.SxOrbMenu.Keys.Fight,self.SxOrbMenu.Keys.LaneClear,self.SxOrbMenu.Keys.LastHit = false,false,false
-	end
+		if key == self.SxOrbMenu.Keys._param[2].key then -- Harass
+			self.SxOrbMenu.Keys.Fight,self.SxOrbMenu.Keys.LaneClear,self.SxOrbMenu.Keys.LastHit = false,false,false
+		end
 
-	if key == self.SxOrbMenu.Keys._param[3].key then -- LaneClear
-		self.SxOrbMenu.Keys.Fight,self.SxOrbMenu.Keys.Harass,self.SxOrbMenu.Keys.LastHit = false,false,false
-	end
+		if key == self.SxOrbMenu.Keys._param[3].key then -- LaneClear
+			self.SxOrbMenu.Keys.Fight,self.SxOrbMenu.Keys.Harass,self.SxOrbMenu.Keys.LastHit = false,false,false
+		end
 
-	if key == self.SxOrbMenu.Keys._param[4].key then -- LastHit
-		self.SxOrbMenu.Keys.Fight,self.SxOrbMenu.Keys.Harass,self.SxOrbMenu.Keys.LaneClear = false,false,false
+		if key == self.SxOrbMenu.Keys._param[4].key then -- LastHit
+			self.SxOrbMenu.Keys.Fight,self.SxOrbMenu.Keys.Harass,self.SxOrbMenu.Keys.LaneClear = false,false,false
+		end
 	end
 end
 
