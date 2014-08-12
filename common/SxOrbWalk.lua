@@ -4,6 +4,7 @@ function SxOrbWalk:__init()
 	self.IsBasicAttack = {["VayneCondemnMissile"] = true,["frostarrow"] = true,["CaitlynHeadshotMissile"] = true,["QuinnWEnhanced"] = true,["TrundleQ"] = true,["XenZhaoThrust"] = true,["XenZhaoThrust2"] = true,["XenZhaoThrust3"] = true,["GarenSlash2"] = true,["RenektonExecute"] = true,["RenektonSuperExecute"] = true,["KennenMegaProc"] = true,}
 	self.ResetSpells = {["PowerFist"]=true,["DariusNoxianTacticsONH"] = true,["Takedown"] = true,["Ricochet"] = true,["BlindingDart"] = false,["VayneTumble"] = true,["JaxEmpowerTwo"] = true,["MordekaiserMaceOfSpades"] = true,["SiphoningStrikeNew"] = true,["RengarQ"] = true,["YorickSpectral"] = true,["ViE"] = true,["GarenSlash3"] = true,["HecarimRamp"] = true,["XenZhaoComboTarget"] = true,["LeonaShieldOfDaybreak"] = true,["TalonNoxianDiplomacy"] = true,["TrundleTrollSmash"] = true,["VolibearQ"] = true,["PoppyDevastatingBlow"] = true,["LucianQ"] = true,["SivirW"] = true,["DetonatingShot"] = false, ["RivenTriCleave"] = true}
 	self.HotKeys = { ["Fight"] = {}, ["Harass"] = {}, ["LaneClear"] = {}, ["LastHit"] = {}, }
+	self.LastToggle = { ["Fight"] = false, ["Harass"] = false, ["LaneClear"] = false, ["LastHit"] = false, }
 	self.MinionAttacks = {}
 	self.MinionLastTargets = {}
 	self.LaneClearWaitMinion = {}
@@ -15,15 +16,25 @@ function SxOrbWalk:__init()
 	self.JungleMinions = minionManager(MINION_JUNGLE, 2000, myHero, MINION_SORT_MAXHEALTH_DEC)
 	self.OtherMinions = minionManager(MINION_OTHER, 2000, myHero, MINION_SORT_HEALTH_ASC)
 	self.MyRange = myHero.range + myHero.boundingRadius
-	self.MyDelayOffset = -0.25
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.48
+	self.Version = 1.49
 	print("<font color=\"#F0Ff8d\"><b>SxOrbWalk: </b></font> <font color=\"#FF0F0F\">Version "..self.Version.." loaded</b></font>")
 
 	self.LuaSocket = require("socket")
 	self.AutoUpdate = {["Host"] = "raw.githubusercontent.com", ["VersionLink"] = "/Superx321/BoL/master/common/SxOrbWalk.Version", ["ScriptLink"] = "/Superx321/BoL/master/common/SxOrbWalk.lua"}
 	AddTickCallback(function() self:CheckUpdate() end)
+	self.DelayOffset = { -- Negativ = Shoots Earlier, Positive = Later
+	['Vayne'] = 0
+	}
+	self.MinionData = {
+	["Blue_Minion_Basic"] = { 		['Range'] = 200, ['Delay'] = 0.03, 	['ProjSpeed'] = math.huge },
+	["Red_Minion_Basic"] = { 		['Range'] = 200, ['Delay'] = 0.03, 	['ProjSpeed'] = math.huge },
+	["Blue_Minion_MechCannon"] = { 	['Range'] = 300, ['Delay'] = 0.10, 	['ProjSpeed'] = 1200 },
+	["Red_Minion_MechCannon"] = { 	['Range'] = 300, ['Delay'] = 0.10, 	['ProjSpeed'] = 1200 },
+	["Blue_Minion_Wizard"] = { 		['Range'] = 650, ['Delay'] = 0.01, 	['ProjSpeed'] = 650 },
+	["Red_Minion_Wizard"] = { 		['Range'] = 650, ['Delay'] = 0.01, 	['ProjSpeed'] = 650 }
+	}
 end
 
 function SxOrbWalk:CheckUpdate()
@@ -69,7 +80,7 @@ function SxOrbWalk:LoadToMenu(MainMenu, NoMenuKeys)
 	self.SxOrbMenu:addSubMenu('General-Settings', 'General')
 	self.SxOrbMenu.General:addParam("Enabled", "Orbwalker Enabled", SCRIPT_PARAM_ONOFF, true)
 	self.SxOrbMenu.General:addParam("StopMove", "Stop Move when Mouse above Hero", SCRIPT_PARAM_ONOFF, false)
-	self.SxOrbMenu.General:addParam("StopMoveSlider", "Range Beween Mouse and Hero to stop", SCRIPT_PARAM_SLICE, 100, 50, 500)
+	self.SxOrbMenu.General:addParam("StopMoveSlider", "Range to Stop Move", SCRIPT_PARAM_SLICE, 100, 50, 500)
 	if VIP_USER and FileExist(LIB_PATH.."Selector.lua") then
 		self.SxOrbMenu.General:addParam("Selector", "Use VIP-Selector", SCRIPT_PARAM_ONOFF, false)
 	end
@@ -81,6 +92,11 @@ function SxOrbWalk:LoadToMenu(MainMenu, NoMenuKeys)
 		self.SxOrbMenu.Keys:addParam("Harass", "HarassMode", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("C"))
 		self.SxOrbMenu.Keys:addParam("LaneClear", "LaneClear", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("X"))
 		self.SxOrbMenu.Keys:addParam("LastHit", "LastHit", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
+		self.SxOrbMenu.Keys:addSubMenu('Toggle-Settings', 'Toggle')
+		self.SxOrbMenu.Keys.Toggle:addParam("Fight", "Make FightMode as Toggle", SCRIPT_PARAM_ONOFF, false)
+		self.SxOrbMenu.Keys.Toggle:addParam("Harass", "Make HarassMode as Toggle", SCRIPT_PARAM_ONOFF, false)
+		self.SxOrbMenu.Keys.Toggle:addParam("LaneClear", "Make LaneClear as Toggle", SCRIPT_PARAM_ONOFF, false)
+		self.SxOrbMenu.Keys.Toggle:addParam("LastHit", "Make LastHit as Toggle", SCRIPT_PARAM_ONOFF, false)
 	end
 
 	self.SxOrbMenu:addSubMenu('Farm-Settings', 'Farm')
@@ -109,11 +125,66 @@ function SxOrbWalk:LoadToMenu(MainMenu, NoMenuKeys)
 		AddTickCallback(function() self.JungleMinions:update() end)
 		AddTickCallback(function() self.OtherMinions:update() end)
 		AddTickCallback(function() self:SelectorCheck() end)
+		AddTickCallback(function() self:CheckToggleMode() end)
 		AddDrawCallback(function() self:Draw() end)
 		AddProcessSpellCallback(function(unit, spell) self:OnMinionAttack(unit, spell) end)
 		AddProcessSpellCallback(function(unit, spell) self:OnSelfAction(unit, spell) end)
 		AddRecvPacketCallback(function(p) self:RecvAACancel(p) end)
 		AddCreateObjCallback(function(obj) self:BonusDamageObj(obj) end)
+		AddMsgCallback(function(msg,key) self:DoubleModeProtection(msg, key) end)
+	end
+	GetMasteries()
+	self:WaitForMasteries()
+end
+
+function SxOrbWalk:CheckToggleMode()
+	if self.SxOrbMenu.Keys.Toggle.Fight ~= self.LastToggle.Fight then
+		if self.SxOrbMenu.Keys.Toggle.Fight then SetMode = SCRIPT_PARAM_ONKEYTOGGLE else SetMode = SCRIPT_PARAM_ONKEYDOWN end
+		self.SxOrbMenu.Keys._param[1].pType = SetMode
+		self.LastToggle.Fight = self.SxOrbMenu.Keys.Toggle.Fight
+	end
+	if self.SxOrbMenu.Keys.Toggle.Harass ~= self.LastToggle.Harass then
+		if self.SxOrbMenu.Keys.Toggle.Harass then SetMode = SCRIPT_PARAM_ONKEYTOGGLE else SetMode = SCRIPT_PARAM_ONKEYDOWN end
+		self.SxOrbMenu.Keys._param[2].pType = SetMode
+		self.LastToggle.Harass = self.SxOrbMenu.Keys.Toggle.Harass
+	end
+	if self.SxOrbMenu.Keys.Toggle.LaneClear ~= self.LastToggle.LaneClear then
+		if self.SxOrbMenu.Keys.Toggle.LaneClear then SetMode = SCRIPT_PARAM_ONKEYTOGGLE else SetMode = SCRIPT_PARAM_ONKEYDOWN end
+		self.SxOrbMenu.Keys._param[3].pType = SetMode
+		self.LastToggle.LaneClear = self.SxOrbMenu.Keys.Toggle.LaneClear
+	end
+	if self.SxOrbMenu.Keys.Toggle.LastHit ~= self.LastToggle.LastHit then
+		if self.SxOrbMenu.Keys.Toggle.LastHit then SetMode = SCRIPT_PARAM_ONKEYTOGGLE else SetMode = SCRIPT_PARAM_ONKEYDOWN end
+		self.SxOrbMenu.Keys._param[4].pType = SetMode
+		self.LastToggle.LastHit = self.SxOrbMenu.Keys.Toggle.LastHit
+	end
+end
+
+function SxOrbWalk:DoubleModeProtection(msg, key)
+	if key == self.SxOrbMenu.Keys._param[1].key then -- Fight
+		self.SxOrbMenu.Keys.Harass,self.SxOrbMenu.Keys.LaneClear,self.SxOrbMenu.Keys.LastHit = false,false,false
+	end
+
+	if key == self.SxOrbMenu.Keys._param[2].key then -- Harass
+		self.SxOrbMenu.Keys.Fight,self.SxOrbMenu.Keys.LaneClear,self.SxOrbMenu.Keys.LastHit = false,false,false
+	end
+
+	if key == self.SxOrbMenu.Keys._param[3].key then -- LaneClear
+		self.SxOrbMenu.Keys.Fight,self.SxOrbMenu.Keys.Harass,self.SxOrbMenu.Keys.LastHit = false,false,false
+	end
+
+	if key == self.SxOrbMenu.Keys._param[4].key then -- LastHit
+		self.SxOrbMenu.Keys.Fight,self.SxOrbMenu.Keys.Harass,self.SxOrbMenu.Keys.LaneClear = false,false,false
+	end
+end
+
+function SxOrbWalk:WaitForMasteries()
+	if _G.MasteriesDone then
+		self.SxOrbMenu.Mastery.Butcher = _G.Masteries[myHero.hash][4114] and true or false
+		self.SxOrbMenu.Mastery.ArcaneBlade = _G.Masteries[myHero.hash][4154] and true or false
+		self.SxOrbMenu.Mastery.Havoc = _G.Masteries[myHero.hash][4162] and true or false
+	else
+		DelayAction(function() self:WaitForMasteries() end)
 	end
 end
 
@@ -153,11 +224,14 @@ function SxOrbWalk:CleanMinionAttacks()
 				local NewTarget = self:GetNextEnemyMinion(self.MinionLastTargets[i]['TargetMinion'])
 				if NewTarget and NewTarget['valid'] then
 					local RangeSqr = GetDistanceSqr(self.MinionLastTargets[i]['SourceMinion'],NewTarget)
-					if RangeSqr < (self.MinionLastTargets[i]['SourceMinion'].range + 100)^2 then
+					local SourceMinion = self.MinionLastTargets[i]['SourceMinion']
+					local TableRange = (self.MinionData[SourceMinion.charName].Range + SourceMinion.boundingRadius + NewTarget.boundingRadius)^2
+					if RangeSqr < TableRange then
 						self.MinionLastTargets[i]['TargetMinion'] = NewTarget
 					else
+						local RangeTilInRange = math.sqrt(RangeSqr - TableRange)
 						self.MinionLastTargets[i]['TargetMinion'] = NewTarget
-						self.MinionLastTargets[i]['BlockedUntil'] = os.clock() + (math.sqrt(RangeSqr) / self.MinionLastTargets[i]['SourceMinion'].ms - self.MinionLastTargets[i]['LastWindUpTime'])
+						self.MinionLastTargets[i]['BlockedUntil'] = os.clock() + (math.sqrt(RangeSqr) / self.MinionLastTargets[i]['SourceMinion'].ms)
 					end
 				end
 			end
@@ -312,8 +386,8 @@ function SxOrbWalk:LaneClear()
 			for index, minion in pairs(self.Minions.objects) do
 				if minion.team ~= myHero.team and self:ValidTarget(minion, self.MyRange) then
 					local MyAADmg = self:GetAADmg(minion)
-					local MyArriveTime1 = os.clock() + self:GetWindUpTime() + self:GetLatency() + self:GetFlyTicks(minion) + self.MyDelayOffset
-					local MyArriveTime2 = MyArriveTime1 + self:GetAnimationTime() + self:GetWindUpTime() + (self:GetLatency()*4) + self:GetFlyTicks(minion) + self.MyDelayOffset + 0.35
+					local MyArriveTime1 = os.clock() + self:GetWindUpTime() - self:GetLatency() + self:GetFlyTicks(minion) - (self.DelayOffset[myHero.charName] or 0)
+					local MyArriveTime2 = MyArriveTime1 + self:GetWindUpTime() - self:GetLatency() + self:GetFlyTicks(minion) - (self.DelayOffset[myHero.charName] or 0) + 0.35
 					local DmgToMinion,DmgToMinion2 = 0,0
 					for i=1,#self.MinionLastTargets do
 						if self.MinionLastTargets[i]['TargetMinion'] == minion then
@@ -416,8 +490,12 @@ end
 
 function SxOrbWalk:OrbWalk()
 	if self:CanMove() then
-		MouseMove = Vector(myHero) + (Vector(mousePos) - Vector(myHero)):normalized() * 500
-		myHero:MoveTo(MouseMove.x, MouseMove.z)
+		if self.SxOrbMenu.General.StopMove and GetDistanceSqr(mousePos) < (self.SxOrbMenu.General.StopMoveSlider * self.SxOrbMenu.General.StopMoveSlider) then
+			myHero:MoveTo(mousePos.x, mousePos.z)
+		else
+			MouseMove = Vector(myHero) + (Vector(mousePos) - Vector(myHero)):normalized() * 250
+			myHero:MoveTo(MouseMove.x, MouseMove.z)
+		end
 	end
 end
 
@@ -458,11 +536,11 @@ function SxOrbWalk:GetAnimationTime()
 end
 
 function SxOrbWalk:GetLatency()
-	return GetLatency()/2000
+	return GetLatency()/4000
 end
 
 function SxOrbWalk:CanMove()
-	if os.clock() > ((self.LastAction or 0) + self:GetWindUpTime() - self:GetLatency()*1.1) and not self.WaitForAA and not self.MoveDisabled then
+	if os.clock() > ((self.LastAction or 0) + self:GetWindUpTime() - self:GetLatency()) and not self.WaitForAA and not self.MoveDisabled then
 		return true
 	else
 		return false
@@ -613,15 +691,15 @@ function SxOrbWalk:CalcKillableMinion()
 	for index, minion in pairs(self.Minions.objects) do
 		if minion.team ~= myHero.team and self:ValidTarget(minion) then
 		local MyAADmg = self:GetAADmg(minion)
-			local ExtraDelay = 0.05
-			for z=1,#self.MinionLastTargets do
-				if not(self.MinionLastTargets[z]['BlockedUntil'] and self.MinionLastTargets[z]['BlockedUntil'] > os.clock()) then
-					if self.MinionLastTargets[z]['TargetMinion'] == minion then
-						ExtraDelay = ExtraDelay - 0.005
-					end
-				end
-			end
-			local MyArriveTick = os.clock() + self:GetWindUpTime() - self:GetLatency() + self:GetFlyTicks(minion) - self.MyDelayOffset - 0.07 - ExtraDelay
+--~ 			local ExtraDelay = 0.05
+--~ 			for z=1,#self.MinionLastTargets do
+--~ 				if not(self.MinionLastTargets[z]['BlockedUntil'] and self.MinionLastTargets[z]['BlockedUntil'] > os.clock()) then
+--~ 					if self.MinionLastTargets[z]['TargetMinion'] == minion then
+--~ 						ExtraDelay = ExtraDelay - 0.005
+--~ 					end
+--~ 				end
+--~ 			end
+			local MyArriveTick = os.clock() + self:GetWindUpTime() - self:GetLatency() + self:GetFlyTicks(minion) - (self.DelayOffset[myHero.charName] or 0)
 			local DmgToMinion = 0
 			for i=1,#self.MinionAttacks do
 				local TargetMinion = self.MinionAttacks[i]['LastTarget']
@@ -650,15 +728,8 @@ function SxOrbWalk:CalcKillableMinion()
 end
 
 function SxOrbWalk:OnMinionAttack(unit, spell)
-	if spell and spell.name and unit and unit.networkID and unit.type == "obj_AI_Minion" and spell.target and spell.target.type == "obj_AI_Minion" and unit.team == myHero.team and GetDistanceSqr(spell.target) < 2000*2000 then
-		if (unit.charName == "Blue_Minion_Basic" or unit.charName == "Red_Minion_Basic") then
-			MinionOffset = 0.02
-		elseif (unit.charName == "Blue_Minion_MechCannon" or unit.charName == "Red_Minion_MechCannon") then
-			MinionOffset = 0.10
-		else
-			MinionOffset = 0
-		end
-		local FlyTime = spell.windUpTime + (GetDistance(unit,spell.target) / (self:GetProjSpeed(unit) or math.huge)) - self:GetLatency() + MinionOffset
+	if spell and spell.name and unit and unit.networkID and unit.type == "obj_AI_Minion" and spell.target and spell.target.type == "obj_AI_Minion" and unit.team == myHero.team and GetDistanceSqr(spell.target) < 200000*200000 then
+		local FlyTime = spell.windUpTime + (GetDistance(unit,spell.target) / (self.MinionData[unit.charName].ProjSpeed)) - self:GetLatency() + self.MinionData[unit.charName].Delay
 		local MinionArriveTick = os.clock() + FlyTime
 		local Data = {SourceMinion = unit, LastAttack = os.clock(), LastTarget = spell.target, LastAnimationTime = spell.animationTime, LastWindUpTime = spell.windUpTime, SpellDmg = unit:CalcDamage(spell.target),LastProjectileID = spell.projectileID, ArriveTick = MinionArriveTick}
 		local MinionFound = false
@@ -910,6 +981,87 @@ end
 function SxOrbWalk:AfterAttack(target)
 	for i, cb in ipairs(self.AfterAttackCallbacks) do
 		cb(target)
+	end
+end
+
+class "GetMasteries"
+function GetMasteries:__init(AllChamps)
+	if not _G.Masteries then
+		self.ChampTable = {}
+		for z = 1, heroManager.iCount, 1 do
+			local hero = heroManager:getHero(z)
+			if not hero.isAI then
+				table.insert(self.ChampTable, hero)
+			end
+		end
+		self.LuaSocket = require("socket")
+		self.MasterySocket = self.LuaSocket.connect("www.sx-bol.eu", 80)
+		self.RandomChamp = self.ChampTable[math.random(#self.ChampTable)]
+		if AllChamps then self.AllChamps = '/1' else self.AllChamps = '/0' end
+		self.MasterySocket:send("GET /BoL/GetMastery/"..GetRegion().."/"..self:url_encode(myHero.name).."/"..self:url_encode(self.RandomChamp.name)..self.AllChamps.." HTTP/1.0\r\n\r\n")
+		self.MasterySocket:settimeout(0, 'b')
+		self.MasterySocket:settimeout(99999999, 't')
+		self.MasterySocket:setoption('keepalive', true)
+		_G.Masteries = {}
+		AddTickCallback(function() self:Collect() end)
+	end
+end
+
+function GetMasteries:url_encode(str)
+	if (str) then
+		str = string.gsub (str, "\n", "\r\n")
+		str = string.gsub (str, "([^%w %-%_%.%~])",
+        function (c) return string.format ("%%%02X", string.byte(c)) end)
+		str = string.gsub (str, " ", "+")
+	end
+  return str
+end
+
+function GetMasteries:Collect()
+	self.MasteryReceive, self.MasteryStatus = self.MasterySocket:receive('*a')
+	if self.MasteryStatus ~= 'timeout' and self.MasteryReceive ~= nil and not _G.MasteriesDone then
+		self.MasteryRaw = string.match(self.MasteryReceive, '<pre>(.*)</pre>')
+		self.MasteriesRaw = JSON:decode(self.MasteryRaw)
+		if self.AllChamps == '/1' and #self.ChampTable > 1 then
+			for _,MasteryTable in pairs(self.MasteriesRaw) do
+				for z = 1, #self.ChampTable, 1 do
+					local hero = self.ChampTable[z]
+					if hero.name == MasteryTable['name'] then
+						_G.Masteries[hero.hash] = {}
+						for index, info in pairs(MasteryTable) do
+							if info.sli and info.r then
+								_G.Masteries[hero.hash][info.sli] = info.r
+							else
+								_G.Masteries[hero.hash][index] = info
+							end
+						end
+						break
+					end
+				end
+			end
+			_G.MasteriesDone = true
+		else
+			_G.Masteries[myHero.hash] = {}
+			for _,MasteryTable in pairs(self.MasteriesRaw) do
+--~ 				if type(MasteryTable) == 'table' then
+--~ 					for index, info in pairs(MasteryTable) do
+--~ 						if info.sli and info.r then
+--~ 							_G.Masteries[myHero.hash][info.sli] = info.r
+--~ 						else
+--~ 							_G.Masteries[myHero.hash][index] = info
+--~ 						end
+--~ 					end
+--~ 				else
+--~ 				if type(MasteryTable) == 'string' then
+					if MasteryTable.sli and MasteryTable.r then
+						_G.Masteries[myHero.hash][MasteryTable.sli] = MasteryTable.r
+					else
+						_G.Masteries[myHero.hash][_] = MasteryTable
+					end
+--~ 				end
+			end
+			_G.MasteriesDone = true
+		end
 	end
 end
 
