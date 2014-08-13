@@ -18,7 +18,7 @@ function SxOrbWalk:__init()
 	self.MyRange = myHero.range + myHero.boundingRadius
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.51
+	self.Version = 1.52
 	print("<font color=\"#F0Ff8d\"><b>SxOrbWalk: </b></font> <font color=\"#FF0F0F\">Version "..self.Version.." loaded</b></font>")
 
 	self.LuaSocket = require("socket")
@@ -733,7 +733,13 @@ function SxOrbWalk:CalcKillableMinion()
 end
 
 function SxOrbWalk:OnMinionAttack(unit, spell)
-	if spell and spell.name and unit and unit.networkID and unit.type == "obj_AI_Minion" and spell.target and spell.target.type == "obj_AI_Minion" and unit.team == myHero.team and GetDistanceSqr(spell.target) < 200000*200000 then
+	if spell and spell.name and unit and unit.networkID and unit.type == "obj_AI_Minion" and spell.target and spell.target.type == "obj_AI_Minion" and unit.team == myHero.team and GetDistanceSqr(spell.target) < 2000*2000 then
+		if not self.MinionData[unit.charName] then
+			for i=1,10 do
+				print('Error Getting MinionData: '..unit.charName)
+			end
+			return
+		end
 		local FlyTime = spell.windUpTime + (GetDistance(unit,spell.target) / (self.MinionData[unit.charName].ProjSpeed)) - self:GetLatency() + self.MinionData[unit.charName].Delay
 		local MinionArriveTick = os.clock() + FlyTime
 		local Data = {SourceMinion = unit, LastAttack = os.clock(), LastTarget = spell.target, LastAnimationTime = spell.animationTime, LastWindUpTime = spell.windUpTime, SpellDmg = unit:CalcDamage(spell.target),LastProjectileID = spell.projectileID, ArriveTick = MinionArriveTick}
