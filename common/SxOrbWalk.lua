@@ -18,7 +18,7 @@ function SxOrbWalk:__init()
 	self.MyRange = myHero.range + myHero.boundingRadius
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.53
+	self.Version = 1.54
 	print("<font color=\"#F0Ff8d\"><b>SxOrbWalk: </b></font> <font color=\"#FF0F0F\">Version "..self.Version.." loaded</b></font>")
 
 	self.LuaSocket = require("socket")
@@ -630,7 +630,7 @@ function SxOrbWalk:BonusDamage(minion)
 	elseif myHero.charName == 'MissFortune' and myHero:GetSpellData(1).level > 0 then
 		BONUS = BONUS + myHero:CalcMagicDamage(minion, (myHero.totalDamage*0.06))
 	elseif myHero.charName == 'Varus' and myHero:GetSpellData(1).level > 0 then
-		BONUS = BONUS + myHero:CalcMagicDamage(6 + (myHero:GetSpellData(1).level * 4) + (myHero.ap * 0.25))
+		BONUS = BONUS + myHero:CalcMagicDamage(minion, 6 + (myHero:GetSpellData(1).level * 4) + (myHero.ap * 0.25))
 	elseif myHero.charName == 'Caitlyn' then
 		if HeadShotParticle and HeadShotParticle.valid then
 			BONUS = BONUS + myHero:CalcDamage(minion, myHero.totalDamage * 1.5)
