@@ -18,7 +18,7 @@ function SxOrbWalk:__init()
 	self.MyRange = myHero.range + myHero.boundingRadius
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.54
+	self.Version = 1.55
 	print("<font color=\"#F0Ff8d\"><b>SxOrbWalk: </b></font> <font color=\"#FF0F0F\">Version "..self.Version.." loaded</b></font>")
 
 	self.LuaSocket = require("socket")
@@ -233,7 +233,7 @@ function SxOrbWalk:CleanMinionAttacks()
 				if NewTarget and NewTarget['valid'] then
 					local RangeSqr = GetDistanceSqr(self.MinionLastTargets[i]['SourceMinion'],NewTarget)
 					local SourceMinion = self.MinionLastTargets[i]['SourceMinion']
-					local TableRange = (self.MinionData[SourceMinion.charName].Range + SourceMinion.boundingRadius + NewTarget.boundingRadius)^2
+					local TableRange = ((self.MinionData[SourceMinion.charName].Range or 150) + SourceMinion.boundingRadius + NewTarget.boundingRadius)^2
 					if RangeSqr < TableRange then
 						self.MinionLastTargets[i]['TargetMinion'] = NewTarget
 					else
