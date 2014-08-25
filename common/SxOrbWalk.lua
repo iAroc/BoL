@@ -6,6 +6,7 @@ function SxOrbWalk:__init()
 	self.HotKeys = { ["Fight"] = {}, ["Harass"] = {}, ["LaneClear"] = {}, ["LastHit"] = {}, }
 	self.LastToggle = { ["Fight"] = false, ["Harass"] = false, ["LaneClear"] = false, ["LastHit"] = false, }
 	self.MinionAttacks = {}
+	self.EnemyMinionAttacks = {}
 	self.MinionLastTargets = {}
 	self.LaneClearWaitMinion = {}
 	self.KillAbleMinion = {}
@@ -19,23 +20,13 @@ function SxOrbWalk:__init()
 	self.MyRange = myHero.range + myHero.boundingRadius
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.56
+	self.Version = 1.57
 	print("<font color=\"#F0Ff8d\"><b>SxOrbWalk: </b></font> <font color=\"#FF0F0F\">Version "..self.Version.." loaded</b></font>")
 
 	self.LuaSocket = require("socket")
 	self.AutoUpdate = {["Host"] = "raw.githubusercontent.com", ["VersionLink"] = "/Superx321/BoL/master/common/SxOrbWalk.Version", ["ScriptLink"] = "/Superx321/BoL/master/common/SxOrbWalk.lua"}
 	AddTickCallback(function() self:CheckUpdate() end)
-	self.DelayOffset = { -- Negativ = Shoots Earlier, Positive = Later
-	 ['Vayne'] = 0
-	}
-	self.MinionData = {
-  	["Blue_Minion_Basic"]    = {  ['Range'] = 200, ['Delay'] = 0.03, 	['ProjSpeed'] = math.huge },
-  	["Red_Minion_Basic"] =     { 	['Range'] = 200, ['Delay'] = 0.03, 	['ProjSpeed'] = math.huge },
-  	["Blue_Minion_MechCannon"]= { 	['Range'] = 300, ['Delay'] = 0.10, 	['ProjSpeed'] = 1200 },
-  	["Red_Minion_MechCannon"] = { 	['Range'] = 300, ['Delay'] = 0.10, 	['ProjSpeed'] = 1200 },
-  	["Blue_Minion_Wizard"] = { 		['Range'] = 650, ['Delay'] = 0.01, 	['ProjSpeed'] = 650 },
-  	["Red_Minion_Wizard"] = { 		['Range'] = 650, ['Delay'] = 0.01, 	['ProjSpeed'] = 650 }
-	}
+
 end
 
 function SxOrbWalk:CheckUpdate()
@@ -109,9 +100,11 @@ function SxOrbWalk:LoadToMenu(MainMenu, NoMenuKeys)
 	self.SxOrbMenu.Mastery:addParam("Butcher", 'Mastery: Butcher', SCRIPT_PARAM_ONOFF, true)
 	self.SxOrbMenu.Mastery:addParam("ArcaneBlade", 'Mastery: Arcane Blade', SCRIPT_PARAM_ONOFF, true)
 	self.SxOrbMenu.Mastery:addParam("Havoc", 'Mastery: Havoc', SCRIPT_PARAM_ONOFF, true)
+	self.SxOrbMenu.Mastery:addParam("DevastatingStrikes", "Mastery: Devastating Strikes", SCRIPT_PARAM_SLICE, 0, 0, 3)
 	self.SxOrbMenu.Mastery.Butcher = false
 	self.SxOrbMenu.Mastery.ArcaneBlade = false
 	self.SxOrbMenu.Mastery.Havoc = false
+	self.SxOrbMenu.Mastery.DevastatingStrikes = 0
 
 	self.SxOrbMenu:addSubMenu('Draw-Settings', 'Draw')
 	self.SxOrbMenu.Draw:addParam("OwnAARange", 'Draw Own AA Range', SCRIPT_PARAM_ONOFF, true)
@@ -123,7 +116,7 @@ function SxOrbWalk:LoadToMenu(MainMenu, NoMenuKeys)
 		_G.SxOrbMenu.Mode = {}
 		AddTickCallback(function() self:Tick() end)
 		AddTickCallback(function() self:UpdateRange() end)
---		AddTickCallback(function() self:CalcKillableMinion() end)
+		AddTickCallback(function() self:CalcKillableMinion() end)
 		AddTickCallback(function() self:CleanMinionAttacks() end)
 		AddTickCallback(function() self:HotKeyCallback() end)
 		AddTickCallback(function() self.Minions:update() end)
@@ -137,6 +130,8 @@ function SxOrbWalk:LoadToMenu(MainMenu, NoMenuKeys)
 		AddProcessSpellCallback(function(unit, spell) self:OnSelfAction(unit, spell) end)
 		AddRecvPacketCallback(function(p) self:RecvAACancel(p) end)
 		AddCreateObjCallback(function(obj) self:BonusDamageObj(obj) end)
+		AddCreateObjCallback(function(obj) self:OnCreateObj(obj) end)
+		AddDeleteObjCallback(function(obj) self:OnDeleteObj(obj) end)
 		AddMsgCallback(function(msg,key) self:DoubleModeProtection(msg, key) end)
 	end
 	GetMasteries()
@@ -194,6 +189,7 @@ function SxOrbWalk:WaitForMasteries()
 			self.SxOrbMenu.Mastery.Butcher = _G.Masteries[myHero.hash][4114] and true or false
 			self.SxOrbMenu.Mastery.ArcaneBlade = _G.Masteries[myHero.hash][4154] and true or false
 			self.SxOrbMenu.Mastery.Havoc = _G.Masteries[myHero.hash][4162] and true or false
+			self.SxOrbMenu.Mastery.DevastatingStrikes = _G.Masteries[myHero.hash][4152] and _G.Masteries[myHero.hash][4152] or 0
 		end
 	else
 		DelayAction(function() self:WaitForMasteries() end)
@@ -214,29 +210,38 @@ end
 
 function SxOrbWalk:CleanMinionAttacks()
 	for index, data in pairs(self.MinionAttacks) do
-		if os.clock() > data['ArriveTick'] then
+		local MinionData = data
+		local MinionArriveTime = MinionData['StartTime'] + MinionData['WindUptime'] + self:GetFlyTicks(MinionData['Target'], MinionData['Source']) + (GetLatency()/1000)*2 + 0.15
+		if data['ProjectileValid'] == 2 or os.clock() > MinionArriveTime then
 			table.remove(self.MinionAttacks, index)
 		end
 	end
-
-	for index, data in pairs(self.KillAbleMinion) do
-		if data['minion'].health == 0 then
-			table.remove(self.KillAbleMinion, index)
+	for index, data in pairs(self.EnemyMinionAttacks) do
+		local MinionData = data
+		local MinionArriveTime = MinionData['StartTime'] + MinionData['WindUptime'] + self:GetFlyTicks(MinionData['Target'], MinionData['Source']) + (GetLatency()/1000)*2 + 0.15
+		if data['ProjectileValid'] == 2 or os.clock() > MinionArriveTime then
+			table.remove(self.EnemyMinionAttacks, index)
 		end
 	end
 
-	for index, data in pairs(self.MinionLastTargets) do
-		if data['SourceMinion']['health'] == 0 then
-			table.remove(self.MinionLastTargets, index)
-		else
-			if data['TargetMinion']['health'] == 0 then
-				local NewTarget = self:GetNextEnemyMinion(data['TargetMinion'])
-				if NewTarget and NewTarget['valid'] then
-					data['TargetMinion'] = NewTarget
-				end
-			end
-		end
-	end
+--~ 	for index, data in pairs(self.KillAbleMinion) do
+--~ 		if data['minion'].health == 0 then
+--~ 			table.remove(self.KillAbleMinion, index)
+--~ 		end
+--~ 	end
+
+--~ 	for index, data in pairs(self.MinionLastTargets) do
+--~ 		if data['SourceMinion']['health'] == 0 then
+--~ 			table.remove(self.MinionLastTargets, index)
+--~ 		else
+--~ 			if data['TargetMinion']['health'] == 0 then
+--~ 				local NewTarget = self:GetNextEnemyMinion(data['TargetMinion'])
+--~ 				if NewTarget and NewTarget['valid'] then
+--~ 					data['TargetMinion'] = NewTarget
+--~ 				end
+--~ 			end
+--~ 		end
+--~ 	end
 end
 
 function SxOrbWalk:Tick()
@@ -285,7 +290,7 @@ function SxOrbWalk:Draw()
 
 	if self.SxOrbMenu.Draw.EnemyAARange then
 		for index, hero in pairs(GetEnemyHeroes()) do
-			if hero.team ~= myHero.team and GetDistanceSqr(myHero,hero) < 2000 and hero.visible and self:ValidTarget(hero) then
+			if hero.team ~= myHero.team and GetDistanceSqr(myHero,hero) < 2500*2500 and hero.visible and self:ValidTarget(hero) then
 				self:DrawCircle(hero.x,hero.y,hero.z, hero.range + hero.boundingRadius + myHero.boundingRadius - 10, self.Color.White)
 			end
 		end
@@ -320,22 +325,11 @@ function SxOrbWalk:DrawCircle(x,y,z,radius, color)
 end
 
 function SxOrbWalk:DrawKillAbleMinion()
-    local LastHitMinions = {}
-    for index, minion in pairs(self.Minions.objects) do
-		if minion.team ~= myHero.team and self:ValidTarget(minion) then
-			local DmgToMinion = 0
-			local MyAADmg = self:GetAADmg(minion)
-			local MyArriveTime = os.clock() + self:GetWindUpTime() + self:GetLatency() + self:GetFlyTicks(minion) - (self.DelayOffset[myHero.charName] or 0) - 0.03
-			for i=1,#self.MinionAttacks do
-				if self.MinionAttacks[i]['Target'] == minion then
-					if MyArriveTime > self.MinionAttacks[i]['ArriveTick'] then
-						DmgToMinion = DmgToMinion + self.MinionAttacks[i]['SpellDmg']
-					end
-				end
-			end
-			if (MyAADmg + DmgToMinion) > minion.health then
-				self:DrawCircle(minion.x, minion.y, minion.z, 150, self.Color.White)
-			end
+    for index, data in ipairs(self.KillAbleMinion) do
+		if self:ValidTarget(data.Minion) then
+			self:DrawCircle(data.Minion.x, data.Minion.y, data.Minion.z, 150, self.Color.White)
+		else
+			table.remove(self.KillAbleMinion, index)
 		end
     end
 end
@@ -352,7 +346,7 @@ end
 function SxOrbWalk:FightMode()
 	if self:CanAttack() then
 		Target, damage = self:GetTarget()
-		if Target and self:ValidTarget(Target, self.OverRideRange or self.MyRange) then
+		if Target and self:ValidTarget(Target, self.OverRideRange or (self.MyRange)) then
 			self:MyAttack(Target)
 		end
 	end
@@ -379,7 +373,7 @@ function SxOrbWalk:LaneClear()
 		for index, minion in pairs(self.LaneClearMinions.objects) do
 			if minion.team ~= myHero.team and self:ValidTarget(minion, self.MyRange) then
 				local MyAADmg = self:GetAADmg(minion)
-				local MyArriveTime = os.clock() + 0.4 + self:GetAnimationTime() + self:GetLatency() + self:GetFlyTicks(minion) - (self.DelayOffset[myHero.charName] or 0) + self:GetWindUpTime()
+				local MyArriveTime = os.clock() + 0.4 + self:GetAnimationTime() + self:GetLatency() + self:GetFlyTicks(minion) + self:GetWindUpTime()
 				local DmgToMinion = 0
 				for i=1,#self.MinionLastTargets do
 					if self.MinionLastTargets[i]['TargetMinion'] == minion then
@@ -443,41 +437,36 @@ function SxOrbWalk:LaneClear()
 end
 
 function SxOrbWalk:LastHit()
-    local LastHitMinions = {}
     for index, minion in pairs(self.Minions.objects) do
 		if minion.team ~= myHero.team and self:ValidTarget(minion) then
-			local AttackCount = 0
-			local DmgToMinion = 0
 			local MyAADmg = self:GetAADmg(minion)
-			local MyArriveTime = os.clock() + self:GetWindUpTime() + self:GetLatency() + self:GetFlyTicks(minion) - (self.DelayOffset[myHero.charName] or 0)
-			for i=1,#self.MinionAttacks do
-				if self.MinionAttacks[i]['Target'] == minion then
---~ 					local Projectile = objManager:GetObjectByNetworkId(self.MinionAttacks[i]['LastProjectileID'])
---~ 					if Projectile and Projectile.valid and GetDistanceSqr(minion,Projectile) > 50*50 then
-						AttackCount = AttackCount + 1
-						if MyArriveTime > self.MinionAttacks[i]['ArriveTick'] then
-							DmgToMinion = DmgToMinion + self.MinionAttacks[i]['SpellDmg']
-						end
---~ 					end
-				end
-			end
+			DmgToMinion, AttackCount = self:GetPredictDMG(minion)
 			if (MyAADmg + DmgToMinion) > minion.health then
-				table.insert(LastHitMinions, {['Minion'] = minion, ['AttackCount'] = AttackCount})
+				local MinionFound = false
+				for u=1,#self.KillAbleMinion do
+					if self.KillAbleMinion[u]['Minion']['networkID'] == minion.networkID then
+						MinionFound = true
+						break
+					end
+				end
+				if not MinionFound then
+					table.insert(self.KillAbleMinion, {['Minion'] = minion, ['AttackCount'] = AttackCount})
+				end
 			end
 		end
     end
 
     local unit, counts = nil, -1
-    for i=1,#LastHitMinions do
-		if self:ValidTarget(LastHitMinions[i]['Minion'], self.MyRange) then
-			local IsCannon = LastHitMinions[i]['Minion'].charName:lower():find('cannon') and true or false
+    for i=1,#self.KillAbleMinion do
+		if self:ValidTarget(self.KillAbleMinion[i]['Minion'], self.MyRange) then
+			local IsCannon = self.KillAbleMinion[i]['Minion'].charName:lower():find('cannon') and true or false
 			if IsCannon then
-				unit = LastHitMinions[i]['Minion']
+				unit = self.KillAbleMinion[i]['Minion']
 				break
 			else
-				if LastHitMinions[i]['AttackCount'] > counts then
-					counts = LastHitMinions[i]['AttackCount']
-					unit = LastHitMinions[i]['Minion']
+				if self.KillAbleMinion[i]['AttackCount'] > counts then
+					counts = self.KillAbleMinion[i]['AttackCount']
+					unit = self.KillAbleMinion[i]['Minion']
 				end
 			end
 		end
@@ -485,6 +474,49 @@ function SxOrbWalk:LastHit()
 	if self:CanAttack() and unit then
 		self:MyAttack(unit)
 	end
+end
+
+function SxOrbWalk:GetPredictDMG(minion)
+	local AttackCount = 0
+	local DmgToEnemyMinion = 0
+	local DmgToOwnMinion = 0
+	local MyAADmg = self:GetAADmg(minion)
+	local MyArriveTime = os.clock() + self:GetWindUpTime() + GetLatency()/1000 + self:GetFlyTicks(minion)
+	for i=1,#self.MinionAttacks do
+		if self.MinionAttacks[i]['Target'] == minion then
+			local OwnMinionData = self.MinionAttacks[i]
+			local OwnMinionArriveTime = OwnMinionData['StartTime'] + OwnMinionData['WindUptime'] + self:GetFlyTicks(OwnMinionData['Target'], OwnMinionData['Source']) + (GetLatency()/1000)*2 + 0.07
+			for z=1,#self.EnemyMinionAttacks do
+				local EnemyMinionData = self.EnemyMinionAttacks[z]
+				if EnemyMinionData['Target'] == OwnMinionData['Source'] then
+					local EnemyMinionArriveTime = EnemyMinionData['StartTime'] + EnemyMinionData['WindUptime'] + self:GetFlyTicks(EnemyMinionData['Target'], EnemyMinionData['Source']) + (GetLatency()/1000)*2 + 0.15
+					local ProjectileStatus = 0
+					if EnemyMinionData['Source']['charName']:find('Wizard') or EnemyMinionData['Source']['charName']:find('Cannon') then
+						ProjectileValid = EnemyMinionData['ProjectileValid']
+					else
+						ProjectileValid = 1
+					end
+					if OwnMinionArriveTime > EnemyMinionArriveTime and ProjectileValid == 1 and EnemyMinionArriveTime > os.clock() then
+						DmgToOwnMinion = DmgToOwnMinion + EnemyMinionData['SpellDmg']
+					end
+				end
+			end
+
+			if DmgToOwnMinion < minion.health then
+				local ProjectileValid = 0
+				if OwnMinionData['Source']['charName']:find('Wizard') or OwnMinionData['Source']['charName']:find('Cannon') then
+					ProjectileValid = OwnMinionData['ProjectileValid']
+				else
+					ProjectileValid = 1
+				end
+				AttackCount = AttackCount + 1
+				if MyArriveTime > OwnMinionArriveTime and ProjectileValid == 1 and OwnMinionArriveTime > os.clock() then
+					DmgToEnemyMinion = DmgToEnemyMinion + OwnMinionData['SpellDmg']
+				end
+			end
+		end
+	end
+	return DmgToEnemyMinion, AttackCount
 end
 
 function SxOrbWalk:OrbWalk()
@@ -525,7 +557,7 @@ function SxOrbWalk:GetLatency()
 end
 
 function SxOrbWalk:CanMove()
-	if os.clock() > ((self.LastAction or 0) + self:GetWindUpTime() - self:GetLatency()) and not self.MoveDisabled then
+	if os.clock() > ((self.LastAA or 0) + self:GetWindUpTime()) and not self.MoveDisabled then
 		return true
 	else
 		return false
@@ -575,17 +607,22 @@ function SxOrbWalk:BonusDamageObj(obj)
 end
 
 function SxOrbWalk:RemoveBonusDamage()
-	if myHero.charName == 'Caitlyn' then
+	if myHero.charName == 'Caitlyn' and HeadShotParticle then
+		self.KillAbleMinion = {}
 		HeadShotParticle = nil
-	elseif myHero.charName == 'TwistedFate' then
+	elseif myHero.charName == 'TwistedFate' and (TFBlueCard or TFRedCard or TFYellowCard) then
+		self.KillAbleMinion = {}
 		TFBlueCard = nil
 		TFRedCard = nil
 		TFYellowCard = nil
-	elseif myHero.charName == 'Draven' then
+	elseif myHero.charName == 'Draven' and DravenQParticle then
+		self.KillAbleMinion = {}
 		DravenQParticle = nil
-	elseif myHero.charName == 'Ziggs' then
+	elseif myHero.charName == 'Ziggs' and ZiggsParticle then
+		self.KillAbleMinion = {}
 		ZiggsParticle = nil
-	elseif myHero.charName == 'KogMaw' then
+	elseif myHero.charName == 'KogMaw' and KogMawWParticle then
+		self.KillAbleMinion = {}
 		KogMawWParticle = nil
 	end
 end
@@ -643,21 +680,27 @@ function SxOrbWalk:BonusDamage(minion)
 end
 
 function SxOrbWalk:GetAADmg(target)
-	local RawDMG = myHero:CalcDamage(target, myHero.totalDamage)
-	RawDMG = RawDMG + self:BonusDamage(target) - 2
-	if self.SxOrbMenu.Mastery.Havoc then
-		RawDMG = RawDMG*1.03
-	end
+	local Devastating = self.SxOrbMenu.Mastery.DevastatingStrikes * 0.02
+	local ArmorPen = 1.00 - Devastating
+	local Multiplier = 100 / (100 + (target.armor*ArmorPen))
+	local RawDMG = myHero.totalDamage * Multiplier
+	RawDMG = RawDMG + self:BonusDamage(target)
 	if self.SxOrbMenu.Mastery.Butcher then
 		RawDMG = RawDMG + 2
 	end
 	if self.SxOrbMenu.Mastery.ArcaneBlade then
 		RawDMG = RawDMG + myHero:CalcMagicDamage(target, myHero.ap * 0.05)
 	end
-	if GetInventorySlotItem(3153) then
-		RawDMG = RawDMG + getDmg("RUINEDKING",target, myHero)
+	if self.SxOrbMenu.Mastery.Havoc then
+		RawDMG = RawDMG*1.03
 	end
 	return RawDMG
+end
+
+function SxOrbWalk:GetMinionAADmg(unit, target)
+	local Multiplier = 100 / (100 + (target.armor))
+	local RawDMG = unit.totalDamage * Multiplier
+	return math.floor(RawDMG)
 end
 
 function SxOrbWalk:ValidTarget(target, validrange)
@@ -668,73 +711,98 @@ function SxOrbWalk:ValidTarget(target, validrange)
 	end
 end
 
-function SxOrbWalk:GetFlyTicks(target)
-	return GetDistance(myHero, target) / self:GetProjSpeed(myHero)
+function SxOrbWalk:GetFlyTicks(target, source)
+	source = source or myHero
+	return GetDistance(source,target) / self:GetProjSpeed(source)
 end
 
 function SxOrbWalk:CalcKillableMinion()
-	for index, minion in pairs(self.Minions.objects) do
+    for index, minion in pairs(self.Minions.objects) do
 		if minion.team ~= myHero.team and self:ValidTarget(minion) then
-		local MyAADmg = self:GetAADmg(minion)
-			local MyArriveTick = os.clock() + self:GetWindUpTime() - self:GetLatency() + self:GetFlyTicks(minion) - (self.DelayOffset[myHero.charName] or 0)
-			local DmgToMinion = 0
-			for i=1,#self.MinionAttacks do
-				local TargetMinion = self.MinionAttacks[i]['LastTarget']
-				Projectile = objManager:GetObjectByNetworkId(self.MinionAttacks[i]['LastProjectileID'])
-				if minion == TargetMinion and Projectile and Projectile.valid and GetDistanceSqr(minion,Projectile) > 50*50 then
-					local MinionArriveTick = self.MinionAttacks[i]['ArriveTick']
-					if MyArriveTick > MinionArriveTick then
-						DmgToMinion = DmgToMinion + self.MinionAttacks[i]['SpellDmg']
-					end
-				end
-			end
-			if MyAADmg > (minion.health - DmgToMinion) then
+			local MyAADmg = self:GetAADmg(minion)
+			DmgToMinion, AttackCount = self:GetPredictDMG(minion)
+			if (MyAADmg + DmgToMinion) > minion.health then
 				local MinionFound = false
-				for i=1,#self.KillAbleMinion do
-					if self.KillAbleMinion[i]['minion'] == minion then
+				for u=1,#self.KillAbleMinion do
+					if self.KillAbleMinion[u]['Minion']['networkID'] == minion.networkID then
 						MinionFound = true
 						break
 					end
 				end
 				if not MinionFound then
-					table.insert(self.KillAbleMinion, {['minion'] = minion, ['counts'] = Counts})
+					table.insert(self.KillAbleMinion, {['Minion'] = minion, ['AttackCount'] = AttackCount})
 				end
 			end
+		end
+    end
+
+end
+
+function SxOrbWalk:OnCreateObj(obj)
+	DelayAction(function()
+		for i=1,#self.MinionAttacks do
+			if obj.networkID == self.MinionAttacks[i]['LastProjectileID'] then
+				self.MinionAttacks[i]['ProjectileValid'] = 1
+			end
+		end
+		for i=1,#self.EnemyMinionAttacks do
+			if obj.networkID == self.EnemyMinionAttacks[i]['LastProjectileID'] then
+				self.EnemyMinionAttacks[i]['ProjectileValid'] = 1
+			end
+		end
+	end, 0.25)
+end
+
+function SxOrbWalk:OnDeleteObj(obj)
+	for i=1,#self.MinionAttacks do
+		if obj.networkID == self.MinionAttacks[i]['LastProjectileID'] then
+			self.MinionAttacks[i]['ProjectileValid'] = 2
+			break
+		end
+	end
+	for i=1,#self.EnemyMinionAttacks do
+		if obj.networkID == self.EnemyMinionAttacks[i]['LastProjectileID'] then
+			self.EnemyMinionAttacks[i]['ProjectileValid'] = 2
+			break
 		end
 	end
 end
 
 function SxOrbWalk:OnMinionAttack(unit, spell)
-	if unit.type == "obj_AI_Minion" and self.MinionData[unit.charName] and spell.target.type == "obj_AI_Minion" and unit.team == myHero.team and GetDistanceSqr(spell.target) < 2000*2000 then
-		local MinionData = self.MinionData[unit.charName]
-		local Distance = GetDistance(unit,spell.target)
-		local FlyTime = (Distance / (MinionData.ProjSpeed))
-		local MinionArriveTick = os.clock() + spell.windUpTime + FlyTime - self:GetLatency() + MinionData.Delay
-		local Data = {['Target'] = spell.target, ['SpellDmg'] = unit:CalcDamage(spell.target), ['LastProjectileID'] = spell.projectileID, ['ArriveTick'] = MinionArriveTick}
-		table.insert(self.MinionAttacks, Data)
-
-		local MinionFound = false
-		for i=1,#self.MinionLastTargets do
-			if self.MinionLastTargets[i]['SourceMinion'] == unit then
-				self.MinionLastTargets[i].LastAttack = os.clock()
-				self.MinionLastTargets[i].TargetMinion = spell.target
-				self.MinionLastTargets[i].LastDmg = unit:CalcDamage(spell.target)
-				self.MinionLastTargets[i].LastAnimationTime = spell.animationTime
-				self.MinionLastTargets[i].LastWindUpTime = spell.windUpTime
-				MinionFound = true
-				break
+	if unit.type == "obj_AI_Minion" and spell.target.type == "obj_AI_Minion" and GetDistanceSqr(spell.target) < 2000*2000 then
+		if unit.charName:find('Basic') then ExtraDelay = 0.12 else ExtraDelay = 0.07 end
+		local Data = {
+		['Source'] = unit,
+		['Target'] = spell.target,
+		['SpellDmg'] = self:GetMinionAADmg(unit, spell.target),
+		['LastProjectileID'] = spell.projectileID,
+		['ProjectileState'] = 0,
+		['StartTime'] = os.clock() + ExtraDelay,
+		['WindUptime'] = spell.windUpTime,
+		['Animationtime'] = spell.animationTime,}
+		if unit.team == myHero.team then
+			for index, data in ipairs(self.MinionAttacks) do
+				if data['Source'] == unit then
+					table.remove(self.MinionAttacks, index)
+					self.KillAbleMinion = {}
+				end
 			end
+			table.insert(self.MinionAttacks, Data)
+		else
+			for index, data in ipairs(self.EnemyMinionAttacks) do
+				if data['Source'] == unit then
+					table.remove(self.EnemyMinionAttacks, index)
+					self.KillAbleMinion = {}
+				end
+			end
+			table.insert(self.EnemyMinionAttacks, Data)
 		end
-
-		if not MinionFound then
-			table.insert(self.MinionLastTargets, {SourceMinion = unit, LastAttack = os.clock(), TargetMinion = spell.target, LastDmg = unit:CalcDamage(spell.target), LastAnimationTime = spell.animationTime, LastWindUpTime = spell.windUpTime})
-		end
+--~ 		table.insert(self.MinionLastTargets, {SourceMinion = unit, LastAttack = os.clock(), TargetMinion = spell.target, LastDmg = unit:CalcDamage(spell.target), LastAnimationTime = spell.animationTime, LastWindUpTime = spell.windUpTime})
 	end
 end
 
 function SxOrbWalk:OnSelfAction(unit, spell)
 	if unit.isMe then
-		self.LastAction = os.clock()
 		if (spell.name:lower():find("attack") or self.IsBasicAttack[spell.name]) then
 			self.BaseAnimationTime = 1 / (spell.animationTime * myHero.attackSpeed)
 			self.BaseWindUpTime = 1 / (spell.windUpTime * myHero.attackSpeed)
@@ -746,7 +814,6 @@ function SxOrbWalk:OnSelfAction(unit, spell)
 		end
 
 		if self.ResetSpells[spell.name] then
-			self.LastAction = 0
 			self.LastAA = 0
 		end
 	end
@@ -759,47 +826,47 @@ function SxOrbWalk:RecvAACancel(p)
 		p.pos = 9
 		Cancel = p:Decode1()
 		if NetworkID == myHero.networkID and Cancel == 0x11 then
-			self.LastAction = 0
-			if self.WaitForAA then self.AttackAgain = true end
+			self.LastAA = 0
 		end
 	end
 end
 
 function SxOrbWalk:MyAttack(target)
-  self.LastAction = os.clock()
-	if VIP_USER then
-		Packet('S_MOVE', {type = 3, targetNetworkId = target.networkID}):send()
-	else
-		myHero:Attack(target)
-	end
+	self.LastAA = os.clock()
+	myHero:Attack(target)
 	self:BeforeAttack(target)
 end
 
 function SxOrbWalk:GetTarget() -- iUser99 ftw
-	local SelectedTarget = GetTarget()
-	if SelectedTarget and (SelectedTarget.type == myHero.type or SelectedTarget.type == 'obj_AI_Turret') and self:ValidTarget(SelectedTarget,self.OverRideRange or self.MyRange) then
-		return SelectedTarget
+	if self.ForceThisTarget and self:ValidTarget(self.ForceThisTarget) then
+		return self.ForceThisTarget
 	else
-		if VIP_USER and self.SxOrbMenu.General.Selector and FileExist(LIB_PATH.."Selector.lua") then
-			SelectorTarget = Selector.GetTarget(SelectorMenu.Get().mode, nil, {distance = self.OverRideRange or self.MyRange})
-			if SelectorTarget and self:ValidTarget(SelectorTarget,self.OverRideRange or self.MyRange) then
-				return SelectorTarget
-			end
+		self.ForceThisTarget = nil
+		local SelectedTarget = GetTarget()
+		if SelectedTarget and (SelectedTarget.type == myHero.type or SelectedTarget.type == 'obj_AI_Turret') and self:ValidTarget(SelectedTarget,self.OverRideRange or self.MyRange) then
+			return SelectedTarget
 		else
-			local best, damage = nil, 99
+			if VIP_USER and self.SxOrbMenu.General.Selector and FileExist(LIB_PATH.."Selector.lua") then
+				SelectorTarget = Selector.GetTarget(SelectorMenu.Get().mode, nil, {distance = self.OverRideRange or self.MyRange})
+				if SelectorTarget and self:ValidTarget(SelectorTarget,self.OverRideRange or self.MyRange) then
+					return SelectorTarget
+				end
+			else
+				local best, damage = nil, 99
 
-			for index, unit in pairs(GetEnemyHeroes()) do
-				if unit.team ~= myHero.team and self:ValidTarget(unit, self.OverRideRange or self.MyRange) then
-					local e = myHero:CalcDamage(unit, myHero.totalDamage)
-					local d = unit.health / e
-					if (best == nil) or d < damage then
-						best = unit
-						damage = d
+				for index, unit in pairs(GetEnemyHeroes()) do
+					if unit.team ~= myHero.team and self:ValidTarget(unit, self.OverRideRange or self.MyRange) then
+						local e = myHero:CalcDamage(unit, myHero.totalDamage)
+						local d = unit.health / e
+						if (best == nil) or d < damage then
+							best = unit
+							damage = d
+						end
 					end
 				end
-			end
 
-			return best, damage
+				return best, damage
+			end
 		end
 	end
 end
@@ -821,8 +888,13 @@ end
 ------------------
 -- Global Funcs --
 ------------------
+function SxOrbWalk:ForceTarget(unit)
+	if unit and self:ValidTarget(unit) then
+		self.ForceThisTarget = unit
+	end
+end
+
 function SxOrbWalk:ResetAA()
-	self.LastAction = 0
 	self.LastAA = 0
 end
 
