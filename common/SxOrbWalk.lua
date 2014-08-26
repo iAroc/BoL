@@ -20,7 +20,7 @@ function SxOrbWalk:__init()
 	self.MyRange = myHero.range + myHero.boundingRadius
 	self.BaseWindUpTime = 3
 	self.BaseAnimationTime = 0.65
-	self.Version = 1.57
+	self.Version = 1.58
 	print("<font color=\"#F0Ff8d\"><b>SxOrbWalk: </b></font> <font color=\"#FF0F0F\">Version "..self.Version.." loaded</b></font>")
 
 	self.LuaSocket = require("socket")
@@ -346,7 +346,7 @@ end
 function SxOrbWalk:FightMode()
 	if self:CanAttack() then
 		Target, damage = self:GetTarget()
-		if Target and self:ValidTarget(Target, self.OverRideRange or (self.MyRange)) then
+		if Target and self:ValidTarget(Target) then
 			self:MyAttack(Target)
 		end
 	end
@@ -414,7 +414,7 @@ function SxOrbWalk:LaneClear()
 		self.LastTargetAgain = false
 
 
-		if not self.WaitForAA then
+		if self:CanAttack() then
 			for index, minion in pairs(self.JungleMinions.objects) do
 				if self:ValidTarget(minion, self.MyRange) then
 					self:MyAttack(minion)
@@ -424,7 +424,7 @@ function SxOrbWalk:LaneClear()
 			end
 		end
 
-		if not self.WaitForAA then
+		if self:CanAttack() then
 			for index, minion in pairs(self.OtherMinions.objects) do
 				if self:ValidTarget(minion, self.MyRange) then
 					self:MyAttack(minion)
@@ -524,7 +524,7 @@ function SxOrbWalk:OrbWalk()
 		if self.SxOrbMenu.General.StopMove and GetDistanceSqr(mousePos) < (self.SxOrbMenu.General.StopMoveSlider * self.SxOrbMenu.General.StopMoveSlider) then
 			myHero:MoveTo(mousePos.x, mousePos.z)
 		else
-			MouseMove = Vector(myHero) + (Vector(mousePos) - Vector(myHero)):normalized() * 300
+			MouseMove = Vector(myHero) + (Vector(mousePos) - Vector(myHero)):normalized() * 500
 			myHero:MoveTo(MouseMove.x, MouseMove.z)
 		end
 	end
@@ -557,7 +557,7 @@ function SxOrbWalk:GetLatency()
 end
 
 function SxOrbWalk:CanMove()
-	if os.clock() > ((self.LastAA or 0) + self:GetWindUpTime()) and not self.MoveDisabled then
+	if os.clock() > ((self.LastAA or 0) + self:GetWindUpTime()) and not self.MoveDisabled and not _G.Evadeee_evading and not (_G.EzEvade and _G.EzEvade.Evading) then
 		return true
 	else
 		return false
@@ -565,7 +565,7 @@ function SxOrbWalk:CanMove()
 end
 
 function SxOrbWalk:CanAttack()
-	if self:CanMove() and os.clock() > ((self.LastAA or 0) + self:GetAnimationTime() - self:GetLatency() - 0.07) and not self.AttackDisabled then
+	if os.clock() > ((self.LastAA or 0) + self:GetAnimationTime() - 0.07 - self:GetLatency()*2) and not self.AttackDisabled and not _G.Evadeee_evading and not (_G.EzEvade and _G.EzEvade.Evading) then
 		return true
 	else
 		return false
@@ -713,7 +713,9 @@ end
 
 function SxOrbWalk:GetFlyTicks(target, source)
 	source = source or myHero
-	return GetDistance(source,target) / self:GetProjSpeed(source)
+	local Distance = GetDistance(source,target) or 0
+	local Speed = self:GetProjSpeed(source) or math.huge
+	return Distance / Speed
 end
 
 function SxOrbWalk:CalcKillableMinion()
@@ -769,7 +771,7 @@ function SxOrbWalk:OnDeleteObj(obj)
 end
 
 function SxOrbWalk:OnMinionAttack(unit, spell)
-	if unit.type == "obj_AI_Minion" and spell.target.type == "obj_AI_Minion" and GetDistanceSqr(spell.target) < 2000*2000 then
+	if unit.type == "obj_AI_Minion" and spell and spell.target and spell.target.type == "obj_AI_Minion" and GetDistanceSqr(spell.target) < 2000*2000 then
 		if unit.charName:find('Basic') then ExtraDelay = 0.12 else ExtraDelay = 0.07 end
 		local Data = {
 		['Source'] = unit,
@@ -807,14 +809,15 @@ function SxOrbWalk:OnSelfAction(unit, spell)
 			self.BaseAnimationTime = 1 / (spell.animationTime * myHero.attackSpeed)
 			self.BaseWindUpTime = 1 / (spell.windUpTime * myHero.attackSpeed)
 			self:RemoveBonusDamage()
+			self.IsForceAA = false
 			self.LastAA = os.clock()
 			if spell.target then self.LastTarget = spell.target end
 			self:OnAttack(self.LastTarget)
-			DelayAction(function() self:AfterAttack(self.LastTarget) end, self:GetWindUpTime() - self:GetLatency())
+			DelayAction(function() self:AfterAttack(self.LastTarget) end, self:GetWindUpTime())
 		end
 
 		if self.ResetSpells[spell.name] then
-			self.LastAA = 0
+			DelayAction(function() self.LastAA = 0 end, spell.windUpTime - self:GetLatency()*2)
 		end
 	end
 end
@@ -832,9 +835,22 @@ function SxOrbWalk:RecvAACancel(p)
 end
 
 function SxOrbWalk:MyAttack(target)
-	self.LastAA = os.clock()
+	self.IsForceAA = true
+--~ 	self:ForceAA(target)
 	myHero:Attack(target)
+	self.LastAA = os.clock() + self:GetWindUpTime() + self:GetLatency()
 	self:BeforeAttack(target)
+end
+
+function SxOrbWalk:ForceAA(target)
+	if self.IsForceAA then
+		if self:ValidTarget(target) then
+			myHero:Attack(target)
+			DelayAction(function() self:ForceAA(target) end)
+		else
+			self.IsForceAA = false
+		end
+	end
 end
 
 function SxOrbWalk:GetTarget() -- iUser99 ftw
@@ -891,6 +907,15 @@ end
 function SxOrbWalk:ForceTarget(unit)
 	if unit and self:ValidTarget(unit) then
 		self.ForceThisTarget = unit
+	end
+end
+
+function SxOrbWalk:GetAACD()
+	AACD = self.LastAA + self:GetAnimationTime() - self:GetLatency()*2 - os.clock()
+	if AACD > 0 then
+		return AACD
+	else
+		return 0
 	end
 end
 
