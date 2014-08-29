@@ -13,17 +13,20 @@ if myHero.charName ~= "Vayne" then return end
 function OnTick()
 	if not _G.ShadowVayneLoaded then
 		_G.ShadowVayneLoaded = true
-		if loadfile(LIB_PATH..'SxOrbWalk.lua') then
-			require "SxOrbWalk"
-		else
-			SxDownloadFile("SxOrbWalk", "raw.githubusercontent.com","/Superx321/BoL/master/common/SxOrbWalk.lua", LIB_PATH.."SxOrbWalk.lua", function() require "SxOrbWalk" end)
-		end
-		if loadfile(LIB_PATH..'CustomPermaShow.lua') then
-			require "CustomPermaShow"
-		else
-			SxDownloadFile("CustomPermaShow", "raw.githubusercontent.com","/Superx321/BoL/master/common/CustomPermaShow.lua", LIB_PATH.."CustomPermaShow.lua", function() require "CustomPermaShow" end)
-		end
+		SxLoad = loadfile(LIB_PATH..'SxOrbWalk.lua')
+		DelayAction(function()
+			if SxLoad then
+				require "SxOrbWalk"
+			else
+				SxDownloadFile("SxOrbWalk", "raw.githubusercontent.com","/Superx321/BoL/master/common/SxOrbWalk.lua", LIB_PATH.."SxOrbWalk.lua", function() require "SxOrbWalk" end)
+			end
+			if loadfile(LIB_PATH..'CustomPermaShow.lua') then
+				require "CustomPermaShow"
+			else
+				SxDownloadFile("CustomPermaShow", "raw.githubusercontent.com","/Superx321/BoL/master/common/CustomPermaShow.lua", LIB_PATH.."CustomPermaShow.lua", function() require "CustomPermaShow" end)
+			end
 			ShadowVayne()
+		end)
 	end
 end
 
@@ -52,7 +55,7 @@ end
 class "ShadowVayne"
 function ShadowVayne:__init()
 	self.ShadowTable = {}
-	self.ShadowTable.version = 4.04
+	self.ShadowTable.version = 4.05
 	self.ShadowTable.LastLevelCheck = 0
 	self.ShadowTable.LastHeroLevel = 0
 	self.ShadowTable.CurSkin = 0
@@ -917,7 +920,7 @@ function ShadowVayne:ProcessSpellAfterAA(unit, spell)
 		if spell.name:lower():find("attack") then
 			if spell.target then self.LastTarget = spell.target end
 			DelayAction(function() self:CondemnAfterAA(self.LastTarget) end, spell.windUpTime - (GetLatency()/2000))
-			DelayAction(function() self:Tumble(self.LastTarget) end, spell.windUpTime - (GetLatency()/2000))
+			if not SVMainMenu.keysetting.basiccondemn then DelayAction(function() self:Tumble(self.LastTarget) end, spell.windUpTime - (GetLatency()/2000)) end
 		end
 	end
 end
@@ -1247,7 +1250,7 @@ end
 
 function ShadowVayne:SkinChanger(champ, skinId) -- Credits to shalzuth
 	if VIP_USER then
-		p = CLoLPacket(0x97)
+		p = CLoLPacket(0x97) -- 0x97
 		p:EncodeF(myHero.networkID)
 		p.pos = 1
 		t1 = p:Decode1()
