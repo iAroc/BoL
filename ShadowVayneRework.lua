@@ -5,765 +5,593 @@
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
 	]]
-if myHero.charName ~= "Vayne" then return end
-
+if myHero.charName ~= 'Vayne' then return end
 ------------------------
------- MainScript ------
+------ LoadScript ------
 ------------------------
 function OnTick()
 	if not _G.ShadowVayneLoaded then
-		_G.ShadowVayneLoaded = true
-		SxLoad = loadfile(LIB_PATH..'SxOrbWalk.lua')
-		DelayAction(function()
-			if SxLoad then
-				require "SxOrbWalk"
-			else
-				SxDownloadFile("SxOrbWalk", "raw.githubusercontent.com","/Superx321/BoL/master/common/SxOrbWalk.lua", LIB_PATH.."SxOrbWalk.lua", function() require "SxOrbWalk" end)
-			end
-			if loadfile(LIB_PATH..'CustomPermaShow.lua') then
-				require "CustomPermaShow"
-			else
-				SxDownloadFile("CustomPermaShow", "raw.githubusercontent.com","/Superx321/BoL/master/common/CustomPermaShow.lua", LIB_PATH.."CustomPermaShow.lua", function() require "CustomPermaShow" end)
-			end
-			ShadowVayne()
-		end)
-	end
-end
+		if FileExist(LIB_PATH..'SxOrbWalk.lua') then
+			require 'SxOrbWalk'
+		else
+			print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Failed to Load Module SxOrbWalk. Please Download it from the Forums.</font>')
+			Error = true
+		end
 
-function SxDownloadFile(name, host, link, destination, callback)
-	LuaSocket = require 'socket'
-	TcpDownload = {}
-	TcpDownload.Socket = LuaSocket.connect("sx-bol.eu", 80)
-	TcpDownload.Socket:send("GET /BoL/TCPUpdater/GetScript.php?script="..host..link.."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
-	TcpDownload.Receive, TcpDownload.Status = TcpDownload.Socket:receive('*a')
-	TcpDownload.ScriptStart = string.find(TcpDownload.Receive, "<bols".."cript>")
-	TcpDownload.ScriptEnd = string.find(TcpDownload.Receive, "</bols".."cript>")
-	if TcpDownload.ScriptStart and TcpDownload.ScriptEnd then
-		TcpDownload.CompleteScript = string.sub(TcpDownload.Receive, TcpDownload.ScriptStart+11, TcpDownload.ScriptEnd-1)
-		ScriptFileOpen = io.open(destination, "w+")
-		ScriptFileOpen:write(TcpDownload.CompleteScript)
-		ScriptFileOpen:close()
-		callback()
-	else
-		print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Failed to Load Module "..name.."</font>")
+		if FileExist(LIB_PATH..'CustomPermaShow.lua') then
+			require 'CustomPermaShow'
+		else
+			print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Failed to Load Module CustomPermaShow. Please Download it from the Forums.</font>')
+			Error = true
+		end
+
+		if FileExist(LIB_PATH..'VPrediction.lua') then
+			require 'VPrediction'
+			VP = VPrediction()
+		else
+			print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Failed to Load Module VPrediction. Please Download it from the Forums.</font>')
+			Error = true
+		end
+
+		if not Error then
+			_G.ShadowVayneLoaded = true
+			ShadowVayne()
+		end
 	end
 end
 
 ------------------------
 ------ ShadowVayne -----
 ------------------------
-class "ShadowVayne"
+class 'ShadowVayne'
 function ShadowVayne:__init()
-	self.ShadowTable = {}
-	self.ShadowTable.version = 4.05
-	self.ShadowTable.LastLevelCheck = 0
-	self.ShadowTable.LastHeroLevel = 0
-	self.ShadowTable.CurSkin = 0
-	self.LastTumble = 0
-	self.CurSkin = 0
-	self.ForceAA = false
-	self.hitboxmode = true
-	self.WaitForR84 = false
-	self.wayPointManager = WayPointManager()
-	CondemnLastE = 0
-	SUMMONERS_RIFT   = { 1, 2 }
-	PROVING_GROUNDS  = 3
-	TWISTED_TREELINE = { 4, 10 }
-	CRYSTAL_SCAR     = 8
-	HOWLING_ABYSS    = 12
-	print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Version "..self.ShadowTable.version.." loaded</font>")
+	self.SxInfo = {}
+	self.SxInfo.version = 4.07
+	self.SxInfo.LastLevelCheck = 0
+	self.SxInfo.LastHeroLevel = 0
+	self.SxInfo.LastTarget = nil
+	self.SxInfo.CurSkin = 0
+	self.SxInfo.Items = {}
+	self.SxInfo.MapIndex = GetGame().map.index
 
-	self.LuaSocket = require("socket")
-	self.AutoUpdate = {["Host"] = "raw.githubusercontent.com", ["VersionLink"] = "/Superx321/BoL/master/common/ShadowVayneRework.Version", ["ScriptLink"] = "/Superx321/BoL/master/ShadowVayneRework.lua"}
+	print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Version '..self.SxInfo.version..' loaded</font>')
+
+	self.LuaSocket = require('socket')
+	self.AutoUpdate = {['Host'] = 'raw.githubusercontent.com', ['VersionLink'] = '/Superx321/BoL/master/common/ShadowVayneRework.Version', ['ScriptLink'] = '/Superx321/BoL/master/ShadowVayneRework.lua'}
 	self:CheckUpdate()
 
-	self:LoadMap()
 	self:GenerateTables()
 	self:GetOrbWalkers()
-
-	self:LoadMainMenu()
-	self:FillMenu_KeySetting()
-	self:FillMenu_Autolevel()
-	self:FillMenu_GapCloser()
-	self:FillMenu_StunTarget()
-	self:FillMenu_Interrupt()
-	self:FillMenu_StunSettings()
-	self:FillMenu_Draw()
-	self:FillMenu_PermaShow()
-	self:FillMenu_BotRK()
-	self:FillMenu_BilgeWater()
-	self:FillMenu_Yomuus()
-	self:FillMenu_Tumble()
-	self:FillMenu_WallTumble()
-	self:FillMenu_SkinHack()
-	self:FillMenu_Debug()
-
-	self:LoadRengar()
-	self:LoadCustomPermaShow()
-	SVSxOrbMenu = scriptConfig("[ShadowVayne] SxOrbwalker Settings", "SV_SXORB")
-	SxOrb:LoadToMenu(SVSxOrbMenu, true)
-
-	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.activatemodes then self:ActivateModes() end end)
-	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.checklevelchange then self:CheckLevelChange() end end)
-	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.permashows then self:PermaShows() end end)
-	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.botrk then self:BotRK() end end)
-	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.bilgewater then self:BilgeWater() end end)
-	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.gapcloseraftercast then self:GapCloserAfterCast() end end)
-	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.gapcloserrengar then self:GapCloserRengar() end end)
-	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.switchtogglemode then self:SwitchToggleMode() end end)
-	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.threshlantern then self:TreshLantern() end end)
-	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.condemnstun then self:CondemnStun() end end)
-	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.twalltumble then self:WallTumble() end end)
-	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.updateherodirection then self:UpdateHeroDirection() end end)
-	AddTickCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.tick.skinhack then self:SkinHack() end end)
-
-	AddCreateObjCallback(function(Obj) if not self.WaitForR84 and not SVMainMenu.debugsettings.createobj.rengarobject then self:RengarObject(Obj) end end)
-	AddCreateObjCallback(function(Obj) if not self.WaitForR84 and not SVMainMenu.debugsettings.createobj.threshobject then self:ThreshObject(Obj) end end)
-
-	AddProcessSpellCallback(function(unit, spell) if not self.WaitForR84 and not SVMainMenu.debugsettings.processspell.gapcloser then self:ProcessSpell_GapCloser(unit, spell) end end)
-	AddProcessSpellCallback(function(unit, spell) if not self.WaitForR84 and not SVMainMenu.debugsettings.processspell.interrupt then self:ProcessSpell_Interrupt(unit, spell) end end)
-	AddProcessSpellCallback(function(unit, spell) if not self.WaitForR84 and not SVMainMenu.debugsettings.processspell.recall then self:ProcessSpell_Recall(unit, spell) end end)
-	AddProcessSpellCallback(function(unit, spell) if not self.WaitforR84 then self:ProcessSpellAfterAA(unit, spell) end end)
-
-	AddDrawCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.draw.dwalltumble then self:Draw_WallTumble() end end)
-	AddDrawCallback(function() if not self.WaitForR84 and not SVMainMenu.debugsettings.draw.condemnrange then self:Draw_CondemnRange() end end)
-	AddDrawCallback(function() self:DebugDraw() end)
-
-	AddSendPacketCallback(function(p) if not self.WaitForR84 and not SVMainMenu.debugsettings.sendpacket.pwalltumble then self:SendPacket_WallTumble(p) end end)
-
-	AddMsgCallback(function(msg,key) if not self.WaitForR84 and not SVMainMenu.debugsettings.msg.doublemodeprotection then self:DoubleModeProtection(msg, key) end end)
-	SxOrb:RegisterAfterAttackCallback(function(target) self:CondemnAfterAA(target) end)
-	SxOrb:RegisterAfterAttackCallback(function(target) self:Tumble(target) end)
-end
-
-function ShadowVayne:IsMap(map)
-    assert(map and (type(map) == "number" or type(map) == "table"), "IsMap(): map is invalid!")
-    if type(map) == "number" then
-        return GetGame().map.index == map
-    else
-        for _, id in ipairs(map) do
-            if GetGame().map.index == id then return true end
-        end
-    end
-end
-
-function ShadowVayne:GetMapName()
-    if self:IsMap(SUMMONERS_RIFT) then
-        return "Summoners Rift"
-    elseif self:IsMap(CRYSTAL_SCAR) then
-        return "Crystal Scar"
-    elseif self:IsMap(HOWLING_ABYSS) then
-        return "Howling Abyss"
-    elseif self:IsMap(TWISTED_TREELINE) then
-        return "Twisted Treeline"
-    elseif self:IsMap(PROVING_GROUNDS) then
-        return "Proving Grounds"
-    else
-        return "Unknown map"
-    end
 end
 
 function ShadowVayne:CheckUpdate()
-	if not self.AutoUpdate["VersionSocket"] then
-		self.AutoUpdate["VersionSocket"] = self.LuaSocket.connect("sx-bol.de", 80)
-		self.AutoUpdate["VersionSocket"]:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.AutoUpdate["Host"]..self.AutoUpdate["VersionLink"].."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
+	if not self.AutoUpdate['VersionSocket'] then
+		self.AutoUpdate['VersionSocket'] = self.LuaSocket.connect('sx-bol.de', 80)
+		self.AutoUpdate['VersionSocket']:send('GET /BoL/TCPUpdater/GetScript.php?script='..self.AutoUpdate['Host']..self.AutoUpdate['VersionLink']..'&rand='..tostring(math.random(1000))..' HTTP/1.0\r\n\r\n')
 	end
 
-	if not self.AutoUpdate["ServerVersion"] and self.AutoUpdate["VersionSocket"] then
-			self.AutoUpdate["VersionSocket"]:settimeout(0, 'b')
-			self.AutoUpdate["VersionSocket"]:settimeout(99999999, 't')
-			self.AutoUpdate["VersionReceive"], self.AutoUpdate["VersionStatus"] = self.AutoUpdate["VersionSocket"]:receive('*a')
+	if not self.AutoUpdate['ServerVersion'] and self.AutoUpdate['VersionSocket'] then
+			self.AutoUpdate['VersionSocket']:settimeout(0, 'b')
+			self.AutoUpdate['VersionSocket']:settimeout(99999999, 't')
+			self.AutoUpdate['VersionReceive'], self.AutoUpdate['VersionStatus'] = self.AutoUpdate['VersionSocket']:receive('*a')
 	end
 
-	if not self.AutoUpdate["ServerVersion"] and self.AutoUpdate["VersionSocket"] and self.AutoUpdate["VersionStatus"] ~= 'timeout' and self.AutoUpdate["VersionReceive"] ~= nil then
-		self.AutoUpdate["ServerVersion"] = tonumber(string.sub(self.AutoUpdate["VersionReceive"], string.find(self.AutoUpdate["VersionReceive"], "<bols".."cript>")+11, string.find(self.AutoUpdate["VersionReceive"], "</bols".."cript>")-1))
+	if not self.AutoUpdate['ServerVersion'] and self.AutoUpdate['VersionSocket'] and self.AutoUpdate['VersionStatus'] ~= 'timeout' and self.AutoUpdate['VersionReceive'] ~= nil then
+		self.AutoUpdate['ServerVersion'] = tonumber(string.sub(self.AutoUpdate['VersionReceive'], string.find(self.AutoUpdate['VersionReceive'], '<bols'..'cript>')+11, string.find(self.AutoUpdate['VersionReceive'], '</bols'..'cript>')-1))
 	end
 
-	if self.AutoUpdate["ServerVersion"] and type(self.AutoUpdate["ServerVersion"]) == "number" and self.AutoUpdate["ServerVersion"] > self.Version and not self.AutoUpdate["Finished"] then
-		self.AutoUpdate["ScriptSocket"] = self.LuaSocket.connect("sx-bol.de", 80)
-		self.AutoUpdate["ScriptSocket"]:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.AutoUpdate["Host"]..self.AutoUpdate["ScriptLink"].."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
-		self.AutoUpdate["ScriptReceive"], self.AutoUpdate["ScriptStatus"] = self.AutoUpdate["ScriptSocket"]:receive('*a')
-		self.AutoUpdate["ScriptRAW"] = string.sub(self.AutoUpdate["ScriptReceive"], string.find(self.AutoUpdate["ScriptReceive"], "<bols".."cript>")+11, string.find(self.AutoUpdate["ScriptReceive"], "</bols".."cript>")-1)
-		ScriptFileOpen = io.open(LIB_PATH.._ENV.FILE_NAME, "w+")
-		ScriptFileOpen:write(self.AutoUpdate["ScriptRAW"])
+	if self.AutoUpdate['ServerVersion'] and type(self.AutoUpdate['ServerVersion']) == 'number' and self.AutoUpdate['ServerVersion'] > self.Version and not self.AutoUpdate['Finished'] then
+		self.AutoUpdate['ScriptSocket'] = self.LuaSocket.connect('sx-bol.de', 80)
+		self.AutoUpdate['ScriptSocket']:send('GET /BoL/TCPUpdater/GetScript.php?script='..self.AutoUpdate['Host']..self.AutoUpdate['ScriptLink']..'&rand='..tostring(math.random(1000))..' HTTP/1.0\r\n\r\n')
+		self.AutoUpdate['ScriptReceive'], self.AutoUpdate['ScriptStatus'] = self.AutoUpdate['ScriptSocket']:receive('*a')
+		self.AutoUpdate['ScriptRAW'] = string.sub(self.AutoUpdate['ScriptReceive'], string.find(self.AutoUpdate['ScriptReceive'], '<bols'..'cript>')+11, string.find(self.AutoUpdate['ScriptReceive'], '</bols'..'cript>')-1)
+		ScriptFileOpen = io.open(SCRIPT_PATH.._ENV.FILE_NAME, 'w+')
+		ScriptFileOpen:write(self.AutoUpdate['ScriptRAW'])
 		ScriptFileOpen:close()
-		self.AutoUpdate["Finished"] = true
-		print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">New Version("..self.AutoUpdate["ServerVersion"]..") downloaded, load it with F9!</font>")
+		self.AutoUpdate['Finished'] = true
+		print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>New Version('..self.AutoUpdate['ServerVersion']..') downloaded, load it with F9!</font>')
 	end
-end
 
-function ShadowVayne:LoadMap()
-	if not FileExist(LIB_PATH.."\\Saves\\WorldGrid\\" .. self:GetMapName() .. "_Walls.SAVE") then
-		RunCmdCommand('mkdir "' .. string.gsub(LIB_PATH.."/Saves/WorldGrid", [[/]], [[\]]) .. '"')
-		self:DownloadFile("http://sx-bol.eu/BoL/WorldGrid/" .. self:GetMapName() .."_Brushes.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. self:GetMapName() .. "_Brushes.SAVE")
-		self:DownloadFile("http://sx-bol.eu/BoL/WorldGrid/" .. self:GetMapName() .."_Vision.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. self:GetMapName() .. "_Vision.SAVE")
-		self:DownloadFile("http://sx-bol.eu/BoL/WorldGrid/" .. self:GetMapName() .."_Walls.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. self:GetMapName() .. "_Walls.SAVE")
-		self:DownloadFile("http://sx-bol.eu/BoL/WorldGrid/" .. self:GetMapName() .."_Info.SAVE", LIB_PATH.."\\Saves\\WorldGrid\\" .. self:GetMapName() .. "_Info.SAVE")
-	end
-	worldGridWalls = GetSave("WorldGrid\\" .. self:GetMapName() .. "_Walls")
-	worldGridBrushes = GetSave("WorldGrid\\" .. self:GetMapName() .. "_Brushes")
-end
-
-function ShadowVayne:GetWorldType(x,z)
-	local GridX = math.round(x/50)
-	local GridZ = math.round(z/50)
-	if worldGridWalls[GridX] and worldGridWalls[GridX][GridZ] then
-		return 1
-	elseif worldGridBrushes[GridX] and worldGridBrushes[GridX][GridZ] then
-		return 2
-	else
-		return 0
-	end
-end
-
-function ShadowVayne:DownloadFile(source, destination, callback, working, OldLenght)
-	if not working then
-		if FileExist(destination) then os.remove(destination) end
-		os.executePowerShellAsync([[$webClient = New-Object System.Net.WebClient;$webClient.DownloadFile(']]..source..[[', ']]..destination..[[');exit;]])
-		DelayAction(function() self:DownloadFile(source, destination, callback, true, 0) end)
-	else
-		if FileExist(destination) then
-			FileOpen = io.open(destination, "r")
-			FileString = FileOpen:read("*a")
-			FileOpen:close()
-			if #FileString > 0 and #FileString == OldLenght then
-				if callback then
-					callback()
-				end
-			else
-				DelayAction(function() self:DownloadFile(source, destination, callback, true, #FileString) end, 0.2)
-			end
-		else
-			DelayAction(function() self:DownloadFile(source, destination, callback, true, 0) end)
-		end
+	if not self.AutoUpdate['Finished'] then
+		DelayAction(function() self:CheckUpdate() end)
 	end
 end
 
 function ShadowVayne:GenerateTables()
-	isAGapcloserUnitTarget = {
-        ['Akali']       = {true, spell = "AkaliShadowDance", 	spellKey = "R"},
-        ['Alistar']     = {true, spell = "Headbutt", 			spellKey = "W"},
-        ['Diana']       = {true, spell = "DianaTeleport", 		spellKey = "R"},
-        ['Irelia']      = {true, spell = "IreliaGatotsu",		spellKey = "Q"},
-        ['Jax']         = {true, spell = "JaxLeapStrike", 		spellKey = "Q"},
-        ['Jayce']       = {true, spell = "JayceToTheSkies",		spellKey = "Q"},
-        ['Maokai']      = {true, spell = "MaokaiUnstableGrowth",spellKey = "W"},
-        ['MonkeyKing']  = {true, spell = "MonkeyKingNimbus",	spellKey = "E"},
-        ['Pantheon']    = {true, spell = "Pantheon_LeapBash",	spellKey = "W"},
-        ['Poppy']       = {true, spell = "PoppyHeroicCharge",	spellKey = "E"},
-		['Quinn']       = {true, spell = "QuinnE",				spellKey = "E"},
-        ['XinZhao']     = {true, spell = "XenZhaoSweep",		spellKey = "E"},
-        ['LeeSin']	    = {true, spell = "blindmonkqtwo",		spellKey = "Q"},
-        ['Fizz']	    = {true, spell = "FizzPiercingStrike",	spellKey = "Q"},
-        ['Rengar']	    = {true, spell = "RengarLeap",			spellKey = "Q/R"},
+	self.isAGapcloserUnitTarget = {
+        ['AkaliShadowDance']		= {true, Champ = 'Akali', 		spellKey = 'R'},
+        ['Headbutt']     			= {true, Champ = 'Alistar', 	spellKey = 'W'},
+        ['DianaTeleport']       	= {true, Champ = 'Diana', 		spellKey = 'R'},
+        ['IreliaGatotsu']     		= {true, Champ = 'Irelia',		spellKey = 'Q'},
+        ['JaxLeapStrike']         	= {true, Champ = 'Jax', 		spellKey = 'Q'},
+        ['JayceToTheSkies']       	= {true, Champ = 'Jayce',		spellKey = 'Q'},
+        ['MaokaiUnstableGrowth']    = {true, Champ = 'Maokai',		spellKey = 'W'},
+        ['MonkeyKingNimbus']  		= {true, Champ = 'MonkeyKing',	spellKey = 'E'},
+        ['Pantheon_LeapBash']   	= {true, Champ = 'Pantheon',	spellKey = 'W'},
+        ['PoppyHeroicCharge']       = {true, Champ = 'Poppy',		spellKey = 'E'},
+		['QuinnE']       			= {true, Champ = 'Quinn',		spellKey = 'E'},
+        ['XenZhaoSweep']     		= {true, Champ = 'XinZhao',		spellKey = 'E'},
+        ['blindmonkqtwo']	    	= {true, Champ = 'LeeSin',		spellKey = 'Q'},
+        ['FizzPiercingStrike']	    = {true, Champ = 'Fizz',		spellKey = 'Q'},
+        ['RengarLeap']	    		= {true, Champ = 'Rengar',		spellKey = 'Q/R'},
     }
 
-	isAGapcloserUnitNoTarget = {
-		["AatroxQ"]					= {true, champ = "Aatrox", 		range = 1000,  	projSpeed = 1200, spellKey = "Q"},
-		["GragasE"]					= {true, champ = "Gragas", 		range = 600,   	projSpeed = 2000, spellKey = "E"},
-		["GravesMove"]				= {true, champ = "Graves", 		range = 425,   	projSpeed = 2000, spellKey = "E"},
-		["HecarimUlt"]				= {true, champ = "Hecarim", 	range = 1000,   projSpeed = 1200, spellKey = "R"},
-		["JarvanIVDragonStrike"]	= {true, champ = "JarvanIV",	range = 770,   	projSpeed = 2000, spellKey = "Q"},
-		["JarvanIVCataclysm"]		= {true, champ = "JarvanIV", 	range = 650,   	projSpeed = 2000, spellKey = "R"},
-		["KhazixE"]					= {true, champ = "Khazix", 		range = 900,   	projSpeed = 2000, spellKey = "E"},
-		["khazixelong"]				= {true, champ = "Khazix", 		range = 900,   	projSpeed = 2000, spellKey = "E"},
-		["LeblancSlide"]			= {true, champ = "Leblanc", 	range = 600,   	projSpeed = 2000, spellKey = "W"},
-		["LeblancSlideM"]			= {true, champ = "Leblanc", 	range = 600,   	projSpeed = 2000, spellKey = "WMimic"},
-		["LeonaZenithBlade"]		= {true, champ = "Leona", 		range = 900,  	projSpeed = 2000, spellKey = "E"},
-		["UFSlash"]					= {true, champ = "Malphite", 	range = 1000,  	projSpeed = 1800, spellKey = "R"},
-		["RenektonSliceAndDice"]	= {true, champ = "Renekton", 	range = 450,  	projSpeed = 2000, spellKey = "E"},
-		["SejuaniArcticAssault"]	= {true, champ = "Sejuani", 	range = 650,  	projSpeed = 2000, spellKey = "Q"},
-		["ShenShadowDash"]			= {true, champ = "Shen", 		range = 575,  	projSpeed = 2000, spellKey = "E"},
-		["RocketJump"]				= {true, champ = "Tristana", 	range = 900,  	projSpeed = 2000, spellKey = "W"},
-		["slashCast"]				= {true, champ = "Tryndamere", 	range = 650,  	projSpeed = 1450, spellKey = "E"},
+	self.isAGapcloserUnitNoTarget = {
+		['AatroxQ']					= {true, Champ = 'Aatrox', 		range = 1000,  	projSpeed = 1200, spellKey = 'Q'},
+		['GragasE']					= {true, Champ = 'Gragas', 		range = 600,   	projSpeed = 2000, spellKey = 'E'},
+		['GravesMove']				= {true, Champ = 'Graves', 		range = 425,   	projSpeed = 2000, spellKey = 'E'},
+		['HecarimUlt']				= {true, Champ = 'Hecarim', 	range = 1000,   projSpeed = 1200, spellKey = 'R'},
+		['JarvanIVDragonStrike']	= {true, Champ = 'JarvanIV',	range = 770,   	projSpeed = 2000, spellKey = 'Q'},
+		['JarvanIVCataclysm']		= {true, Champ = 'JarvanIV', 	range = 650,   	projSpeed = 2000, spellKey = 'R'},
+		['KhazixE']					= {true, Champ = 'Khazix', 		range = 900,   	projSpeed = 2000, spellKey = 'E'},
+		['khazixelong']				= {true, Champ = 'Khazix', 		range = 900,   	projSpeed = 2000, spellKey = 'E'},
+		['LeblancSlide']			= {true, Champ = 'Leblanc', 	range = 600,   	projSpeed = 2000, spellKey = 'W'},
+		['LeblancSlideM']			= {true, Champ = 'Leblanc', 	range = 600,   	projSpeed = 2000, spellKey = 'WMimic'},
+		['LeonaZenithBlade']		= {true, Champ = 'Leona', 		range = 900,  	projSpeed = 2000, spellKey = 'E'},
+		['UFSlash']					= {true, Champ = 'Malphite', 	range = 1000,  	projSpeed = 1800, spellKey = 'R'},
+		['RenektonSliceAndDice']	= {true, Champ = 'Renekton', 	range = 450,  	projSpeed = 2000, spellKey = 'E'},
+		['SejuaniArcticAssault']	= {true, Champ = 'Sejuani', 	range = 650,  	projSpeed = 2000, spellKey = 'Q'},
+		['ShenShadowDash']			= {true, Champ = 'Shen', 		range = 575,  	projSpeed = 2000, spellKey = 'E'},
+		['RocketJump']				= {true, Champ = 'Tristana', 	range = 900,  	projSpeed = 2000, spellKey = 'W'},
+		['slashCast']				= {true, Champ = 'Tryndamere', 	range = 650,  	projSpeed = 1450, spellKey = 'E'},
 	}
 
-	isAChampToInterrupt = {
-                ["KatarinaR"]					= {true, champ = "Katarina",	spellKey = "R"},
-                ["GalioIdolOfDurand"]			= {true, champ = "Galio",		spellKey = "R"},
-                ["Crowstorm"]					= {true, champ = "FiddleSticks",spellKey = "R"},
-                ["Drain"]						= {true, champ = "FiddleSticks",spellKey = "W"},
-                ["AbsoluteZero"]				= {true, champ = "Nunu",		spellKey = "R"},
-                ["ShenStandUnited"]				= {true, champ = "Shen",		spellKey = "R"},
-                ["UrgotSwap2"]					= {true, champ = "Urgot",		spellKey = "R"},
-                ["AlZaharNetherGrasp"]			= {true, champ = "Malzahar",	spellKey = "R"},
-                ["FallenOne"]					= {true, champ = "Karthus",		spellKey = "R"},
-                ["Pantheon_GrandSkyfall_Jump"]	= {true, champ = "Pantheon",	spellKey = "R"},
-                ["VarusQ"]						= {true, champ = "Varus",		spellKey = "Q"},
-                ["CaitlynAceintheHole"]			= {true, champ = "Caitlyn",		spellKey = "R"},
-                ["MissFortuneBulletTime"]		= {true, champ = "MissFortune",	spellKey = "R"},
-                ["InfiniteDuress"]				= {true, champ = "Warwick",		spellKey = "R"},
-                ["LucianR"]						= {true, champ = "Lucian",		spellKey = "R"}
-
+	self.isAChampToInterrupt = {
+                ['KatarinaR']					= {true, Champ = 'Katarina',	spellKey = 'R'},
+                ['GalioIdolOfDurand']			= {true, Champ = 'Galio',		spellKey = 'R'},
+                ['Crowstorm']					= {true, Champ = 'FiddleSticks',spellKey = 'R'},
+                ['Drain']						= {true, Champ = 'FiddleSticks',spellKey = 'W'},
+                ['AbsoluteZero']				= {true, Champ = 'Nunu',		spellKey = 'R'},
+                ['ShenStandUnited']				= {true, Champ = 'Shen',		spellKey = 'R'},
+                ['UrgotSwap2']					= {true, Champ = 'Urgot',		spellKey = 'R'},
+                ['AlZaharNetherGrasp']			= {true, Champ = 'Malzahar',	spellKey = 'R'},
+                ['FallenOne']					= {true, Champ = 'Karthus',		spellKey = 'R'},
+                ['Pantheon_GrandSkyfall_Jump']	= {true, Champ = 'Pantheon',	spellKey = 'R'},
+                ['VarusQ']						= {true, Champ = 'Varus',		spellKey = 'Q'},
+                ['CaitlynAceintheHole']			= {true, Champ = 'Caitlyn',		spellKey = 'R'},
+                ['MissFortuneBulletTime']		= {true, Champ = 'MissFortune',	spellKey = 'R'},
+                ['InfiniteDuress']				= {true, Champ = 'Warwick',		spellKey = 'R'},
+                ['LucianR']						= {true, Champ = 'Lucian',		spellKey = 'R'}
 	}
 
-	AutoLevelSpellTable = {
-                ["SpellOrder"]	= {"QWE", "QEW", "WQE", "WEQ", "EQW", "EWQ"},
-                ["QWE"]	= {_Q,_W,_E,_Q,_Q,_R,_Q,_W,_Q,_W,_R,_W,_W,_E,_E,_R,_E,_E},
-                ["QEW"]	= {_Q,_E,_W,_Q,_Q,_R,_Q,_E,_Q,_E,_R,_E,_E,_W,_W,_R,_W,_W},
-                ["WQE"]	= {_W,_Q,_E,_W,_W,_R,_W,_Q,_W,_Q,_R,_Q,_Q,_E,_E,_R,_E,_E},
-                ["WEQ"]	= {_W,_E,_Q,_W,_W,_R,_W,_E,_W,_E,_R,_E,_E,_Q,_Q,_R,_Q,_Q},
-                ["EQW"]	= {_E,_Q,_W,_E,_E,_R,_E,_Q,_E,_Q,_R,_Q,_Q,_W,_W,_R,_W,_W},
-                ["EWQ"]	= {_E,_W,_Q,_E,_E,_R,_E,_W,_E,_W,_R,_W,_W,_Q,_Q,_R,_Q,_Q}
+	self.AutoLevelSpellTable = {
+                ['SpellOrder']	= {'QWE', 'QEW', 'WQE', 'WEQ', 'EQW', 'EWQ'},
+                ['QWE']	= {_Q,_W,_E,_Q,_Q,_R,_Q,_W,_Q,_W,_R,_W,_W,_E,_E,_R,_E,_E},
+                ['QEW']	= {_Q,_E,_W,_Q,_Q,_R,_Q,_E,_Q,_E,_R,_E,_E,_W,_W,_R,_W,_W},
+                ['WQE']	= {_W,_Q,_E,_W,_W,_R,_W,_Q,_W,_Q,_R,_Q,_Q,_E,_E,_R,_E,_E},
+                ['WEQ']	= {_W,_E,_Q,_W,_W,_R,_W,_E,_W,_E,_R,_E,_E,_Q,_Q,_R,_Q,_Q},
+                ['EQW']	= {_E,_Q,_W,_E,_E,_R,_E,_Q,_E,_Q,_R,_Q,_Q,_W,_W,_R,_W,_W},
+                ['EWQ']	= {_E,_W,_Q,_E,_E,_R,_E,_W,_E,_W,_R,_W,_W,_Q,_Q,_R,_Q,_Q}
 	}
 
-	heroDirDB = {}
-	for i, enemy in ipairs(GetEnemyHeroes()) do
-			heroDirDB[enemy.name] = {lastVec = Vector(0,0,0), dir = Vector(0,0,0), lastAngle = 0, index = i, hero = enemy}
-	end
-
-	LastPosTable = {}
-	for i, enemy in ipairs(GetEnemyHeroes()) do
-			table.insert(LastPosTable, {["posX"] = enemy.pos.x,["posY"] = enemy.pos.y,["posZ"] = enemy.pos.z, ["unit"] = enemy, ["dir"] = Vector(0,0,0)})
-	end
-
-	ProdictionCircle = {}
-	for i, enemy in ipairs(GetEnemyHeroes()) do
-		ProdictionCircle[enemy.charName] = {x=0,y=0,z=0}
-	end
-
-	TumbleSpots = {
-		["VisionPos_1"] = { ["x"] = 11590.95, ["y"] = 52, ["z"] = 4656.26 },
-		["VisionPos_2"] = { ["x"] = 6623, ["y"] = 56, ["z"] = 8649 },
-		["StandPos_1"] = { ["x"] = 11590.95, ["y"] = 4656.26},
-		["StandPos_2"] = { ["x"] = 6623.00, ["y"] = 8649.00 },
-		["CastPos_1"] = { ["x"] = 11334.74, ["y"] = 4517.47 },
-		["CastPos_2"] = { ["x"] = 6010.5869140625, ["y"] = 8508.8740234375 }
+	self.TumbleSpots = {
+		['Drake'] = {
+			['Name']	= 'Drake',
+			['Circle'] 	= { ['x'] = 11590.95, ['y'] = 52, ['z'] = 4656.26 },
+			['Stand']	= { ['x'] = 11590.95, ['y'] = 4656.26},
+			['Cast']  	= { ['x'] = 11334.74, ['y'] = 4517.47 },
+		},
+		['Midlane'] = {
+			['Name']	= 'Midlane',
+			['Circle'] 	= { ['x'] = 6623, ['y'] = 56, ['z'] = 8649 },
+			['Stand'] 	= { ['x'] = 6623.00, ['y'] = 8649.00 },
+			['Cast'] 	= { ['x'] = 6010.5869140625, ['y'] = 8508.8740234375 },
+		},
 	}
 end
 
 function ShadowVayne:GetOrbWalkers()
-	self.ShadowTable.OrbWalkers = {}
-	table.insert(self.ShadowTable.OrbWalkers, "SxOrb")
-
-	if _G.Reborn_Loaded then
-		table.insert(self.ShadowTable.OrbWalkers, "Reborn R84")
-		print("<font color=\"#F0Ff8d\"><b>ShadowVayne:</b></font> <font color=\"#FF0F0F\">Waiting for SAC:R84 Auth</font>")
-		DelayAction(function() self:GetR84Keys() end)
-		self.WaitForR84 = true
-	end
+	self.SxInfo.OrbWalkers = {}
+	table.insert(self.SxInfo.OrbWalkers, 'SxOrb')
 
 	if _G.MMA_Loaded then
-		table.insert(self.ShadowTable.OrbWalkers, "MMA")
+		table.insert(self.SxInfo.OrbWalkers, 'MMA')
 	end
 
-	if _G.AutoCarry ~= nil and not _G.Reborn_Loaded then
-		if _G.AutoCarry.Helper ~= nil then
-			Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
-			table.insert(self.ShadowTable.OrbWalkers, "Reborn R83")
-		else
-			if _G.AutoCarry.AutoCarry ~= nil then
-				table.insert(self.ShadowTable.OrbWalkers, "Revamped")
-			end
-		end
-	end
-end
-
-function ShadowVayne:GetR84Keys()
-	if _G.AutoCarry then
-		DelayAction(function()
-		Skills, Keys, Items, Data, Jungle, Helper, MyHero, Minions, Crosshair, Orbwalker = AutoCarry.Helper:GetClasses()
-		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACAutoCarry", AutoCarry.MODE_AUTOCARRY)
-		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACMixedMode", AutoCarry.MODE_MIXEDMODE)
-		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLaneClear", AutoCarry.MODE_LANECLEAR)
-		Keys:RegisterMenuKey(SVMainMenu.keysetting, "SACLastHit", AutoCarry.MODE_LASTHIT)
-		self.WaitForR84 = false
-		end, 0.25)
+	if _G.Reborn_Loaded then
+		table.insert(self.SxInfo.OrbWalkers, 'Reborn R84')
+		print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Waiting for SAC:R84 Auth</font>')
+		DelayAction(function() self:WaitForReborn() end)
 	else
-		DelayAction(function() self:GetR84Keys() end)
+		self:LoadMenu()
 	end
 end
 
-function ShadowVayne:LoadMainMenu()
-	SVMainMenu = scriptConfig("[ShadowVayne] MainScript", "SV_MAIN")
-	SVMainMenu:addSubMenu("[Condemn]: AntiGapCloser Settings", "anticapcloser")
-	SVMainMenu:addSubMenu("[Condemn]: AutoStun Settings", "autostunn")
-	SVMainMenu:addSubMenu("[Condemn]: AutoStun Targets", "targets")
-	SVMainMenu:addSubMenu("[Condemn]: Interrupt Settings", "interrupt")
-	SVMainMenu:addSubMenu("[Tumble]: Settings", "tumble")
-	SVMainMenu:addSubMenu("[Misc]: Key Settings", "keysetting")
-	SVMainMenu:addSubMenu("[Misc]: AutoLevelSpells Settings", "autolevel")
-	SVMainMenu:addSubMenu("[Misc]: PermaShow Settings", "permashowsettings")
-	SVMainMenu:addSubMenu("[Misc]: Draw Settings", "draw")
-	SVMainMenu:addSubMenu("[Misc]: WallTumble Settings", "walltumble")
-	SVMainMenu:addSubMenu("[Misc]: SkinHack", "skinhack")
-	SVMainMenu:addSubMenu("[BotRK]: Settings", "botrksettings")
-	SVMainMenu:addSubMenu("[Bilgewater]: Settings", "bilgesettings")
-	SVMainMenu:addSubMenu("[Youmuu's]: Settings", "youmuus")
-	SVMainMenu:addSubMenu("[Debug]: Settings", "debugsettings")
+function ShadowVayne:WaitForReborn()
+	if _G.AutoCarry and _G.AutoCarry.Helper then
+		_, SACKeys = _G.AutoCarry.Helper:GetClasses()
+		self:LoadMenu()
+	else
+		DelayAction(function() self:WaitForReborn() end)
+	end
 end
 
-function ShadowVayne:FillMenu_KeySetting()
-	SVMainMenu.keysetting:addParam("nil","Basic Key Settings", SCRIPT_PARAM_INFO, "")
-	SVMainMenu.keysetting:addParam("basiccondemn","Condemn on next BasicAttack:", SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte( "E" ))
-	SVMainMenu.keysetting:addParam("threshlantern","Grab the Thresh lantern: ", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "T" ))
-	SVMainMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
-	SVMainMenu.keysetting:addParam("nil","General Key Settings", SCRIPT_PARAM_INFO, "")
-	SVMainMenu.keysetting:addParam("togglemode","ToggleMode:", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.keysetting:addParam("autocarry","FightMode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "V" ))
-	SVMainMenu.keysetting:addParam("mixedmode","HarassMode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "C" ))
-	SVMainMenu.keysetting:addParam("laneclear","Lane Clear Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "M" ))
-	SVMainMenu.keysetting:addParam("lasthit","Last Hit Mode Key:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "N" ))
-	SVMainMenu.keysetting:addParam("nil","", SCRIPT_PARAM_INFO, "")
-	SVMainMenu.keysetting:addParam("AutoCarryOrb", "Orbwalker in AutoCarry: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
-	SVMainMenu.keysetting:addParam("MixedModeOrb", "Orbwalker in MixedMode: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
-	SVMainMenu.keysetting:addParam("LaneClearOrb", "Orbwalker in LaneClear: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
-	SVMainMenu.keysetting:addParam("LastHitOrb", "Orbwalker in LastHit: ", SCRIPT_PARAM_LIST, 1, self.ShadowTable.OrbWalkers)
- 	--~ SAC R84 FIX
-	SVMainMenu.keysetting:addParam("SACAutoCarry","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.keysetting:addParam("SACMixedMode","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.keysetting:addParam("SACLaneClear","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.keysetting:addParam("SACLastHit","Hidden SAC V84 Param", SCRIPT_PARAM_ONOFF, false)
+function ShadowVayne:LoadMenu()
+	SVMainMenu = scriptConfig('ShadowVayne', 'SV_MAIN')
+	SVMainMenu:addSubMenu('[Condemn]: AntiGapCloser Settings', 'anticapcloser')
+	SVMainMenu:addSubMenu('[Condemn]: AutoStun Settings', 'autostunn')
+	SVMainMenu:addSubMenu('[Condemn]: AutoStun Targets', 'targets')
+	SVMainMenu:addSubMenu('[Condemn]: Interrupt Settings', 'interrupt')
+	SVMainMenu:addSubMenu('[Tumble]: Settings', 'tumble')
+	SVMainMenu:addSubMenu('[Misc]: Key Settings', 'keysetting')
+	SVMainMenu:addSubMenu('[Misc]: Toggle Settings', 'toggle')
+	SVMainMenu:addSubMenu('[Misc]: AutoLevelSpells Settings', 'autolevel')
+	SVMainMenu:addSubMenu('[Misc]: Draw Settings', 'draw')
+	SVMainMenu:addSubMenu('[Misc]: PermaShow Settings', 'permashow')
+	SVMainMenu:addSubMenu('[Misc]: WallTumble Settings', 'walltumble')
+	if VIP_USER then
+		SVMainMenu:addSubMenu('[Misc]: SkinHack', 'skinhack')
+	end
+	SVMainMenu:addSubMenu('[BotRK]: Settings', 'botrk')
+	SVMainMenu:addSubMenu('[Bilgewater]: Settings', 'bilgewater')
+	SVMainMenu:addSubMenu('[Youmuu\'s]: Settings', 'youmuus')
 
-	if SVMainMenu.keysetting._param[12].listTable[SVMainMenu.keysetting.AutoCarryOrb] == nil then SVMainMenu.keysetting.AutoCarryOrb = 1 end
-	if SVMainMenu.keysetting._param[13].listTable[SVMainMenu.keysetting.MixedModeOrb] == nil then SVMainMenu.keysetting.MixedModeOrb = 1 end
-	if SVMainMenu.keysetting._param[14].listTable[SVMainMenu.keysetting.LaneClearOrb] == nil then SVMainMenu.keysetting.LaneClearOrb = 1 end
-	if SVMainMenu.keysetting._param[15].listTable[SVMainMenu.keysetting.LastHitOrb] == nil then SVMainMenu.keysetting.LastHitOrb = 1 end
-end
+	-- KeySetting Menu
+	SVMainMenu.keysetting:addParam('nil','Basic Key Settings', SCRIPT_PARAM_INFO, '')
+	SVMainMenu.keysetting:addParam('AfterAACondemn','Condemn on next BasicAttack:', SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte( 'E' ))
+	SVMainMenu.keysetting:addParam('ThreshLantern','Grab the Thresh lantern: ', SCRIPT_PARAM_ONKEYDOWN, false, string.byte( 'T' ))
+	SVMainMenu.keysetting:addParam('WallTumble','Tumble over the Wall: ', SCRIPT_PARAM_ONKEYDOWN, false, VIP_USER and string.byte( 'Q' ) or string.byte( 'W' ))
+	SVMainMenu.keysetting:addParam('nil','', SCRIPT_PARAM_INFO, '')
+	SVMainMenu.keysetting:addParam('nil','General Key Settings', SCRIPT_PARAM_INFO, '')
+--~ 	SVMainMenu.keysetting:addParam('togglemode','ToggleMode:', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.keysetting:addParam('FightMode','FightMode Key:', SCRIPT_PARAM_ONKEYDOWN, false, 32)
+	SVMainMenu.keysetting:addParam('HarassMode','HarassMode Key:', SCRIPT_PARAM_ONKEYDOWN, false, string.byte( 'C' ))
+	SVMainMenu.keysetting:addParam('LaneClear','LaneClear Mode Key:', SCRIPT_PARAM_ONKEYDOWN, false, string.byte( 'M' ))
+	SVMainMenu.keysetting:addParam('LastHit','LastHit Mode Key:', SCRIPT_PARAM_ONKEYDOWN, false, string.byte( 'N' ))
+	SVMainMenu.keysetting:addParam('nil','', SCRIPT_PARAM_INFO, '')
+	SVMainMenu.keysetting:addParam('FightModeOrb', 'Orbwalker in FightMode: ', SCRIPT_PARAM_LIST, 1, self.SxInfo.OrbWalkers)
+	SVMainMenu.keysetting:addParam('HarassModeOrb', 'Orbwalker in HarassMode: ', SCRIPT_PARAM_LIST, 1, self.SxInfo.OrbWalkers)
+	SVMainMenu.keysetting:addParam('LaneClearOrb', 'Orbwalker in LaneClear: ', SCRIPT_PARAM_LIST, 1, self.SxInfo.OrbWalkers)
+	SVMainMenu.keysetting:addParam('LastHitOrb', 'Orbwalker in LastHit: ', SCRIPT_PARAM_LIST, 1, self.SxInfo.OrbWalkers)
 
-function ShadowVayne:FillMenu_GapCloser()
-	local FoundAGapCloser = false
-	for i, enemy in ipairs(GetEnemyHeroes()) do
-		if isAGapcloserUnitTarget[enemy.charName] then
-			SVMainMenu.anticapcloser:addSubMenu((enemy.charName).." "..(isAGapcloserUnitTarget[enemy.charName].spellKey), (enemy.charName)..(isAGapcloserUnitTarget[enemy.charName].spellKey))
-			SVMainMenu.anticapcloser[(enemy.charName)..(isAGapcloserUnitTarget[enemy.charName].spellKey)]:addParam("sep", "Interrupt "..(enemy.charName).." "..(isAGapcloserUnitTarget[enemy.charName].spellKey)..":", SCRIPT_PARAM_INFO, "")
-			SVMainMenu.anticapcloser[(enemy.charName)..(isAGapcloserUnitTarget[enemy.charName].spellKey)]:addParam((enemy.charName).."AutoCarry", "in AutoCarry", SCRIPT_PARAM_ONOFF, true)
-			SVMainMenu.anticapcloser[(enemy.charName)..(isAGapcloserUnitTarget[enemy.charName].spellKey)]:addParam((enemy.charName).."MixedMode", "in MixedMode", SCRIPT_PARAM_ONOFF, true)
-			SVMainMenu.anticapcloser[(enemy.charName)..(isAGapcloserUnitTarget[enemy.charName].spellKey)]:addParam((enemy.charName).."LaneClear", "in LaneClear", SCRIPT_PARAM_ONOFF, false)
-			SVMainMenu.anticapcloser[(enemy.charName)..(isAGapcloserUnitTarget[enemy.charName].spellKey)]:addParam((enemy.charName).."LastHit", "in LastHit", SCRIPT_PARAM_ONOFF, false)
-			SVMainMenu.anticapcloser[(enemy.charName)..(isAGapcloserUnitTarget[enemy.charName].spellKey)]:addParam((enemy.charName).."Always", "Always", SCRIPT_PARAM_ONOFF, false)
-			FoundAGapCloser = true
+	-- SAC Reborn R84
+	SVMainMenu.keysetting:addParam('SACAutoCarry','Hidden SAC R84 Param', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.keysetting:addParam('SACMixedMode','Hidden SAC R84 Param', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.keysetting:addParam('SACLaneClear','Hidden SAC R84 Param', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.keysetting:addParam('SACLastHit','Hidden SAC R84 Param', SCRIPT_PARAM_ONOFF, false)
+	if _G.Reborn_Loaded and SACKeys then
+		SACKeys:RegisterMenuKey(SVMainMenu.keysetting, 'SACAutoCarry', AutoCarry.MODE_AUTOCARRY)
+		SACKeys:RegisterMenuKey(SVMainMenu.keysetting, 'SACMixedMode', AutoCarry.MODE_MIXEDMODE)
+		SACKeys:RegisterMenuKey(SVMainMenu.keysetting, 'SACLaneClear', AutoCarry.MODE_LANECLEAR)
+		SACKeys:RegisterMenuKey(SVMainMenu.keysetting, 'SACLastHit', AutoCarry.MODE_LASTHIT)
+	end
+
+	for index, param in pairs(SVMainMenu.keysetting._param) do
+		if param['var'] == 'FightMode' then
+			StartKeyParam = index
 		end
+		if param['var'] == 'FightModeOrb' then
+			StartListParam = index
+		end
+	end
+	if SVMainMenu.keysetting._param[StartListParam].listTable[SVMainMenu.keysetting.FightModeOrb] == nil then SVMainMenu.keysetting.FightModeOrb = 1 end
+	if SVMainMenu.keysetting._param[StartListParam+1].listTable[SVMainMenu.keysetting.HarassModeOrb] == nil then SVMainMenu.keysetting.HarassModeOrb = 1 end
+	if SVMainMenu.keysetting._param[StartListParam+2].listTable[SVMainMenu.keysetting.LaneClearOrb] == nil then SVMainMenu.keysetting.LaneClearOrb = 1 end
+	if SVMainMenu.keysetting._param[StartListParam+3].listTable[SVMainMenu.keysetting.LastHitOrb] == nil then SVMainMenu.keysetting.LastHitOrb = 1 end
 
-		for _, TableInfo in pairs(isAGapcloserUnitNoTarget) do
-			if TableInfo.champ == enemy.charName then
-				SVMainMenu.anticapcloser:addSubMenu((enemy.charName).." "..(TableInfo.spellKey), (enemy.charName)..(TableInfo.spellKey))
-				SVMainMenu.anticapcloser[(enemy.charName)..(TableInfo.spellKey)]:addParam("sep", "Interrupt "..(enemy.charName).." "..(TableInfo.spellKey)..":", SCRIPT_PARAM_INFO, "")
-				SVMainMenu.anticapcloser[(enemy.charName)..(TableInfo.spellKey)]:addParam((enemy.charName).."AutoCarry", "in AutoCarry", SCRIPT_PARAM_ONOFF, true)
-				SVMainMenu.anticapcloser[(enemy.charName)..(TableInfo.spellKey)]:addParam((enemy.charName).."MixedMode", "in MixedMode", SCRIPT_PARAM_ONOFF, true)
-				SVMainMenu.anticapcloser[(enemy.charName)..(TableInfo.spellKey)]:addParam((enemy.charName).."LaneClear", "in LaneClear", SCRIPT_PARAM_ONOFF, false)
-				SVMainMenu.anticapcloser[(enemy.charName)..(TableInfo.spellKey)]:addParam((enemy.charName).."LastHit", "in LastHit", SCRIPT_PARAM_ONOFF, false)
-				SVMainMenu.anticapcloser[(enemy.charName)..(TableInfo.spellKey)]:addParam((enemy.charName).."Always", "Always", SCRIPT_PARAM_ONOFF, false)
+	-- GapCloser
+	local FoundAGapCloser = false
+	for index, data in pairs(self.isAGapcloserUnitTarget) do
+		for index2, enemy in ipairs(GetEnemyHeroes()) do
+			if data['Champ'] == enemy.charName then
+				SVMainMenu.anticapcloser:addSubMenu(enemy.charName..' '..data.spellKey, enemy.charName)
+				SVMainMenu.anticapcloser[enemy.charName]:addParam('fap', 'Pushback '..enemy.charName..' '..data.spellKey..'...', SCRIPT_PARAM_INFO, '')
+				SVMainMenu.anticapcloser[enemy.charName]:addParam('FightMode', 'in FightMode', SCRIPT_PARAM_ONOFF, true)
+				SVMainMenu.anticapcloser[enemy.charName]:addParam('HarassMode', 'in HarassMode', SCRIPT_PARAM_ONOFF, true)
+				SVMainMenu.anticapcloser[enemy.charName]:addParam('LaneClear', 'in LaneClear', SCRIPT_PARAM_ONOFF, false)
+				SVMainMenu.anticapcloser[enemy.charName]:addParam('LastHit', 'in LastHit', SCRIPT_PARAM_ONOFF, false)
+				SVMainMenu.anticapcloser[enemy.charName]:addParam('Always', 'Always', SCRIPT_PARAM_ONOFF, false)
 				FoundAGapCloser = true
 			end
 		end
 	end
+	for index, data in pairs(self.isAGapcloserUnitNoTarget) do
+		for index2, enemy in ipairs(GetEnemyHeroes()) do
+			if data['Champ'] == enemy.charName then
+				SVMainMenu.anticapcloser:addSubMenu(enemy.charName..' '..data.spellKey, enemy.charName)
+				SVMainMenu.anticapcloser[enemy.charName]:addParam('fap', 'Pushback '..enemy.charName..' '..data.spellKey..'...', SCRIPT_PARAM_INFO, '')
+				SVMainMenu.anticapcloser[enemy.charName]:addParam('FightMode', 'in FightMode', SCRIPT_PARAM_ONOFF, true)
+				SVMainMenu.anticapcloser[enemy.charName]:addParam('HarassMode', 'in HarassMode', SCRIPT_PARAM_ONOFF, true)
+				SVMainMenu.anticapcloser[enemy.charName]:addParam('LaneClear', 'in LaneClear', SCRIPT_PARAM_ONOFF, false)
+				SVMainMenu.anticapcloser[enemy.charName]:addParam('LastHit', 'in LastHit', SCRIPT_PARAM_ONOFF, false)
+				SVMainMenu.anticapcloser[enemy.charName]:addParam('Always', 'Always', SCRIPT_PARAM_ONOFF, false)
+				FoundAGapCloser = true
+			end
+		end
+	end
+	if not FoundAGapCloser then SVMainMenu.anticapcloser:addParam('nil','No Enemy Gapclosers found', SCRIPT_PARAM_INFO, '') end
 
-	if not FoundAGapCloser then SVMainMenu.anticapcloser:addParam("nil","No Enemy Gapclosers found", SCRIPT_PARAM_INFO, "") end
-end
-
-function ShadowVayne:FillMenu_StunTarget()
+	-- StunTargets
 	local FoundStunTarget = false
-	for i, enemy in ipairs(GetEnemyHeroes()) do
+	for index, enemy in ipairs(GetEnemyHeroes()) do
 		SVMainMenu.targets:addSubMenu(enemy.charName, enemy.charName)
-		SVMainMenu.targets[enemy.charName]:addParam("sep", "Stun "..(enemy.charName), SCRIPT_PARAM_INFO, "")
-		SVMainMenu.targets[enemy.charName]:addParam("autocarry", "in AutoCarry", SCRIPT_PARAM_ONOFF, true)
-		SVMainMenu.targets[enemy.charName]:addParam("mixedmode", "in MixedMode", SCRIPT_PARAM_ONOFF, false)
-		SVMainMenu.targets[enemy.charName]:addParam("laneclear", "in LaneClear", SCRIPT_PARAM_ONOFF, false)
-		SVMainMenu.targets[enemy.charName]:addParam("lasthit", "in LastHit", SCRIPT_PARAM_ONOFF, false)
-		SVMainMenu.targets[enemy.charName]:addParam("always", "Always", SCRIPT_PARAM_ONOFF, false)
+		SVMainMenu.targets[enemy.charName]:addParam('fap', 'Stun '..enemy.charName..'...', SCRIPT_PARAM_INFO, '')
+		SVMainMenu.targets[enemy.charName]:addParam('FightMode', 'in FightMode', SCRIPT_PARAM_ONOFF, true)
+		SVMainMenu.targets[enemy.charName]:addParam('HarassMode', 'in HarassMode', SCRIPT_PARAM_ONOFF, false)
+		SVMainMenu.targets[enemy.charName]:addParam('LaneClear', 'in LaneClear', SCRIPT_PARAM_ONOFF, false)
+		SVMainMenu.targets[enemy.charName]:addParam('LastHit', 'in LastHit', SCRIPT_PARAM_ONOFF, false)
+		SVMainMenu.targets[enemy.charName]:addParam('Always', 'Always', SCRIPT_PARAM_ONOFF, false)
 		FoundStunTarget = true
 	end
+	if not FoundStunTarget then SVMainMenu.targets:addParam('nil','No Enemies to Stun found', SCRIPT_PARAM_INFO, '') end
 
-	if not FoundStunTarget then SVMainMenu.targets:addParam("nil","No Enemies to Stun found", SCRIPT_PARAM_INFO, "") end
-end
-
-function ShadowVayne:FillMenu_Interrupt()
+	-- Interrupt
 	local Foundinterrupt = false
-	for i, enemy in ipairs(GetEnemyHeroes()) do
-		for _, TableInfo in pairs(isAChampToInterrupt) do
-			if TableInfo.champ == enemy.charName then
-				SVMainMenu.interrupt:addSubMenu((enemy.charName).." "..(TableInfo.spellKey), (enemy.charName)..(TableInfo.spellKey))
-				SVMainMenu.interrupt[(enemy.charName)..(TableInfo.spellKey)]:addParam("sep", "Interrupt "..(enemy.charName).." "..(TableInfo.spellKey), SCRIPT_PARAM_INFO, "")
-				SVMainMenu.interrupt[(enemy.charName)..(TableInfo.spellKey)]:addParam((enemy.charName).."AutoCarry", "in AutoCarry", SCRIPT_PARAM_ONOFF, true)
-				SVMainMenu.interrupt[(enemy.charName)..(TableInfo.spellKey)]:addParam((enemy.charName).."MixedMode", "in MixedMode", SCRIPT_PARAM_ONOFF, true)
-				SVMainMenu.interrupt[(enemy.charName)..(TableInfo.spellKey)]:addParam((enemy.charName).."LaneClear", "in LaneClear", SCRIPT_PARAM_ONOFF, true)
-				SVMainMenu.interrupt[(enemy.charName)..(TableInfo.spellKey)]:addParam((enemy.charName).."LastHit", "in LastHit", SCRIPT_PARAM_ONOFF, true)
-				SVMainMenu.interrupt[(enemy.charName)..(TableInfo.spellKey)]:addParam((enemy.charName).."Always", "Always", SCRIPT_PARAM_ONOFF, true)
+	for index, data in pairs(self.isAChampToInterrupt) do
+		for index, enemy in ipairs(GetEnemyHeroes()) do
+			if data['Champ'] == enemy.charName then
+				SVMainMenu.interrupt:addSubMenu(enemy.charName..' '..data.spellKey..'...', enemy.charName)
+				SVMainMenu.interrupt[enemy.charName]:addParam('fap', 'Interrupt '..enemy.charName..' '..data.spellKey, SCRIPT_PARAM_INFO, '')
+				SVMainMenu.interrupt[enemy.charName]:addParam('FightMode', 'in FightMode', SCRIPT_PARAM_ONOFF, true)
+				SVMainMenu.interrupt[enemy.charName]:addParam('HarassMode', 'in HarassMode', SCRIPT_PARAM_ONOFF, true)
+				SVMainMenu.interrupt[enemy.charName]:addParam('LaneClear', 'in LaneClear', SCRIPT_PARAM_ONOFF, true)
+				SVMainMenu.interrupt[enemy.charName]:addParam('LastHit', 'in LastHit', SCRIPT_PARAM_ONOFF, true)
+				SVMainMenu.interrupt[enemy.charName]:addParam('Always', 'Always', SCRIPT_PARAM_ONOFF, true)
 				Foundinterrupt = true
 			end
 		end
 	end
+	if not Foundinterrupt then SVMainMenu.interrupt:addParam('nil','No Enemies to Interrupt found', SCRIPT_PARAM_INFO, '') end
 
-	if not Foundinterrupt then SVMainMenu.interrupt:addParam("nil","No Enemies to Interrupt found", SCRIPT_PARAM_INFO, "") end
-end
+	-- StunSettings
+	SVMainMenu.autostunn:addParam('PushDistance', 'Push Distance', SCRIPT_PARAM_SLICE, 390, 0, 450, 0)
+	SVMainMenu.autostunn:addParam('TowerStun', 'Stun if Enemy lands unter a Tower', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.autostunn:addParam('Trinket', 'Use Auto-Trinket Bush', SCRIPT_PARAM_ONOFF, true)
+	SVMainMenu.autostunn:addParam('Target', 'Stun only Current Target', SCRIPT_PARAM_ONOFF, true)
 
-function ShadowVayne:FillMenu_StunSettings()
-	SVMainMenu.autostunn:addParam("pushDistance", "Push Distance", SCRIPT_PARAM_SLICE, 390, 0, 450, 0)
-	SVMainMenu.autostunn:addParam("towerstunn", "Stunn if Enemy lands unter a Tower", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.autostunn:addParam("trinket", "Use Auto-Trinket Bush", SCRIPT_PARAM_ONOFF, true)
-	SVMainMenu.autostunn:addParam("target", "Stunn only Current Target", SCRIPT_PARAM_ONOFF, true)
-end
+	-- Draw
+	SVMainMenu.draw:addParam('AARange', 'Draw Basicattack Range', SCRIPT_PARAM_ONOFF, true)
+	SVMainMenu.draw:addParam('AAColor', 'Basicattack Range Color', SCRIPT_PARAM_COLOR, {141, 124, 4, 4})
+	SVMainMenu.draw:addParam('ERange', 'Draw E Range', SCRIPT_PARAM_ONOFF, true)
+	SVMainMenu.draw:addParam('EColor', 'E Range Color', SCRIPT_PARAM_COLOR, {141, 124, 4, 4})
 
-function ShadowVayne:FillMenu_Draw()
-	SVMainMenu.draw:addParam("DrawAARange", "Draw Basicattack Range", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.draw:addParam("DrawERange", "Draw E Range", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.draw:addParam("drawecolor", "E Range Color", SCRIPT_PARAM_COLOR, {141, 124, 4, 4})
-	SVMainMenu.draw:addParam("drawaacolor", "Basicattack Range Color", SCRIPT_PARAM_COLOR, {141, 124, 4, 4})
-	SVMainMenu.draw:addParam("LagFree", "Use LagFreeCircles", SCRIPT_PARAM_ONOFF, false)
-end
+	-- AutoLevel
+	SVMainMenu.autolevel:addParam('UseAutoLevelFirst', 'Use AutoLevelSpells Level 1-3', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.autolevel:addParam('UseAutoLevelRest', 'Use AutoLevelSpells Level 4-18', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.autolevel:addParam('First3Level', 'Level 1-3:', SCRIPT_PARAM_LIST, 1, { 'Q-W-E', 'Q-E-W', 'W-Q-E', 'W-E-Q', 'E-Q-W', 'E-W-Q' })
+	SVMainMenu.autolevel:addParam('RestLevel', 'Level 4-18:', SCRIPT_PARAM_LIST, 1, { 'Q-W-E', 'Q-E-W', 'W-Q-E', 'W-E-Q', 'E-Q-W', 'E-W-Q' })
+	SVMainMenu.autolevel:addParam('fap', '', SCRIPT_PARAM_INFO, '','' )
+	SVMainMenu.autolevel:addParam('fap', 'You can Click on the \'Q-W-E\'', SCRIPT_PARAM_INFO, '','' )
+	SVMainMenu.autolevel:addParam('fap', 'to change the AutoLevelOrder', SCRIPT_PARAM_INFO, '','' )
 
-function ShadowVayne:FillMenu_Autolevel()
-		SVMainMenu.autolevel:addParam("UseAutoLevelfirst", "Use AutoLevelSpells Level 1-3", SCRIPT_PARAM_ONOFF, false)
-		SVMainMenu.autolevel:addParam("UseAutoLevelrest", "Use AutoLevelSpells Level 4-18", SCRIPT_PARAM_ONOFF, false)
-		SVMainMenu.autolevel:addParam("first3level", "Level 1-3:", SCRIPT_PARAM_LIST, 1, { "Q-W-E", "Q-E-W", "W-Q-E", "W-E-Q", "E-Q-W", "E-W-Q" })
-		SVMainMenu.autolevel:addParam("restlevel", "Level 4-18:", SCRIPT_PARAM_LIST, 1, { "Q-W-E", "Q-E-W", "W-Q-E", "W-E-Q", "E-Q-W", "E-W-Q" })
-		SVMainMenu.autolevel:addParam("fap", "", SCRIPT_PARAM_INFO, "","" )
-		SVMainMenu.autolevel:addParam("fap", "You can Click on the \"Q-W-E\"", SCRIPT_PARAM_INFO, "","" )
-		SVMainMenu.autolevel:addParam("fap", "to change the Autospellorder", SCRIPT_PARAM_INFO, "","" )
-end
+	-- PermaShow
+	SVMainMenu.permashow:addParam('AfterAACondemn', 'PermaShow \'E on Next BasicAttack\'', SCRIPT_PARAM_ONOFF, true)
+	SVMainMenu.permashow:addParam('FightMode', 'PermaShow: FightMode', SCRIPT_PARAM_ONOFF, true)
+	SVMainMenu.permashow:addParam('HarassMode', 'PermaShow: HarassMode', SCRIPT_PARAM_ONOFF, true)
+	SVMainMenu.permashow:addParam('LaneClear', 'PermaShow: LaneClear', SCRIPT_PARAM_ONOFF, true)
+	SVMainMenu.permashow:addParam('LastHit', 'PermaShow: LastHit', SCRIPT_PARAM_ONOFF, true)
 
-function ShadowVayne:FillMenu_PermaShow()
-	SVMainMenu.permashowsettings:addParam("epermashow", "PermaShow \"E on Next BasicAttack\"", SCRIPT_PARAM_ONOFF, true)
-	SVMainMenu.permashowsettings:addParam("carrypermashow", "PermaShow: AutoCarry", SCRIPT_PARAM_ONOFF, true)
-	SVMainMenu.permashowsettings:addParam("mixedpermashow", "PermaShow: Mixed Mode", SCRIPT_PARAM_ONOFF, true)
-	SVMainMenu.permashowsettings:addParam("laneclearpermashow", "PermaShow: Laneclear", SCRIPT_PARAM_ONOFF, true)
-	SVMainMenu.permashowsettings:addParam("lasthitpermashow", "PermaShow: Last hit", SCRIPT_PARAM_ONOFF, true)
-end
+	-- BotRK
+	SVMainMenu.botrk:addParam('FightMode', 'Use BotRK in FightMode', SCRIPT_PARAM_ONOFF, true)
+	SVMainMenu.botrk:addParam('HarassMode', 'Use BotRK in HarassMode', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.botrk:addParam('LaneClear', 'Use BotRK in LaneClear', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.botrk:addParam('LastHit', 'Use BotRK in LastHit', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.botrk:addParam('Always', 'Use BotRK Always', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.botrk:addParam('MaxOwnHealth', 'Max Own Health Percent', SCRIPT_PARAM_SLICE, 50, 1, 100, 0)
+	SVMainMenu.botrk:addParam('MinEnemyHealth', 'Min Enemy Health Percent', SCRIPT_PARAM_SLICE, 20, 1, 100, 0)
 
-function ShadowVayne:FillMenu_BotRK()
-	SVMainMenu.botrksettings:addParam("botrkautocarry", "Use BotRK in AutoCarry", SCRIPT_PARAM_ONOFF, true)
-	SVMainMenu.botrksettings:addParam("botrkmixedmode", "Use BotRK in MixedMode", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.botrksettings:addParam("botrklaneclear", "Use BotRK in LaneClear", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.botrksettings:addParam("botrklasthit", "Use BotRK in LastHit", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.botrksettings:addParam("botrkalways", "Use BotRK always", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.botrksettings:addParam("botrkmaxheal", "Max Own Health Percent", SCRIPT_PARAM_SLICE, 50, 1, 100, 0)
-	SVMainMenu.botrksettings:addParam("botrkminheal", "Min Enemy Health Percent", SCRIPT_PARAM_SLICE, 20, 1, 100, 0)
-end
+	-- Bilgewater
+	SVMainMenu.bilgewater:addParam('FightMode', 'Use BilgeWater Cutlass in FightMode', SCRIPT_PARAM_ONOFF, true)
+	SVMainMenu.bilgewater:addParam('HarassMode', 'Use BilgeWater Cutlass in HarassMode', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.bilgewater:addParam('LaneClear', 'Use BilgeWater Cutlass in LaneClear', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.bilgewater:addParam('LastHit', 'Use BilgeWater Cutlass in LastHit', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.bilgewater:addParam('Always', 'Use BilgeWater Cutlass Always', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.bilgewater:addParam('MaxOwnHealth', 'Max Own Health Percent', SCRIPT_PARAM_SLICE, 50, 1, 100, 0)
+	SVMainMenu.bilgewater:addParam('MinEnemyHealth', 'Min Enemy Health Percent', SCRIPT_PARAM_SLICE, 20, 1, 100, 0)
 
-function ShadowVayne:FillMenu_BilgeWater()
-	SVMainMenu.bilgesettings:addParam("bilgeautocarry", "Use BilgeWater in AutoCarry", SCRIPT_PARAM_ONOFF, true)
-	SVMainMenu.bilgesettings:addParam("bilgemixedmode", "Use BilgeWater in MixedMode", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.bilgesettings:addParam("bilgelaneclear", "Use BilgeWater in LaneClear", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.bilgesettings:addParam("bilgelasthit", "Use BilgeWater in LastHit", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.bilgesettings:addParam("bilgealways", "Use BilgeWater always", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.bilgesettings:addParam("bilgemaxheal", "Max Own Health Percent", SCRIPT_PARAM_SLICE, 50, 1, 100, 0)
-	SVMainMenu.bilgesettings:addParam("bilgeminheal", "Min Enemy Health Percent", SCRIPT_PARAM_SLICE, 20, 1, 100, 0)
-end
+	-- Yomuus
+	SVMainMenu.youmuus:addParam('FightMode', 'Use Youmuus Ghostblade in FightMode', SCRIPT_PARAM_ONOFF, true)
+	SVMainMenu.youmuus:addParam('HarassMode', 'Use Youmuus Ghostblade in HarassMode', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.youmuus:addParam('LaneClear', 'Use Youmuus Ghostblade in LaneClear', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.youmuus:addParam('LastHit', 'Use Youmuus Ghostblade in LastHit', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.youmuus:addParam('Always', 'Use Youmuus Ghostblade Always', SCRIPT_PARAM_ONOFF, false)
 
-function ShadowVayne:FillMenu_Yomuus()
-	SVMainMenu.youmuus:addParam("autocarry", "Use Youmuu's Ghostblade in AutoCarry", SCRIPT_PARAM_ONOFF, true)
-	SVMainMenu.youmuus:addParam("mixedmode", "Use Youmuu's Ghostblade in MixedMode", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.youmuus:addParam("laneclear", "Use Youmuu's Ghostblade in LaneClear", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.youmuus:addParam("lasthit", "Use Youmuu's Ghostblade in LastHit", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.youmuus:addParam("always", "Use Youmuu's Ghostblade always", SCRIPT_PARAM_ONOFF, false)
-end
+	-- Tumble
+	SVMainMenu.tumble:addParam('FightMode', 'Use Tumble in FightMode', SCRIPT_PARAM_ONOFF, true)
+	SVMainMenu.tumble:addParam('HarassMode', 'Use Tumble in HarassMode', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.tumble:addParam('LaneClear', 'Use Tumble in LaneClear', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.tumble:addParam('LastHit', 'Use Tumble in LastHit', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.tumble:addParam('Always', 'Use Tumble Always', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.tumble:addParam('fap', '', SCRIPT_PARAM_INFO, '','' )
+	SVMainMenu.tumble:addParam('ManaFightMode', 'Min Mana to use Q in FightMode', SCRIPT_PARAM_SLICE, 0, 0, 100, 0)
+	SVMainMenu.tumble:addParam('ManaHarassMode', 'Min Mana to use Q in HarassMode', SCRIPT_PARAM_SLICE, 50, 0, 100, 0)
+	SVMainMenu.tumble:addParam('ManaLaneClear', 'Min Mana to use Q in LaneClear', SCRIPT_PARAM_SLICE, 50, 0, 100, 0)
+	SVMainMenu.tumble:addParam('ManaLastHit', 'Min Mana to use Q in LastHit', SCRIPT_PARAM_SLICE, 50, 0, 100, 0)
 
-function ShadowVayne:FillMenu_Tumble()
-	SVMainMenu.tumble:addParam("Qautocarry", "Use Tumble in AutoCarry", SCRIPT_PARAM_ONOFF, true)
-	SVMainMenu.tumble:addParam("Qmixedmode", "Use Tumble in MixedMode", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.tumble:addParam("Qlaneclear", "Use Tumble in LaneClear", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.tumble:addParam("Qlasthit", "Use Tumble in LastHit", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.tumble:addParam("Qalways", "Use Tumble always", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.tumble:addParam("fap", "", SCRIPT_PARAM_INFO, "","" )
-	SVMainMenu.tumble:addParam("QManaAutoCarry", "Min Mana to use Q in AutoCarry", SCRIPT_PARAM_SLICE, 0, 0, 100, 0)
-	SVMainMenu.tumble:addParam("QManaMixedMode", "Min Mana to use Q in MixedMode", SCRIPT_PARAM_SLICE, 50, 0, 100, 0)
-	SVMainMenu.tumble:addParam("QManaLaneClear", "Min Mana to use Q in LaneClear", SCRIPT_PARAM_SLICE, 50, 0, 100, 0)
-	SVMainMenu.tumble:addParam("QManaLastHit", "Min Mana to use Q in LastHit", SCRIPT_PARAM_SLICE, 50, 0, 100, 0)
-end
+	-- WallTumble
+	SVMainMenu.walltumble:addParam('Drake', 'Draw & Use Spot 1 (Drake-Spot)', SCRIPT_PARAM_ONOFF, true)
+	SVMainMenu.walltumble:addParam('Midlane', 'Draw & Use Spot 2 (Midlane-Spot)', SCRIPT_PARAM_ONOFF, true)
 
-function ShadowVayne:FillMenu_WallTumble()
-	SVMainMenu.walltumble:addParam("spot1", "Draw & Use Spot 1 (Drake-Spot)", SCRIPT_PARAM_ONOFF, true)
-	SVMainMenu.walltumble:addParam("spot2", "Draw & Use Spot 2 (Min-Spot)", SCRIPT_PARAM_ONOFF, true)
-end
+	-- Toggle
+	SVMainMenu.toggle:addParam('FightMode', 'Make FightMode a Toggle', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.toggle:addParam('HarassMode', 'Make HarassMode a Toggle', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.toggle:addParam('LaneClear', 'Make LaneClear a Toggle', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.toggle:addParam('LastHit', 'Make LastHit a Toggle', SCRIPT_PARAM_ONOFF, false)
+	SVMainMenu.toggle:addParam('RightClick', 'Disable Toggle on RightClick', SCRIPT_PARAM_ONOFF, false)
 
-function ShadowVayne:FillMenu_SkinHack()
-	SVMainMenu.skinhack:addParam("enabled", "Enable Skinhack", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.skinhack:addParam("skinid", "Choose the Skin: ", SCRIPT_PARAM_LIST, 1, { "No Skin", "Vindicator", "Aristocrat", "Dragonslayer", "Hearthseeker", "SKT T1" })
-end
-
-function ShadowVayne:FillMenu_Debug()
-	SVMainMenu.debugsettings:addSubMenu("Disable Callbacks: OnTick()", "tick")
-	SVMainMenu.debugsettings.tick:addParam("activatemodes", "Disable Tick Callback: ActivateModes", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.tick:addParam("checklevelchange", "Disable Tick Callback: CheckLevelChange", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.tick:addParam("permashows", "Disable Tick Callback: PermaShows", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.tick:addParam("botrk", "Disable Tick Callback: BotRK", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.tick:addParam("bilgewater", "Disable Tick Callback: Bilgewater", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.tick:addParam("gapcloseraftercast", "Disable Tick Callback: GapCloserAfterCast", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.tick:addParam("gapcloserrengar", "Disable Tick Callback: GapCloserRengar", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.tick:addParam("switchtogglemode", "Disable Tick Callback: SwitchToggleMode", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.tick:addParam("threshlantern", "Disable Tick Callback: TreshLantern", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.tick:addParam("condemnstun", "Disable Tick Callback: CondemnStun", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.tick:addParam("twalltumble", "Disable Tick Callback: WallTumble", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.tick:addParam("updateherodirection", "Disable Tick Callback: UpdateHeroDirection", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.tick:addParam("generatetarget", "Disable Tick Callback: GenerateTarget", SCRIPT_PARAM_ONOFF, false)
-
-	SVMainMenu.debugsettings:addSubMenu("Disable Callbacks: OnCreateObj()", "createobj")
-	SVMainMenu.debugsettings.createobj:addParam("rengarobject", "Disable CreateObj Callback: RengarObject", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.createobj:addParam("threshobject", "Disable CreateObj Callback: ThreshObject", SCRIPT_PARAM_ONOFF, false)
-
-	SVMainMenu.debugsettings:addSubMenu("Disable Callbacks: OnProcessSpell()", "processspell")
-	SVMainMenu.debugsettings.processspell:addParam("gapcloser", "Disable ProcessSpell Callback: GapCloser", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.processspell:addParam("interrupt", "Disable ProcessSpell Callback: Interrupt", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.processspell:addParam("basicattack", "Disable ProcessSpell Callback: BasicAttack", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.processspell:addParam("recall", "Disable ProcessSpell Callback: Recall", SCRIPT_PARAM_ONOFF, false)
-
-	SVMainMenu.debugsettings:addSubMenu("Disable Callbacks: OnDraw()", "draw")
-	SVMainMenu.debugsettings.draw:addParam("dwalltumble", "Disable Draw Callback: WallTumble", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.draw:addParam("condemnrange", "Disable Draw Callback: CondemnRange", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.draw:addParam("aarange", "Disable Draw Callback: AARange", SCRIPT_PARAM_ONOFF, false)
-
-	SVMainMenu.debugsettings:addSubMenu("Disable Callbacks: OnSendPacket()", "sendpacket")
-	SVMainMenu.debugsettings.sendpacket:addParam("pwalltumble", "Disable SendPacket Callback: WallTumble", SCRIPT_PARAM_ONOFF, false)
-
-	SVMainMenu.debugsettings:addSubMenu("Disable Callbacks: OnWndMsg()", "msg")
-	SVMainMenu.debugsettings.msg:addParam("doublemodeprotection", "Disable Msg Callback: DoubleModeProtection", SCRIPT_PARAM_ONOFF, false)
-
-	SVMainMenu.debugsettings:addSubMenu("TargetDraw", "targetdraw")
-	SVMainMenu.debugsettings.targetdraw:addParam("lefttop", "Draw the actual Target in the Top left corner", SCRIPT_PARAM_ONOFF, false)
-	SVMainMenu.debugsettings.targetdraw:addParam("myhero", "Draw the actual Target on myHero", SCRIPT_PARAM_ONOFF, false)
-
-	SVMainMenu.debugsettings:addParam("forcereset","Force AA/Taget/Script-Reset:", SCRIPT_PARAM_ONKEYDOWN, false, string.byte( "G" ))
-end
-
-function ShadowVayne:LoadRengar()
-	for i, enemy in ipairs(GetEnemyHeroes()) do
-		if enemy.charName == "Rengar" then
-			RengarHero = enemy
-		end
+	if VIP_USER then
+		-- SkinHack
+		SVMainMenu.skinhack:addParam('Enabled', 'Enable Skinhack', SCRIPT_PARAM_ONOFF, false)
+		SVMainMenu.skinhack:addParam('SkinId', 'Choose the Skin: ', SCRIPT_PARAM_LIST, 1, { 'No Skin', 'Vindicator', 'Aristocrat', 'Dragonslayer', 'Hearthseeker', 'SKT T1' })
 	end
+
+	self:MenuLoaded()
 end
 
-function ShadowVayne:LoadCustomPermaShow()
-	_G.HidePermaShow["LaneClear OnHold:"] = true
-	_G.HidePermaShow["Orbwalk OnHold:"] = true
-	_G.HidePermaShow["LastHit OnHold:"] = true
-	_G.HidePermaShow["HybridMode OnHold:"] = true
-	_G.HidePermaShow["Condemn on next BasicAttack:"] = true
-	_G.HidePermaShow["              Sida's Auto Carry: Reborn"] = true
-	_G.HidePermaShow["Auto Carry"] = true
-	_G.HidePermaShow["Last Hit"] = true
-	_G.HidePermaShow["Mixed Mode"] = true
-	_G.HidePermaShow["Lane Clear"] = true
-	_G.HidePermaShow["Auto-Condemn"] = true
-	_G.HidePermaShow["No mode active"] = true
-	_G.HidePermaShow["ShadowVayne found. Set the Keysettings there!"] = true
+function ShadowVayne:MenuLoaded()
+	SxOrb:LoadToMenu(nil, true)
+	self:CheckLevelChange()
+	self:HideOtherPermaShow()
+	self:CheckItems()
+	self:SwitchToggleMode()
+
+	AddMsgCallback(function(msg,key) self:DoubleModeProtection(msg, key) end)
+
+	AddTickCallback(function() self:ActivateModes() end)
+	AddTickCallback(function() self:BotRK() end)
+	AddTickCallback(function() self:BilgeWater() end)
+	AddTickCallback(function() self:WallTumble() end)
+	AddTickCallback(function() self:CondemnStun() end)
+
+	AddCreateObjCallback(function(Obj) self:RengarObject(Obj) end)
+
+	AddDrawCallback(function() self:PermaShows() end)
+	AddDrawCallback(function() self:OnDraw() end)
+
+	AddProcessSpellCallback(function(unit, spell) self:OnProcessSpell(unit, spell) end)
+	-- VIP Callbacks
+	if VIP_USER then
+		AddCreateObjCallback(function(Obj) self:ThreshObject(Obj) end)
+		AddSendPacketCallback(function(p) self:OnSendPacket(p) end)
+		self:SkinHack()
+	end
+
+end
+
+function ShadowVayne:HideOtherPermaShow()
+	_G.HidePermaShow['LaneClear OnHold:'] = true
+	_G.HidePermaShow['Orbwalk OnHold:'] = true
+	_G.HidePermaShow['LastHit OnHold:'] = true
+	_G.HidePermaShow['HybridMode OnHold:'] = true
+	_G.HidePermaShow['Condemn on next BasicAttack:'] = true
+	_G.HidePermaShow['              Sida\'s Auto Carry: Reborn'] = true
+	_G.HidePermaShow['Auto Carry'] = true
+	_G.HidePermaShow['Last Hit'] = true
+	_G.HidePermaShow['Mixed Mode'] = true
+	_G.HidePermaShow['Lane Clear'] = true
+	_G.HidePermaShow['Auto-Condemn'] = true
+	_G.HidePermaShow['No mode active'] = true
+	_G.HidePermaShow['ShadowVayne found. Set the Keysettings there!'] = true
 end
 
 function ShadowVayne:DoubleModeProtection(msg, key)
-		if key == SVMainMenu.keysetting._param[7].key then -- AutoCarry
-			  SVMainMenu.keysetting.mixedmode,SVMainMenu.keysetting.laneclear,SVMainMenu.keysetting.lasthit = false,false,false
-		end
+	if key == 2 and SVMainMenu.toggle['RightClick'] and self:CheckModesActive(SVMainMenu.toggle) then
+		  SVMainMenu.keysetting.FightMode,SVMainMenu.keysetting.HarassMode,SVMainMenu.keysetting.LaneClear,SVMainMenu.keysetting.LastHit = false,false,false,false
+	end
 
-		if key == SVMainMenu.keysetting._param[8].key then -- MixedMode
-			  SVMainMenu.keysetting.autocarry,SVMainMenu.keysetting.laneclear,SVMainMenu.keysetting.lasthit = false,false,false
-		end
+	if key == SVMainMenu.keysetting._param[StartKeyParam].key then -- FightMode
+		  SVMainMenu.keysetting.HarassMode,SVMainMenu.keysetting.LaneClear,SVMainMenu.keysetting.LastHit = false,false,false
+	end
 
-		if key == SVMainMenu.keysetting._param[9].key then -- LaneClear
-			  SVMainMenu.keysetting.autocarry,SVMainMenu.keysetting.mixedmode,SVMainMenu.keysetting.lasthit = false,false,false
-		end
+	if key == SVMainMenu.keysetting._param[StartKeyParam+1].key then -- HarassMode
+		  SVMainMenu.keysetting.FightMode,SVMainMenu.keysetting.LaneClear,SVMainMenu.keysetting.LastHit = false,false,false
+	end
 
-		if key == SVMainMenu.keysetting._param[10].key then -- LastHit
-			  SVMainMenu.keysetting.autocarry,SVMainMenu.keysetting.mixedmode,SVMainMenu.keysetting.laneclear = false,false,false
-		end
+	if key == SVMainMenu.keysetting._param[StartKeyParam+2].key then -- LaneClear
+		  SVMainMenu.keysetting.FightMode,SVMainMenu.keysetting.HarassMode,SVMainMenu.keysetting.LastHit = false,false,false
+	end
+
+	if key == SVMainMenu.keysetting._param[StartKeyParam+3].key then -- LastHit
+		  SVMainMenu.keysetting.FightMode,SVMainMenu.keysetting.HarassMode,SVMainMenu.keysetting.LaneClear = false,false,false
+	end
 end
 
 function ShadowVayne:ActivateModes()
-	--~ Get the Keysettings from SVMainMenu
-	ShadowVayneAutoCarry = SVMainMenu.keysetting.autocarry
-	ShadowVayneMixedMode = SVMainMenu.keysetting.mixedmode
-	ShadowVayneLaneClear = SVMainMenu.keysetting.laneclear
-	ShadowVayneLastHit = SVMainMenu.keysetting.lasthit
+	-- Get the Keysettings from SVMainMenu
+	ShadowVayneFightMode = SVMainMenu.keysetting.FightMode
+	ShadowVayneHarassMode = SVMainMenu.keysetting.HarassMode
+	ShadowVayneLaneClear = SVMainMenu.keysetting.LaneClear
+	ShadowVayneLastHit = SVMainMenu.keysetting.LastHit
 
-	--~ Recall-Check when ToggleMode is on
-	if (Recalling or RecallCast) and SVMainMenu.keysetting.togglemode then
-		ShadowVayneAutoCarry = false
-		ShadowVayneMixedMode = false
-		ShadowVayneLaneClear = false
-		ShadowVayneLastHit = false
+	-- Get The Selected Orbwalker
+	FightModeOrbText = SVMainMenu.keysetting._param[StartListParam].listTable[SVMainMenu.keysetting.FightModeOrb]
+	HarassModeOrbText = SVMainMenu.keysetting._param[StartListParam+1].listTable[SVMainMenu.keysetting.HarassModeOrb]
+	LaneClearOrbText = SVMainMenu.keysetting._param[StartListParam+2].listTable[SVMainMenu.keysetting.LaneClearOrb]
+	LastHitOrbText = SVMainMenu.keysetting._param[StartListParam+3].listTable[SVMainMenu.keysetting.LastHitOrb]
+
+	-- Activate MMA
+	if FightModeOrbText == 'MMA' then _G.MMA_Orbwalker = ShadowVayneFightMode end
+	if HarassModeOrbText == 'MMA' then _G.MMA_HybridMode = ShadowVayneHarassMode end
+	if LaneClearOrbText == 'MMA' then _G.MMA_LaneClear = ShadowVayneLaneClear end
+	if LastHitOrbText == 'MMA' then _G.MMA_LastHit = ShadowVayneLastHit end
+
+	-- Activate SAC:Reborn R84
+	if FightModeOrbText == 'Reborn R84' then SVMainMenu.keysetting.SACAutoCarry = ShadowVayneFightMode end
+	if HarassModeOrbText == 'Reborn R84' then SVMainMenu.keysetting.SACMixedMode = ShadowVayneHarassMode end
+	if LaneClearOrbText == 'Reborn R84' then SVMainMenu.keysetting.SACLaneClear = ShadowVayneLaneClear end
+	if LastHitOrbText   == 'Reborn R84' then SVMainMenu.keysetting.SACLastHit = ShadowVayneLastHit end
+
+	-- Activate SxOrbWalker
+	if FightModeOrbText == 'SxOrb' then _G.SxOrbMenu.Mode.Fight = ShadowVayneFightMode end
+	if HarassModeOrbText == 'SxOrb' then _G.SxOrbMenu.Mode.Harass = ShadowVayneHarassMode end
+	if LaneClearOrbText == 'SxOrb' then _G.SxOrbMenu.Mode.LaneClear = ShadowVayneLaneClear end
+	if LastHitOrbText   == 'SxOrb' then _G.SxOrbMenu.Mode.LastHit = ShadowVayneLastHit end
+end
+
+function ShadowVayne:CheckModesActive(Menu)
+	if Menu['FightMode'] and SVMainMenu.keysetting.FightMode then
+		return true
+	elseif Menu['HarassMode'] and SVMainMenu.keysetting.HarassMode then
+		return true
+	elseif Menu['LaneClear'] and SVMainMenu.keysetting.LaneClear then
+		return true
+	elseif Menu['LastHit'] and SVMainMenu.keysetting.LastHit then
+		return true
+	elseif Menu['Always'] then
+		return true
+	else
+		return false
 	end
-
---~ 	--~ Get The Selected Orbwalker
-	AutoCarryOrbText = SVMainMenu.keysetting._param[12].listTable[SVMainMenu.keysetting.AutoCarryOrb]
-	MixedModeOrbText = SVMainMenu.keysetting._param[13].listTable[SVMainMenu.keysetting.MixedModeOrb]
-	LaneClearOrbText = SVMainMenu.keysetting._param[14].listTable[SVMainMenu.keysetting.LaneClearOrb]
-	LastHitOrbText = SVMainMenu.keysetting._param[15].listTable[SVMainMenu.keysetting.LastHitOrb]
-
---~ 	--~ Activate MMA
-	if AutoCarryOrbText == "MMA" then _G.MMA_Orbwalker = ShadowVayneAutoCarry end
-	if MixedModeOrbText == "MMA" then _G.MMA_HybridMode = ShadowVayneMixedMode end
-	if LaneClearOrbText == "MMA" then _G.MMA_LaneClear = ShadowVayneLaneClear end
-	if LastHitOrbText == "MMA" then _G.MMA_LastHit = ShadowVayneLastHit end
-
---~ 	--~ Activate SAC:Reborn R83
-	if AutoCarryOrbText == "Reborn R83" then Keys.AutoCarry = ShadowVayneAutoCarry end
-	if MixedModeOrbText == "Reborn R83" then Keys.MixedMode = ShadowVayneMixedMode end
-	if LaneClearOrbText == "Reborn R83" then Keys.LaneClear = ShadowVayneLaneClear end
-	if LastHitOrbText   == "Reborn R83" then Keys.LastHit = ShadowVayneLastHit end
-
---~ 	--~ Activate SAC:Reborn R84
-	if AutoCarryOrbText == "Reborn R84" then SVMainMenu.keysetting.SACAutoCarry = ShadowVayneAutoCarry end
-	if MixedModeOrbText == "Reborn R84" then SVMainMenu.keysetting.SACMixedMode = ShadowVayneMixedMode end
-	if LaneClearOrbText == "Reborn R84" then SVMainMenu.keysetting.SACLaneClear = ShadowVayneLaneClear end
-	if LastHitOrbText   == "Reborn R84" then SVMainMenu.keysetting.SACLastHit = ShadowVayneLastHit end
-
-	--~ Activate SxOrbWalker
-	if AutoCarryOrbText == "SxOrb" then _G.SxOrbMenu.Mode.Fight = ShadowVayneAutoCarry end
-	if MixedModeOrbText == "SxOrb" then _G.SxOrbMenu.Mode.Harass = ShadowVayneMixedMode end
-	if LaneClearOrbText == "SxOrb" then _G.SxOrbMenu.Mode.LaneClear = ShadowVayneLaneClear end
-	if LastHitOrbText   == "SxOrb" then _G.SxOrbMenu.Mode.LastHit = ShadowVayneLastHit end
-
-	--~ Activate SOW
---~ 	if AutoCarryOrbText == "SOW" then SVSOWMenu.Mode0 = ShadowVayneAutoCarry end
---~ 	if MixedModeOrbText == "SOW" then SVSOWMenu.Mode1 = ShadowVayneMixedMode end
---~ 	if LaneClearOrbText == "SOW" then SVSOWMenu.Mode2 = ShadowVayneLaneClear end
---~ 	if LastHitOrbText == "SOW" then SVSOWMenu.Mode3 = ShadowVayneLastHit end
 end
 
 function ShadowVayne:CheckLevelChange()
-	if GetGame().map.index == 8 and myHero.level < 4 and SVMainMenu.autolevel.UseAutoLevelfirst then
+	if self.SxInfo.MapIndex == 8 and myHero.level < 4 and SVMainMenu.autolevel.UseAutoLevelFirst then
 		LevelSpell(_Q)
 		LevelSpell(_W)
 		LevelSpell(_E)
 	end
-	if self.ShadowTable.LastLevelCheck + 100 < GetTickCount() then
-		self.ShadowTable.LastLevelCheck = GetTickCount()
-		if myHero.level ~= self.ShadowTable.LastHeroLevel then
+	if self.SxInfo.LastLevelCheck + 100 < GetTickCount() then
+		self.SxInfo.LastLevelCheck = GetTickCount()
+		if myHero.level ~= self.SxInfo.LastHeroLevel then
 			DelayAction(function() self:LevelUpSpell() end, 0.25)
-			self.ShadowTable.LastHeroLevel = myHero.level
+			self.SxInfo.LastHeroLevel = myHero.level
 		end
 	end
+	DelayAction(function() self:CheckLevelChange() end,0.25)
 end
 
 function ShadowVayne:LevelUpSpell()
-	if SVMainMenu.autolevel.UseAutoLevelfirst and myHero.level < 4 then
-		LevelSpell(AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.first3level]][myHero.level])
+	if SVMainMenu.autolevel.UseAutoLevelFirst and myHero.level < 4 then
+		LevelSpell(self.AutoLevelSpellTable[self.AutoLevelSpellTable['SpellOrder'][SVMainMenu.autolevel.First3Level]][myHero.level])
 	end
 
-	if SVMainMenu.autolevel.UseAutoLevelrest and myHero.level > 3 then
-		LevelSpell(AutoLevelSpellTable[AutoLevelSpellTable["SpellOrder"][SVMainMenu.autolevel.restlevel]][myHero.level])
+	if SVMainMenu.autolevel.UseAutoLevelRest and myHero.level > 3 then
+		LevelSpell(self.AutoLevelSpellTable[self.AutoLevelSpellTable['SpellOrder'][SVMainMenu.autolevel.RestLevel]][myHero.level])
 	end
 end
 
 function ShadowVayne:SkinHack()
-	if SVMainMenu.skinhack.enabled and self.CurSkin ~= SVMainMenu.skinhack.skinid then
+	if SVMainMenu.skinhack.Enabled and self.SxInfo.CurSkin ~= SVMainMenu.skinhack.SkinId then
 		local SkinIdSwap = { [1] = 6, [2] = 1, [3] = 2, [4] = 3, [5] = 4, [6] = 5 }
-		self.CurSkin = SVMainMenu.skinhack.skinid
-		ShadowVayne:SkinChanger(myHero.charName, SkinIdSwap[self.CurSkin])
+		self.SxInfo.CurSkin = SVMainMenu.skinhack.SkinId
+		ShadowVayne:SkinChanger(myHero.charName, SkinIdSwap[self.SxInfo.CurSkin])
 	end
+	DelayAction(function() self:SkinHack() end, 0.5)
 end
 
 function ShadowVayne:PermaShows()
-	CustomPermaShow("AutoCarry (Using "..AutoCarryOrbText..")", SVMainMenu.keysetting.autocarry, SVMainMenu.permashowsettings.carrypermashow, nil, 1426521024, nil, 1)
-	CustomPermaShow("MixedMode (Using "..MixedModeOrbText..")", SVMainMenu.keysetting.mixedmode, SVMainMenu.permashowsettings.mixedpermashow, nil, 1426521024, nil, 2)
-	CustomPermaShow("LaneClear (Using "..LaneClearOrbText..")", SVMainMenu.keysetting.laneclear, SVMainMenu.permashowsettings.laneclearpermashow, nil, 1426521024, nil, 3)
-	CustomPermaShow("LastHit (Using "..LastHitOrbText..")", SVMainMenu.keysetting.lasthit, SVMainMenu.permashowsettings.lasthitpermashow, nil, 1426521024, nil, 4)
-	CustomPermaShow("Auto-E after next BasicAttack", SVMainMenu.keysetting.basiccondemn, SVMainMenu.permashowsettings.epermashow, nil, 1426521024, nil,  5)
+	CustomPermaShow('FightMode (Using '..FightModeOrbText..')', SVMainMenu.keysetting.FightMode, SVMainMenu.permashow.FightMode, nil, 1426521024, nil, 1)
+	CustomPermaShow('HarassMode (Using '..HarassModeOrbText..')', SVMainMenu.keysetting.HarassMode, SVMainMenu.permashow.HarassMode, nil, 1426521024, nil, 2)
+	CustomPermaShow('LaneClear (Using '..LaneClearOrbText..')', SVMainMenu.keysetting.LaneClear, SVMainMenu.permashow.LaneClear, nil, 1426521024, nil, 3)
+	CustomPermaShow('LastHit (Using '..LastHitOrbText..')', SVMainMenu.keysetting.LastHit, SVMainMenu.permashow.LastHit, nil, 1426521024, nil, 4)
+	CustomPermaShow('Auto-E after next BasicAttack', SVMainMenu.keysetting.AfterAACondemn, SVMainMenu.permashow.AfterAACondemn, nil, 1426521024, nil,  5)
+end
+
+function ShadowVayne:CheckItems()
+	self.SxInfo.Items.BotRK = GetInventorySlotItem(3153)
+	self.SxInfo.Items.BilgeWater = GetInventorySlotItem(3144)
+	self.SxInfo.Items.Youmuus = GetInventorySlotItem(3142)
+	DelayAction(function() self:CheckItems() end, 1)
 end
 
 function ShadowVayne:BotRK()
-	local Target = self:GetTarget()
-	if Target ~= nil and GetDistance(Target) < 510 and not Target.dead and Target.visible then
-		if (SVMainMenu.botrksettings.botrkautocarry and ShadowVayneAutoCarry) or
-		 (SVMainMenu.botrksettings.botrkmixedmode and ShadowVayneMixedMode) or
-		 (SVMainMenu.botrksettings.botrklaneclear and ShadowVayneLaneClear) or
-		 (SVMainMenu.botrksettings.botrklasthit and ShadowVayneLastHit) or
-		 (SVMainMenu.botrksettings.botrkalways) then
-			if (math.floor(myHero.health / myHero.maxHealth * 100)) <= SVMainMenu.botrksettings.botrkmaxheal then
-				if (math.floor(Target.health / Target.maxHealth * 100)) >= SVMainMenu.botrksettings.botrkminheal then
-					local BladeSlot = GetInventorySlotItem(3153)
-					if BladeSlot ~= nil and myHero:CanUseSpell(BladeSlot) == 0 then
-						CastSpell(BladeSlot, Target)
+	if self.SxInfo.Items.BotRK and self:CheckModesActive(SVMainMenu.botrk) then
+		if (math.floor(myHero.health / myHero.maxHealth * 100)) <= SVMainMenu.botrk.MaxOwnHealth then
+			local Target = self:GetTarget()
+			if Target and ValidTarget(Target, 510) then
+				if (math.floor(Target.health / Target.maxHealth * 100)) >= SVMainMenu.botrk.MinEnemyHealth then
+					if myHero:CanUseSpell(self.SxInfo.Items.BotRK) == 0 then
+						CastSpell(self.SxInfo.Items.BotRK, Target)
 					end
 				end
 			end
@@ -772,18 +600,13 @@ function ShadowVayne:BotRK()
 end
 
 function ShadowVayne:BilgeWater()
-	local Target = self:GetTarget()
-	if Target ~= nil and GetDistance(Target) < 510 and not Target.dead and Target.visible then
-		if (SVMainMenu.bilgesettings.bilgeautocarry and ShadowVayneAutoCarry) or
-		 (SVMainMenu.bilgesettings.bilgemixedmode and ShadowVayneMixedMode) or
-		 (SVMainMenu.bilgesettings.bilgelaneclear and ShadowVayneLaneClear) or
-		 (SVMainMenu.bilgesettings.bilgelasthit and ShadowVayneLastHit) or
-		 (SVMainMenu.bilgesettings.bilgealways) then
-			if (math.floor(myHero.health / myHero.maxHealth * 100)) <= SVMainMenu.bilgesettings.bilgemaxheal then
-				if (math.floor(Target.health / Target.maxHealth * 100)) >= SVMainMenu.bilgesettings.bilgeminheal then
-					local BilgeSlot = GetInventorySlotItem(3144)
-					if BilgeSlot ~= nil and myHero:CanUseSpell(BilgeSlot) == 0 then
-						CastSpell(BilgeSlot, Target)
+	if self.SxInfo.Items.BilgeWater and self:CheckModesActive(SVMainMenu.bilgewater) then
+		if (math.floor(myHero.health / myHero.maxHealth * 100)) <= SVMainMenu.bilgewater.MaxOwnHealth then
+			local Target = self:GetTarget()
+			if Target and ValidTarget(Target, 450) then
+				if (math.floor(Target.health / Target.maxHealth * 100)) >= SVMainMenu.bilgewater.MinEnemyHealth then
+					if myHero:CanUseSpell(self.SxInfo.Items.BilgeWater) == 0 then
+						CastSpell(self.SxInfo.Items.BilgeWater, Target)
 					end
 				end
 			end
@@ -792,260 +615,220 @@ function ShadowVayne:BilgeWater()
 end
 
 function ShadowVayne:Youmuus()
-	if (SVMainMenu.youmuus.autocarry and ShadowVayneAutoCarry) or
-	 (SVMainMenu.youmuus.mixedmode and ShadowVayneMixedMode) or
-	 (SVMainMenu.youmuus.laneclear and ShadowVayneLaneClear) or
-	 (SVMainMenu.youmuus.lasthit and ShadowVayneLastHit) or
-	 (SVMainMenu.youmuus.always) then
-		local YoumuusSlot = GetInventorySlotItem(3142)
-		if YoumuusSlot and myHero:CanUseSpell(YoumuusSlot) == 0 then
-			CastSpell(YoumuusSlot)
+	if self.SxInfo.Items.Youmuus and self:CheckModesActive(SVMainMenu.youmuus) then
+		if myHero:CanUseSpell(self.SxInfo.Items.Youmuus) == 0 then
+			CastSpell(self.SxInfo.Items.Youmuus)
 		end
 	end
 end
 
-function ShadowVayne:GapCloserAfterCast()
-	if spellExpired == false and (GetTickCount() - informationTable.spellCastedTick) <= (informationTable.spellRange/informationTable.spellSpeed)*1000 and myHero:CanUseSpell(_E) == READY then
-		local spellDirection     = (informationTable.spellEndPos - informationTable.spellStartPos):normalized()
-		local spellStartPosition = informationTable.spellStartPos + spellDirection
-		local spellEndPosition   = informationTable.spellStartPos + spellDirection * informationTable.spellRange
-		local heroPosition = Point(myHero.x, myHero.z)
-		local SkillShot = LineSegment(Point(spellStartPosition.x, spellStartPosition.y), Point(spellEndPosition.x, spellEndPosition.y))
-		if heroPosition:distance(SkillShot) <= 350 then
-			CastSpell(_E, informationTable.spellSource)
+function ShadowVayne:OnProcessSpell(unit, spell)
+	if unit.team ~= myHero.team then
+		if self.isAGapcloserUnitTarget[spell.name] then
+			if spell.target and spell.target.networkID == myHero.networkID then
+				if self:CheckModesActive(SVMainMenu.anticapcloser[unit.charName]) then CastSpell(_E, unit) end
+			end
 		end
-	else
-		spellExpired = true
-		informationTable = {}
+
+		if self.isAChampToInterrupt[spell.name] and GetDistanceSqr(unit) <= 715*715 then
+			if self:CheckModesActive(SVMainMenu.interrupt[unit.charName]) then CastSpell(_E, unit) end
+		end
+
+		if self.isAGapcloserUnitNoTarget[spell.name] and GetDistanceSqr(unit) <= 2000*2000 and (spell.target == nil or spell.target.isMe) then
+			if self:CheckModesActive(SVMainMenu.anticapcloser[unit.charName]) then
+				SpellInfo = {
+					Source = unit,
+					CastTime = os.clock(),
+					StartPos = Point(spell.startPos.x, spell.startPos.z),
+					EndPos = Point(spell.endPos.x, spell.endPos.z),
+					Range = self.isAGapcloserUnitNoTarget[spell.name].range,
+					Speed = self.isAGapcloserUnitNoTarget[spell.name].projSpeed,
+				}
+				self:CondemnGapCloser(SpellInfo)
+			end
+		end
+	end
+	if unit.isMe and spell.name:lower():find('attack') then
+		DelayAction(function() self:Youmuus() end, spell.windUpTime)
+		if spell.target then self.SxInfo.LastTarget = spell.target end
+		if SVMainMenu.keysetting.AfterAACondemn and self.SxInfo.LastTarget.type == myHero.type then
+			DelayAction(function() CastSpell(_E, self.SxInfo.LastTarget) end, spell.windUpTime)
+			SVMainMenu.keysetting.AfterAACondemn = false
+		else
+			DelayAction(function() self:Tumble(self.SxInfo.LastTarget) end, spell.windUpTime)
+		end
+
+	end
+	if unit.isMe then
+		if spell.name == 'Recall' and self:CheckModesActive(SVMainMenu.toggle) then
+			SVMainMenu.keysetting.FightMode,SVMainMenu.keysetting.HarassMode,SVMainMenu.keysetting.LaneClear,SVMainMenu.keysetting.LastHit = false,false,false,false
+		end
+		if spell.name == 'VayneCondemnMissile' then
+			SxOrb:ResetAA()
+		end
+	end
+end
+
+function ShadowVayne:CondemnGapCloser(SpellInfo)
+	if (os.clock() - SpellInfo.CastTime) <= (SpellInfo.Range/SpellInfo.Speed) and myHero:CanUseSpell(_E) == READY then
+		local Direction     = (SpellInfo.EndPos - SpellInfo.StartPos):normalized()
+		local StartPosition = SpellInfo.StartPos + Direction
+		local EndPosition   = SpellInfo.StartPos + Direction * SpellInfo.Range
+		local MyPosition = Point(myHero.x, myHero.z)
+		local SkillShot = LineSegment(Point(StartPosition.x, StartPosition.y), Point(EndPosition.x, EndPosition.y))
+		if GetDistanceSqr(MyPosition,SkillShot) <= 400*400 then
+			CastSpell(_E, SpellInfo.Source)
+		else
+			DelayAction(function() self:CondemnGapCloser(SpellInfo) end)
+		end
+	end
+end
+
+function ShadowVayne:Tumble(Target)
+	if Target and Target.type ~= 'obj_AI_Turret' then
+		if  (SVMainMenu.tumble.FightMode and ShadowVayneFightMode and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.ManaFightMode)) or
+			(SVMainMenu.tumble.HarassMode and ShadowVayneHarassMode and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.ManaHarassMode)) or
+			(SVMainMenu.tumble.LaneClear and ShadowVayneLaneClear and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.ManaLaneClear)) or
+			(SVMainMenu.tumble.LastHit and  ShadowVayneLastHit and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.ManaLastHit)) or
+			(SVMainMenu.tumble.Always) then
+			local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
+			local DistanceAfterTumble = GetDistanceSqr(AfterTumblePos, Target)
+			if  DistanceAfterTumble < 630*630 and DistanceAfterTumble > 100*100 then
+				CastSpell(_Q, mousePos.x, mousePos.z)
+			end
+			if GetDistanceSqr(Target) > 630*630 and DistanceAfterTumble < 630*630 then
+				CastSpell(_Q, mousePos.x, mousePos.z)
+			end
+		end
+	end
+
+	if SxOrb:GetAACD() > 0.37 then
+		DelayAction(function() self:Tumble(Target) end)
 	end
 end
 
 function ShadowVayne:GapCloserRengar()
-	if ShootRengar and not RengarHero.dead and RengarHero.health > 0 and GetDistanceSqr(RengarHero) < 1000*1000 and myHero:CanUseSpell(_E) == READY then
+	if ValidTarget(RengarHero, 1000) and myHero:CanUseSpell(_E) == READY then
 		CastSpell(_E, RengarHero)
-	else
-		ShootRengar = false
+		DelayAction(function() self:GapCloserRengar() end)
 	end
 end
 
 function ShadowVayne:RengarObject(Obj)
-	if RengarHero ~= nil and Obj.name == "Rengar_LeapSound.troy" and GetDistanceSqr(RengarHero) < 1000*1000 then
-		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."AutoCarry"] and ShadowVayneAutoCarry then ShootRengar = true end
-		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."LastHit"] and ShadowVayneMixedMode then ShootRengar = true end
-		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."MixedMode"] and ShadowVayneLaneClear then ShootRengar = true end
-		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."LaneClear"] and ShadowVayneLastHit then ShootRengar = true end
-		if SVMainMenu.anticapcloser[("Rengar")..(isAGapcloserUnitTarget["Rengar"].spellKey)][("Rengar").."Always"] then ShootRengar = true end
-	end
-end
-
-function ShadowVayne:ThreshObject(Obj)
-	if Obj.name == "ThreshLantern" then
-		LanternObj = Obj
-	end
-end
-
-function ShadowVayne:SwitchToggleMode()
-	if OldToggleStatus ~= SVMainMenu.keysetting.togglemode then
-		OldToggleStatus = SVMainMenu.keysetting.togglemode
-		if SVMainMenu.keysetting.togglemode then
-			SVMainMenu.keysetting._param[7].pType = SCRIPT_PARAM_ONKEYTOGGLE
-			SVMainMenu.keysetting._param[8].pType = SCRIPT_PARAM_ONKEYTOGGLE
-			SVMainMenu.keysetting._param[9].pType = SCRIPT_PARAM_ONKEYTOGGLE
-			SVMainMenu.keysetting._param[10].pType = SCRIPT_PARAM_ONKEYTOGGLE
-		else
-			SVMainMenu.keysetting._param[7].pType = SCRIPT_PARAM_ONKEYDOWN
-			SVMainMenu.keysetting._param[8].pType = SCRIPT_PARAM_ONKEYDOWN
-			SVMainMenu.keysetting._param[9].pType = SCRIPT_PARAM_ONKEYDOWN
-			SVMainMenu.keysetting._param[10].pType = SCRIPT_PARAM_ONKEYDOWN
+	if Obj.name == 'Rengar_LeapSound.troy' then
+		for index, enemy in pairs(GetEnemyHeroes()) do
+			if enemy.charName == 'Rengar' then
+				RengarHero = enemy
+				break
+			end
+		end
+		if RengarHero and GetDistanceSqr(RengarHero) < 1000*1000 then
+			if self:CheckModesActive(SVMainMenu.anticapcloser['Rengar']) then
+				self:GapCloserRengar()
+			end
 		end
 	end
 end
 
-function ShadowVayne:TreshLantern()
-	if VIP_USER and SVMainMenu.keysetting.threshlantern and LanternObj then
+function ShadowVayne:ThreshObject(Obj)
+	if Obj.name == 'ThreshLantern' then
+		self:TreshLantern(Obj)
+	end
+end
+
+function ShadowVayne:TreshLantern(LaternObj)
+	if LaternObj and LaternObj.valid and SVMainMenu.keysetting.ThreshLantern then
 		LanternPacket = CLoLPacket(0x3A)
 		LanternPacket:EncodeF(myHero.networkID)
 		LanternPacket:EncodeF(LanternObj.networkID)
 		LanternPacket.dwArg1 = 1
 		LanternPacket.dwArg2 = 0
 		SendPacket(LanternPacket)
+		DelayAction(function() self:TreshLantern(LaternObj) end)
 	end
 end
 
-function ShadowVayne:ProcessSpell_GapCloser(unit, spell)
-	if unit.team ~= myHero.team then
-		if isAGapcloserUnitTarget[unit.charName] and spell.name == isAGapcloserUnitTarget[unit.charName].spell then
-			if spell.target ~= nil and spell.target.hash == myHero.hash then
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then CastSpell(_E, unit) end
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then CastSpell(_E, unit) end
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then CastSpell(_E, unit) end
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then CastSpell(_E, unit) end
-				if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitTarget[unit.charName].spellKey)][(unit.charName).."Always"] then CastSpell(_E, unit) end
-			end
-		end
-
-		if isAGapcloserUnitNoTarget[spell.name] and GetDistanceSqr(unit) <= 2000*2000 and (spell.target == nil or spell.target.isMe) then
-			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then spellExpired = false end
-			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then spellExpired = false end
-			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then spellExpired = false end
-			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then spellExpired = false end
-			if SVMainMenu.anticapcloser[(unit.charName)..(isAGapcloserUnitNoTarget[spell.name].spellKey)][(unit.charName).."Always"] then spellExpired = false end
-			informationTable = {
-				spellSource = unit,
-				spellCastedTick = GetTickCount(),
-				spellStartPos = Point(spell.startPos.x, spell.startPos.z),
-				spellEndPos = Point(spell.endPos.x, spell.endPos.z),
-				spellRange = isAGapcloserUnitNoTarget[spell.name].range,
-				spellSpeed = isAGapcloserUnitNoTarget[spell.name].projSpeed,
-				spellName = spell.name
-			}
-		end
+function ShadowVayne:OnDraw()
+	if SVMainMenu.draw.AARange then
+		self:CircleDraw(myHero.x, myHero.y, myHero.z, 570 + myHero.boundingRadius, ARGB(SVMainMenu.draw.AAColor[1], SVMainMenu.draw.AAColor[2],SVMainMenu.draw.AAColor[3],SVMainMenu.draw.AAColor[4]))
 	end
-end
 
-function ShadowVayne:ProcessSpell_Interrupt(unit, spell)
-	if unit.team ~= myHero.team then
-		if isAChampToInterrupt[spell.name] and unit.charName == isAChampToInterrupt[spell.name].champ and GetDistanceSqr(unit) <= 715*715 then
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."AutoCarry"] and ShadowVayneAutoCarry then CastSpell(_E, unit) end
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LastHit"] and ShadowVayneMixedMode then CastSpell(_E, unit) end
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."MixedMode"] and ShadowVayneLaneClear then CastSpell(_E, unit) end
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."LaneClear"] and ShadowVayneLastHit then CastSpell(_E, unit) end
-			if SVMainMenu.interrupt[(unit.charName)..(isAChampToInterrupt[spell.name].spellKey)][(unit.charName).."Always"] then CastSpell(_E, unit) end
-		end
+	if SVMainMenu.draw.ERange then
+		self:CircleDraw(myHero.x, myHero.y, myHero.z, 710, ARGB(SVMainMenu.draw.EColor[1], SVMainMenu.draw.EColor[2],SVMainMenu.draw.EColor[3],SVMainMenu.draw.EColor[4]))
 	end
-end
 
-function ShadowVayne:ProcessSpellAfterAA(unit, spell)
-	if unit.isMe then
-		if spell.name:lower():find("attack") then
-			if spell.target then self.LastTarget = spell.target end
-			DelayAction(function() self:CondemnAfterAA(self.LastTarget) end, spell.windUpTime - (GetLatency()/2000))
-			if not SVMainMenu.keysetting.basiccondemn then DelayAction(function() self:Tumble(self.LastTarget) end, spell.windUpTime - (GetLatency()/2000)) end
-		end
-	end
-end
-
-function ShadowVayne:CondemnAfterAA(Target)
-	if SVMainMenu.keysetting.basiccondemn and Target.type == myHero.type then
-		CastSpell(_E, Target)
-	end
-	SVMainMenu.keysetting.basiccondemn = false
-end
-
-function ShadowVayne:Tumble(Target)
-	if Target and Target.type ~= 'obj_AI_Turret' then
-		if  (SVMainMenu.tumble.Qautocarry and ShadowVayneAutoCarry and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaAutoCarry)) or
-			(SVMainMenu.tumble.Qmixedmode and ShadowVayneMixedMode and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaMixedMode)) or
-			(SVMainMenu.tumble.Qlaneclear and ShadowVayneLaneClear and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLaneClear)) or
-			(SVMainMenu.tumble.Qlasthit and  ShadowVayneLastHit and (100/myHero.maxMana*myHero.mana > SVMainMenu.tumble.QManaLastHit)) or
-			(SVMainMenu.tumble.Qalways) then
-			local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
-			if GetDistance(AfterTumblePos, Target) < 650 and GetDistance(AfterTumblePos, Target) > 100 then
-				CastSpell(_Q, mousePos.x, mousePos.z)
-			end
-			if GetDistance(Target) > 650 and GetDistance(AfterTumblePos, Target) < 650 then
-				CastSpell(_Q, mousePos.x, mousePos.z)
-			end
-		end
-	end
---~ 	if GetTickCount() < self.EndTumbleTime then DelayAction(function() self:Tumble() end, 0) end
-end
-
-function ShadowVayne:ProcessSpell_Recall(unit, spell)
-	if unit.isMe then
-		if spell.name == "Recall" then
-			RecallCast = true
-			DelayAction(function() RecallCast = false end, 0.75)
-		end
-	end
-end
-
-function ShadowVayne:Draw_WallTumble()
-	if VIP_USER and (GetGame().map.index == 1 or GetGame().map.index == 2) then
-		if SVMainMenu.walltumble.spot1 then
-			if GetDistanceSqr(TumbleSpots.VisionPos_1) < 15625 or GetDistanceSqr(TumbleSpots.VisionPos_1, mousePos) < 15625 then
-				self:CircleDraw(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x107458)
-			else
-				self:CircleDraw(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x80FFFF)
-			end
-		end
-		if SVMainMenu.walltumble.spot2 then
-			if GetDistanceSqr(TumbleSpots.VisionPos_2) < 15625 or GetDistanceSqr(TumbleSpots.VisionPos_2, mousePos) < 15625 then
-				self:CircleDraw(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x107458)
-			else
-				self:CircleDraw(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x80FFFF)
+	if self.SxInfo.MapIndex == 1 then
+		for index, tumblespot in pairs(self.TumbleSpots) do
+			if SVMainMenu.walltumble[tumblespot['Name']] then
+				if GetDistanceSqr(tumblespot['Circle']) < 125*125 or GetDistanceSqr(tumblespot['Circle'], mousePos) < 125*125 then
+					self:CircleDraw(tumblespot['Circle']['x'], tumblespot['Circle']['y'], tumblespot['Circle']['z'], 100, 0xFF107458) -- green
+				else
+					self:CircleDraw(tumblespot['Circle']['x'], tumblespot['Circle']['y'], tumblespot['Circle']['z'], 100, 0xFF80FFFF) -- red
+				end
 			end
 		end
 	end
 end
 
-function ShadowVayne:Draw_CondemnRange()
-	if SVMainMenu.draw.DrawERange then
-		self:CircleDraw(myHero.x, myHero.y, myHero.z, 710, ARGB(SVMainMenu.draw.drawecolor[1], SVMainMenu.draw.drawecolor[2],SVMainMenu.draw.drawecolor[3],SVMainMenu.draw.drawecolor[4]))
+function ShadowVayne:SwitchToggleMode()
+	if SVMainMenu.toggle.FightMode then
+		SVMainMenu.keysetting._param[StartKeyParam].pType = SCRIPT_PARAM_ONKEYTOGGLE
+	else
+		SVMainMenu.keysetting._param[StartKeyParam].pType = SCRIPT_PARAM_ONKEYDOWN
 	end
+
+	if SVMainMenu.toggle.HarassMode then
+		SVMainMenu.keysetting._param[StartKeyParam+1].pType = SCRIPT_PARAM_ONKEYTOGGLE
+	else
+		SVMainMenu.keysetting._param[StartKeyParam+1].pType = SCRIPT_PARAM_ONKEYDOWN
+	end
+
+	if SVMainMenu.toggle.LaneClear then
+		SVMainMenu.keysetting._param[StartKeyParam+2].pType = SCRIPT_PARAM_ONKEYTOGGLE
+	else
+		SVMainMenu.keysetting._param[StartKeyParam+2].pType = SCRIPT_PARAM_ONKEYDOWN
+	end
+
+	if SVMainMenu.toggle.LastHit then
+		SVMainMenu.keysetting._param[StartKeyParam+3].pType = SCRIPT_PARAM_ONKEYTOGGLE
+	else
+		SVMainMenu.keysetting._param[StartKeyParam+3].pType = SCRIPT_PARAM_ONKEYDOWN
+	end
+
+	DelayAction(function() self:SwitchToggleMode() end, 1)
 end
 
-function ShadowVayne:CheckWallStun(PredictPos, Source, Hitchance)
-	local BushFound, Bushpos = false, nil
-		for i = 1, SVMainMenu.autostunn.pushDistance, 20  do
-			local CheckWallPos = Vector(PredictPos) + (Vector(PredictPos) - myHero):normalized()*(i)
-			local WorldType = self:GetWorldType(CheckWallPos.x, CheckWallPos.z)
-			if not BushFound and WorldType == 2 then
-				BushFound = true
-				BushPos = CheckWallPos
-			end
-			if WorldType == 1 then
+function ShadowVayne:CheckWallStun(Target)
+	CastPosition, HitChance, PredictPosition = VP:GetPredictedPos(Target, 0.3, 1600, myHero, false)
+	if HitChance > 1 then
+		for i = 1, SVMainMenu.autostunn.PushDistance, 60  do
+			local CheckWallPos = Vector(PredictPosition) + (Vector(PredictPosition) - myHero):normalized()*(i)
+			if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
 				if UnderTurret(CheckWallPos, true) then
-					if SVMainMenu.autostunn.towerstunn then
-						AllowTumble = false
-						CastSpell(_E, Source)
-						ProdictionCircle[Source.charName].x = CheckWallPos.x
-						ProdictionCircle[Source.charName].y = CheckWallPos.y
-						ProdictionCircle[Source.charName].z = CheckWallPos.z
-						CondemnLastE = GetTickCount()
+					if SVMainMenu.autostunn.TowerStun then
+						CastSpell(_E, Target)
 						break
 					end
 				else
-					AllowTumble = false
-					CastSpell(_E, Source)
-					ProdictionCircle[Source.charName].x = CheckWallPos.x
-					ProdictionCircle[Source.charName].y = CheckWallPos.y
-					ProdictionCircle[Source.charName].z = CheckWallPos.z
-					CondemnLastE = GetTickCount()
-					if BushFound and SVMainMenu.autostunn.trinket and myHero:CanUseSpell(ITEM_7) == 0 then
-						CastSpell(ITEM_7, BushPos.x, BushPos.z)
-					end
+					CastSpell(_E, Target)
 					break
 				end
 			end
 		end
+	end
 end
 
 function ShadowVayne:CondemnStun()
-	local Target = self:GetTarget(true)
 	if myHero:CanUseSpell(_E) == READY then
-		for i, enemy in ipairs(GetEnemyHeroes()) do
-			if SVMainMenu.autostunn.target and Target and Target.type == myHero.type then enemy = Target end
-			if enemy == nil then return end
-			if (SVMainMenu.targets[enemy.charName]["autocarry"] and ShadowVayneAutoCarry) or
-			(SVMainMenu.targets[enemy.charName]["mixedmode"] and ShadowVayneMixedMode) or
-			(SVMainMenu.targets[enemy.charName]["laneclear"] and ShadowVayneLaneClear) or
-			(SVMainMenu.targets[enemy.charName]["lasthit"] and ShadowVayneLastHit) or
-			(SVMainMenu.targets[enemy.charName]["always"]) then
-				if GetDistance(enemy) <= 1000 and not enemy.dead and enemy.visible then
---~ 					if not VIP_USER then -- FREEUSER
-						StunPos = self:GetCondemCollisionTime(enemy)
-						if StunPos ~= nil and GetDistance(StunPos) < 710 then
-							self:CheckWallStun(StunPos, enemy, 0)
-						end
---~ 					end
-
---~ 					if VIP_USER then -- PR0D
---~ 						StunPos, StunnInfo = Prodiction.GetPrediction(enemy, 710, 1600, 0.25, 10, myHero)
---~ 						if StunPos and GetDistanceSqr(StunPos) < 710*710 and StunnInfo and StunnInfo.hitchance > 1 then
---~ 							self:CheckWallStun(StunPos, enemy, StunnInfo.hitchance)
---~ 						end
---~ 					end
+		if SVMainMenu.autostunn.Target then
+			local Target = self:GetTarget()
+			if Target and ValidTarget(Target, 710) and Target.type == myHero.type and self:CheckModesActive(SVMainMenu.targets[Target.charName]) then
+				self:CheckWallStun(Target)
+			end
+		else
+			for i, enemy in ipairs(GetEnemyHeroes()) do
+				if enemy and ValidTarget(enemy, 710) and self:CheckModesActive(SVMainMenu.targets[enemy.charName]) then
+					self:CheckWallStun(enemy)
 				end
 			end
 		end
@@ -1053,168 +836,58 @@ function ShadowVayne:CondemnStun()
 end
 
 function ShadowVayne:WallTumble()
-	if VIP_USER then
-		if myHero:CanUseSpell(_Q) ~= READY then TumbleOverWall_1, TumbleOverWall_2 = false,false end
-		if TumbleOverWall_1 and SVMainMenu.walltumble.spot1 then
-			if GetDistance(TumbleSpots.StandPos_1) <= 25 then
-				TumbleOverWall_1 = false
-				CastSpell(_Q, TumbleSpots.CastPos_1.x,  TumbleSpots.CastPos_1.y)
-				myHero:HoldPosition()
-			else
-				if GetDistance(TumbleSpots.StandPos_1) > 25 then myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y) end
+	if myHero:CanUseSpell(_Q) == READY then
+		for index, tumblespot in pairs(self.TumbleSpots) do
+			if tumblespot['Force'] and SVMainMenu.walltumble[tumblespot['Name']] then
+				if GetDistanceSqr(tumblespot['Stand']) < 25*25 then
+					CastSpell(_Q, tumblespot['Cast']['x'], tumblespot['Cast']['y'])
+					tumblespot['Force'] = false
+					myHero:HoldPosition()
+				else
+					myHero:MoveTo(tumblespot['Stand']['x'], tumblespot['Stand']['y'])
+				end
 			end
 		end
-		if TumbleOverWall_2 and SVMainMenu.walltumble.spot2 then
-			if GetDistance(TumbleSpots.StandPos_2) <= 25 then
-				TumbleOverWall_2 = false
-				CastSpell(_Q, TumbleSpots.CastPos_2.x,  TumbleSpots.CastPos_2.y)
-				myHero:HoldPosition()
-			else
-				if GetDistance(TumbleSpots.StandPos_2) > 25 then myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y) end
+
+		if not VIP_USER and SVMainMenu.keysetting['WallTumble'] then
+			for index, tumblespot in pairs(self.TumbleSpots) do
+				if tumblespot['Force'] then
+					tumblespot['Force'] = false
+				else
+					if SVMainMenu.walltumble[tumblespot['Name']] then
+						if GetDistanceSqr(tumblespot['Circle']) < 125*125 or GetDistanceSqr(tumblespot['Circle'],mousePos) < 125*125 then
+							tumblespot['Force'] = true
+						end
+					end
+				end
 			end
 		end
+	else
+		self.TumbleSpots['Drake']['Force'] = false
+		self.TumbleSpots['Midlane']['Force'] = false
 	end
 end
 
-function ShadowVayne:SendPacket_WallTumble(p)
+function ShadowVayne:OnSendPacket(p)
 	if p.header == _G.Packet.headers.S_CAST then
-		if SVMainMenu.walltumble.spot1 then
-			if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
-				p.pos = 1
-				P_NetworkID = p:DecodeF()
-				P_SpellID = p:Decode1()
-				if P_NetworkID == myHero.networkID and P_SpellID == _Q then
-					if DontBlockNext then
-						DontBlockNext = false
-					else
-						p:Block()
-						DontBlockNext = true
-						TumbleOverWall_1 = true
-					end
-				end
-			end
-		end
-
-		if SVMainMenu.walltumble.spot2 then
-			if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
-				p.pos = 1
-				P_NetworkID = p:DecodeF()
-				P_SpellID = p:Decode1()
-				if P_NetworkID == myHero.networkID and P_SpellID == _Q then
-					if DontBlockNext then
-						DontBlockNext = false
-					else
-						p:Block()
-						DontBlockNext = true
-						TumbleOverWall_2 = true
-					end
-				end
-			end
-		end
-	end
-
-	if p.header == _G.Packet.headers.S_MOVE then
 		p.pos = 1
 		P_NetworkID = p:DecodeF()
-		p:Decode1()
-		P_X = p:DecodeF()
-		P_X2 = tonumber(string.format("%." .. (2) .. "f", P_X))
-
-		P_Y = p:DecodeF()
-		P_Y2 = tonumber(string.format("%." .. (2) .. "f", P_Y))
-		if TumbleOverWall_1 == true and SVMainMenu.walltumble.spot1 then
-			RunToX, RunToY = TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y
-			if not (P_X2 == RunToX and P_Y2 == RunToY) then
-				p:Block()
-				myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y)
-			end
-		end
-		if TumbleOverWall_2 == true and SVMainMenu.walltumble.spot2 then
-			RunToX, RunToY = TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y
-			if not (P_X2 == RunToX and P_Y2 == RunToY) then
-				p:Block()
-				myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y)
+		P_SpellID = p:Decode1()
+		if P_NetworkID == myHero.networkID and P_SpellID == _Q then
+			for index, tumblespot in pairs(self.TumbleSpots) do
+				if tumblespot['Force'] then
+					tumblespot['Force'] = false
+				else
+					if SVMainMenu.walltumble[tumblespot['Name']] then
+						if GetDistanceSqr(tumblespot['Circle']) < 125*125 or GetDistanceSqr(tumblespot['Circle'],mousePos) < 125*125 then
+							p:Block()
+							tumblespot['Force'] = true
+						end
+					end
+				end
 			end
 		end
 	end
-end
-
-function ShadowVayne:UpdateHeroDirection() --Function done by Yomie from EzCondemn
-	for heroName, heroObj in pairs(heroDirDB) do
-		local hero = heroManager:GetHero(heroObj.index)
-		local currentVec = Vector(hero)
-		local dir = (currentVec - heroObj.lastVec)
-
-		if dir ~= Vector(0,0,0) then
-			dir = dir:normalized()
-		end
-
-		heroObj.lastAngle = heroObj.dir:dotP( dir )
-		heroObj.dir = dir
-		heroObj.lastVec = currentVec
-	end
-end
-
-function ShadowVayne:GetCondemCollisionTime(target) --Function done by Yomie from EzCondemn
-	local heroObj = heroDirDB[target.name]
-
-	if heroObj.dir ~= Vector(0,0,0) then
-
-	if heroObj.lastAngle and heroObj.lastAngle < .8 then
-		return nil
-	end
-
-
-	local windupPos = Vector(target) + heroObj.dir * (target.ms * 250/1000)
-	local timeElapsed = self:GetCollisionTime(windupPos, heroObj.dir, target.ms, myHero, 1200 )
-
-	if timeElapsed == nil then
-		return nil
-	end
-
-	return Vector(target) + heroObj.dir * target.ms * (timeElapsed + .25)/2
-
-	end
-
-	return Vector(target)
-end
-
-function ShadowVayne:GetCollisionTime (targetPos, targetDir, targetSpeed, sourcePos, projSpeed ) --Function done by Yomie from EzCondemn
-	local velocity = targetDir * targetSpeed
-
-	local velocityX = velocity.x
-	local velocityY = velocity.z
-
-	local relStart = targetPos - sourcePos
-
-	local relStartX = relStart.x
-	local relStartY = relStart.z
-
-	local a = velocityX * velocityX + velocityY * velocityY - projSpeed * projSpeed
-	local b = 2 * velocityX * relStartX + 2 * velocityY * relStartY
-	local c = relStartX * relStartX + relStartY * relStartY
-
-	local disc = b * b - 4 * a * c
-
-	if disc >= 0 then
-		local t1 = -( b + math.sqrt( disc )) / (2 * a )
-		local t2 = -( b - math.sqrt( disc )) / (2 * a )
-
-
-		if t1 and t2 and t1 > 0 and t2 > 0 then
-			if t1 > t2 then
-				return t2
-			else
-				return t1
-			end
-		elseif t1 and t1 > 0 then
-			return t1
-		elseif t2 and t2 > 0 then
-			return t2
-		end
-	end
-
-	return nil
 end
 
 function ShadowVayne:DrawCircleNextLvl(x, y, z, radius, width, color, chordlength)
@@ -1241,11 +914,7 @@ function ShadowVayne:DrawCircle2(x, y, z, radius, color)
 end
 
 function ShadowVayne:CircleDraw(x,y,z,radius, color)
-	if SVMainMenu.draw.LagFree then
-		self:DrawCircle2(x, y, z, radius, color)
-	else
-		DrawCircle(x, y, z, radius, color)
-	end
+	self:DrawCircle2(x, y, z, radius, color)
 end
 
 function ShadowVayne:SkinChanger(champ, skinId) -- Credits to shalzuth
@@ -1274,29 +943,6 @@ function ShadowVayne:SkinChanger(champ, skinId) -- Credits to shalzuth
 	end
 end
 
-function ShadowVayne:DebugDraw()
-	local DebugTarget = self:GetTarget()
-	if DebugTarget then
-	PrintTarget = DebugTarget.charName
-	PrintDistance = math.floor(GetDistance(DebugTarget))
-	else
-	PrintTarget = "nil"
-	PrintDistance = "nil"
-	end
-	if SVMainMenu.debugsettings.targetdraw.lefttop then
-		DrawText("Current Target: "..PrintTarget, 15, 10, 10, 4294967280) -- ivory
-		DrawText("Current Distance: "..PrintDistance, 15, 10, 25, 4294967280) -- ivory
-	end
-	if SVMainMenu.debugsettings.targetdraw.myhero then
-	    local p = WorldToScreen(D3DXVECTOR3(myHero.x, myHero.y, myHero.z))
-		DrawText("Current Target: "..PrintTarget, 15, p.x - GetTextArea("Current Target: "..PrintTarget, 15).x / 2, p.y, color or 4294967295)
-		DrawText("Current Distance: "..PrintDistance, 15, p.x - GetTextArea("Current Distance: "..PrintDistance, 15).x / 2, p.y + 15, color or 4294967295)
-		DrawText("CanAttack: "..tostring(SxOrb:CanAttack()), 15, p.x - GetTextArea("CanAttack: "..tostring(SxOrb:CanAttack()), 15).x / 2, p.y + 30, color or 4294967295)
-		DrawText("CanMove: "..tostring(SxOrb:CanMove()), 15, p.x - GetTextArea("CanMove: "..tostring(SxOrb:CanMove()), 15).x / 2, p.y + 45, color or 4294967295)
-		DrawText("IsWaitForAA: "..tostring(SxOrb:IsWaitForAA()), 15, p.x - GetTextArea("IsWaitForAA: "..tostring(SxOrb:IsWaitForAA()), 15).x / 2, p.y + 60, color or 4294967295)
-	end
-end
-
 function ShadowVayne:GetTarget()
 	return SxOrb:GetTarget()
 end
@@ -1307,27 +953,27 @@ end
 _G.scriptConfig.CustomaddParam = _G.scriptConfig.addParam
 _G.scriptConfig.addParam = function(self, pVar, pText, pType, defaultValue, a, b, c, d)
  -- MMA Hook
-if self.name == "MMA2013" and pText:find("OnHold") then
+if self.name == 'MMA2013' and pText:find('OnHold') then
 	pType = 5
 end
 
 -- SAC:Reborn r83 Hook
-if self.name:find("sidasacsetup_sidasac") and (pText == "Auto Carry" or pText == "Mixed Mode" or pText == "Lane Clear" or pText == "Last Hit") then
+if self.name:find('sidasacsetup_sidasac') and (pText == 'Auto Carry' or pText == 'Mixed Mode' or pText == 'Lane Clear' or pText == 'Last Hit') then
 	pType=5
 end
 
 -- SAC:Reborn r84 Hook
-if self.name:find("sidasacsetup_sidasac") and (pText == "Hotkey") then
+if self.name:find('sidasacsetup_sidasac') and (pText == 'Hotkey') then
 	pType=5
 end
 
 -- SAC:Reborn VayneMenu Hook
-if self.name:find("sidasacvayne") then
+if self.name:find('sidasacvayne') then
 	pType=5
 end
 
 -- SOW Hook
-if self.name == "SV_SOW" and pVar:find("Mode") then
+if self.name == 'SV_SOW' and pVar:find('Mode') then
 	pType=5
 end
 
@@ -1341,39 +987,39 @@ _G.scriptConfig.CustomDrawParam = _G.scriptConfig._DrawParam
 _G.scriptConfig._DrawParam = function(self, varIndex)
 	local HideParam = false
 
-	if self.name:find("sidasacsetup_sidasac") and (self._param[varIndex].text == "Hotkey") then
-		self._param[varIndex].text = "ShadowVayne found. Set the Keysettings there!"
-		self._param[varIndex].var = "sep"
+	if self.name:find('sidasacsetup_sidasac') and (self._param[varIndex].text == 'Hotkey') then
+		self._param[varIndex].text = 'ShadowVayne found. Set the Keysettings there!'
+		self._param[varIndex].var = 'fap'
 	end
 
-	if self.name == "MMA2014" and (self._param[varIndex].text:find("Spells on") or self._param[varIndex].text:find("Version")) then
+	if self.name == 'MMA2014' and (self._param[varIndex].text:find('Spells on') or self._param[varIndex].text:find('Version')) then
 	HideParam = true
 		if not MMAParams then
 			MMAParams = true
-			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
-			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
-			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
-			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
-			self:addParam(self._param[varIndex].var, "Use Spells On", SCRIPT_PARAM_LIST,1, {"None","All Units","Heroes Only","Minion Only"})
-			self:addParam("mmaVersion","MMA - version:", SCRIPT_PARAM_INFO, "0.1416")
+			self:addParam('nil','ShadowVayne found. Set the Keysettings there!', SCRIPT_PARAM_INFO, '')
+			self:addParam('nil','ShadowVayne found. Set the Keysettings there!', SCRIPT_PARAM_INFO, '')
+			self:addParam('nil','ShadowVayne found. Set the Keysettings there!', SCRIPT_PARAM_INFO, '')
+			self:addParam('nil','ShadowVayne found. Set the Keysettings there!', SCRIPT_PARAM_INFO, '')
+			self:addParam(self._param[varIndex].var, 'Use Spells On', SCRIPT_PARAM_LIST,1, {'None','All Units','Heroes Only','Minion Only'})
+			self:addParam('mmaVersion','MMA - version:', SCRIPT_PARAM_INFO, '0.1416')
 		end
 	end
 
-	if self.name:find("sidasacvayne") and not self._param[varIndex].text:find("ShadowVayne") then
+	if self.name:find('sidasacvayne') and not self._param[varIndex].text:find('ShadowVayne') then
 		if not SACVayneParam then
 			SACVayneParam = true
-			self:addParam("nil","ShadowVayne found. Set the Keysettings there!", SCRIPT_PARAM_INFO, "")
+			self:addParam('nil','ShadowVayne found. Set the Keysettings there!', SCRIPT_PARAM_INFO, '')
 		end
 		HideParam = true
 	end
 
-	if self.name == "SV_MAIN_keysetting" and self._param[varIndex].text:find("Hidden") then
+	if self.name == 'SV_MAIN_keysetting' and self._param[varIndex].text:find('Hidden') then
 		HideParam = true
 	end
 
-	if self.name == "SV_SOW" and (self._param[varIndex].var == "Hotkeys" or self._param[varIndex].var:find("Mode")) then HideParam = true end
+	if self.name == 'SV_SOW' and (self._param[varIndex].var == 'Hotkeys' or self._param[varIndex].var:find('Mode')) then HideParam = true end
 
-	if (self.name == "MMA2014" and self._param[varIndex].text:find("OnHold")) then HideParam = true end
+	if (self.name == 'MMA2014' and self._param[varIndex].text:find('OnHold')) then HideParam = true end
 	if not HideParam then
 		_G.scriptConfig.CustomDrawParam(self, varIndex)
 	end
@@ -1384,7 +1030,7 @@ end
 -------------------------
 _G.scriptConfig.CustomDrawSubInstance = _G.scriptConfig._DrawSubInstance
 _G.scriptConfig._DrawSubInstance = function(self, index)
-	if not self.name:find("sidasacvayne") then
+	if not self.name:find('sidasacvayne') then
 		_G.scriptConfig.CustomDrawSubInstance(self, index)
 	end
 end
@@ -1394,7 +1040,7 @@ end
 -------------------------
 _G.scriptConfig.CustompermaShow = _G.scriptConfig.permaShow
 _G.scriptConfig.permaShow = function(self, pVar)
-	if not (self.name:find("sidasacvayne") or self.name == "MMA2014") then
+	if not (self.name:find('sidasacvayne') or self.name == 'MMA2014') then
 		_G.scriptConfig.CustompermaShow(self, pVar)
 	end
 end
