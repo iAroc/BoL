@@ -76,7 +76,7 @@ end
 class 'ShadowVayne'
 function ShadowVayne:__init()
     self.WallMap = WallMap
-    self.version = 5.01
+    self.version = 5.02
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
@@ -378,6 +378,7 @@ function ShadowVayne:MenuLoaded()
 end
 
 function ShadowVayne:ActivateModes()
+    dDebug('ShadowVayne:ActivateModes()')
     -- Get The Selected Orbwalker
     local FightModeOrbText = self.SVMainMenu.keysetting._param[self.StartListParam].listTable[self.SVMainMenu.keysetting.FightModeOrb]
     local HarassModeOrbText = self.SVMainMenu.keysetting._param[self.StartListParam+1].listTable[self.SVMainMenu.keysetting.HarassModeOrb]
@@ -403,6 +404,7 @@ function ShadowVayne:ActivateModes()
 end
 
 function ShadowVayne:CheckModesActive(Menu)
+    dDebug('ShadowVayne:CheckModesActive()')
     if Menu['FightMode'] and self.IsFight then
         return true
     elseif Menu['HarassMode'] and self.IsHarass then
@@ -419,6 +421,7 @@ function ShadowVayne:CheckModesActive(Menu)
 end
 
 function ShadowVayne:CheckLevelChange()
+    dDebug('ShadowVayne:CheckLevelChange()')
     if self.LastLevelCheck + 100 < GetTickCount() then
         if self.MapIndex == 8 and myHero.level < 4 and self.SVMainMenu.autolevel.UseAutoLevelFirst then
             LevelSpell(_Q)
@@ -435,6 +438,7 @@ function ShadowVayne:CheckLevelChange()
 end
 
 function ShadowVayne:LevelUpSpell()
+    dDebug('ShadowVayne:LevelUpSpell()')
     if self.SVMainMenu.autolevel.UseAutoLevelFirst and myHero.level < 4 then
         LevelSpell(self.AutoLevelSpellTable[self.AutoLevelSpellTable['SpellOrder'][self.SVMainMenu.autolevel.First3Level]][myHero.level])
     end
@@ -445,6 +449,7 @@ function ShadowVayne:LevelUpSpell()
 end
 
 function ShadowVayne:CheckItems()
+    dDebug('ShadowVayne:CheckItems()')
     if (self.LastItemCheck or 0) + 100 < GetTickCount() then
         self.LastItemCheck = GetTickCount()
         self.Items.BotRK = GetInventorySlotItem(3153)
@@ -454,6 +459,7 @@ function ShadowVayne:CheckItems()
 end
 
 function ShadowVayne:BotRK()
+    dDebug('ShadowVayne:BotRK()')
     if self.Items.BotRK and self:CheckModesActive(self.SVMainMenu.botrk) then
         if (math.floor(myHero.health / myHero.maxHealth * 100)) <= self.SVMainMenu.botrk.MaxOwnHealth then
             local Target = self:GetTarget()
@@ -469,6 +475,7 @@ function ShadowVayne:BotRK()
 end
 
 function ShadowVayne:BilgeWater()
+    dDebug('ShadowVayne:BilgeWater()')
     if self.Items.BilgeWater and self:CheckModesActive(self.SVMainMenu.bilgewater) then
         if (math.floor(myHero.health / myHero.maxHealth * 100)) <= self.SVMainMenu.bilgewater.MaxOwnHealth then
             local Target = self:GetTarget()
@@ -484,6 +491,7 @@ function ShadowVayne:BilgeWater()
 end
 
 function ShadowVayne:Youmuus()
+    dDebug('ShadowVayne:Youmuus()')
     if self.Items.Youmuus and self:CheckModesActive(self.SVMainMenu.youmuus) then
         if myHero:CanUseSpell(self.Items.Youmuus) == 0 then
             CastSpell(self.Items.Youmuus)
@@ -492,12 +500,14 @@ function ShadowVayne:Youmuus()
 end
 
 function ShadowVayne:CastCondemn()
+    dDebug('ShadowVayne:CastCondemn()')
     if self.CondemnTarget and ValidTarget(self.CondemnTarget, 710) and myHero:CanUseSpell(_E) == READY then
         CastSpell(_E, self.CondemnTarget)
     end
 end
 
 function ShadowVayne:OnProcessSpell(unit, spell)
+    dDebug('ShadowVayne:OnProcessSpell()')
     if unit.team ~= myHero.team then
         if self.isAGapcloserUnitTarget[spell.name] then
             if spell.target and spell.target.networkID == myHero.networkID then
@@ -541,6 +551,7 @@ function ShadowVayne:OnProcessSpell(unit, spell)
 end
 
 function ShadowVayne:CondemnGapCloser(SpellInfo)
+    dDebug('ShadowVayne:CondemnGapCloser()')
     if (os.clock() - SpellInfo.CastTime) <= (SpellInfo.Range/SpellInfo.Speed) and myHero:CanUseSpell(_E) == READY then
         local EndPosition = Vector(SpellInfo.StartPos) + (Vector(SpellInfo.StartPos) - SpellInfo.EndPos):normalized()*(SpellInfo.Range)
         local StartPosition = SpellInfo.StartPos + SpellInfo.Direction
@@ -557,6 +568,7 @@ function ShadowVayne:CondemnGapCloser(SpellInfo)
 end
 
 function ShadowVayne:Tumble(Target)
+    dDebug('ShadowVayne:Tumble()')
     if Target and Target.type ~= 'obj_AI_Turret' then
         if  (self.SVMainMenu.tumble.FightMode and (SxOrb:GetMode() == 1) and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaFightMode)) or
                 (self.SVMainMenu.tumble.HarassMode and (SxOrb:GetMode() == 2) and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaHarassMode)) or
@@ -580,6 +592,7 @@ function ShadowVayne:Tumble(Target)
 end
 
 function ShadowVayne:OnDraw()
+    dDebug('ShadowVayne:OnDraw()')
     if self.SVMainMenu.draw.AARange then
         self:CircleDraw(myHero.x, myHero.y, myHero.z, 570 + myHero.boundingRadius, ARGB(self.SVMainMenu.draw.AAColor[1], self.SVMainMenu.draw.AAColor[2],self.SVMainMenu.draw.AAColor[3],self.SVMainMenu.draw.AAColor[4]))
     end
@@ -590,32 +603,43 @@ function ShadowVayne:OnDraw()
 end
 
 function ShadowVayne:CheckWallStun(Target)
-    local CastPosition, HitChance, PredictPosition = VP:GetPredictedPos(Target, 0.35, 1200, myHero, false)
-    if HitChance > 1 then
-        for i = 1, self.SVMainMenu.autostunn.PushDistance, 65  do
-            local CheckWallPos = Vector(PredictPosition) + (Vector(PredictPosition) - myHero):normalized()*(i)
-            if self.MapIndex == 15 then
-                if self.WallMap[math.ceil(CheckWallPos.x/25)][math.ceil(CheckWallPos.z/25)] then
-                    if UnderTurret(CheckWallPos, true) then
-                        if self.SVMainMenu.autostunn.TowerStun then
+    dDebug('ShadowVayne:CheckWallStun()')
+    if Target and Target.type == myHero.type then
+        local CastPosition, HitChance, PredictPosition = Target, 2, Target
+        --        local CastPosition, HitChance, PredictPosition = VP:GetPredictedPos(Target, 0.35, 1200, myHero, false)
+        dDebug('..After VPred')
+        if HitChance > 1 then
+            dDebug('..After HitChance')
+            for i = 1, self.SVMainMenu.autostunn.PushDistance, 65  do
+                dDebug('..StunCalc: '..i)
+                local CheckWallPos = Vector(PredictPosition) + (Vector(PredictPosition) - myHero):normalized()*(i)
+                dDebug('..CheckWallPos')
+                if self.MapIndex == 15 then
+                    if self.WallMap[math.ceil(CheckWallPos.x/25)][math.ceil(CheckWallPos.z/25)] then
+                        dDebug('..After WallMap')
+                        if UnderTurret(CheckWallPos, true) then
+                            if self.SVMainMenu.autostunn.TowerStun then
+                                self.CondemnTarget = Target
+                                break
+                            end
+                        else
                             self.CondemnTarget = Target
                             break
                         end
-                    else
-                        self.CondemnTarget = Target
-                        break
                     end
-                end
-            else
-                if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
-                    if UnderTurret(CheckWallPos, true) then
-                        if self.SVMainMenu.autostunn.TowerStun then
+                else
+                    if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
+                        dDebug('..After IsWall')
+                        if UnderTurret(CheckWallPos, true) then
+                            dDebug('..After UnderTurret')
+                            if self.SVMainMenu.autostunn.TowerStun then
+                                self.CondemnTarget = Target
+                                break
+                            end
+                        else
                             self.CondemnTarget = Target
                             break
                         end
-                    else
-                        self.CondemnTarget = Target
-                        break
                     end
                 end
             end
@@ -624,6 +648,7 @@ function ShadowVayne:CheckWallStun(Target)
 end
 
 function ShadowVayne:CondemnStun()
+    dDebug('ShadowVayne:CondemnStun()')
     if myHero:CanUseSpell(_E) == READY then
         if self.SVMainMenu.autostunn.Target then
             local Target = self:GetTarget()
@@ -641,6 +666,7 @@ function ShadowVayne:CondemnStun()
 end
 
 function ShadowVayne:DrawCircleNextLvl(x, y, z, radius, width, color, chordlength)
+    dDebug('ShadowVayne:DrawCircleNextLvl()')
     radius = radius or 300
     quality = math.max(8,math.floor(180/math.deg((math.asin((chordlength/(2*radius)))))))
     quality = 2 * math.pi / quality
@@ -654,6 +680,7 @@ function ShadowVayne:DrawCircleNextLvl(x, y, z, radius, width, color, chordlengt
 end
 
 function ShadowVayne:DrawCircle2(x, y, z, radius, color)
+    dDebug('ShadowVayne:DrawCircle2()')
     local vPos1 = Vector(x, y, z)
     local vPos2 = Vector(cameraPos.x, cameraPos.y, cameraPos.z)
     local tPos = vPos1 - (vPos1 - vPos2):normalized() * radius
@@ -664,10 +691,12 @@ function ShadowVayne:DrawCircle2(x, y, z, radius, color)
 end
 
 function ShadowVayne:CircleDraw(x,y,z,radius, color)
+    dDebug('ShadowVayne:CircleDraw()')
     self:DrawCircle2(x, y, z, radius, color)
 end
 
 function ShadowVayne:GetTarget()
+    dDebug('ShadowVayne:GetTarget()')
     local FightModeOrbText = self.SVMainMenu.keysetting._param[self.StartListParam].listTable[self.SVMainMenu.keysetting.FightModeOrb]
     local HarassModeOrbText = self.SVMainMenu.keysetting._param[self.StartListParam+1].listTable[self.SVMainMenu.keysetting.HarassModeOrb]
     local LaneClearOrbText = self.SVMainMenu.keysetting._param[self.StartListParam+2].listTable[self.SVMainMenu.keysetting.LaneClearOrb]
@@ -690,4 +719,8 @@ function ShadowVayne:GetTarget()
         if LaneClearOrbText == 'SAC:Reborn' then return SACTarget:GetTarget() end
         if LaneClearOrbText == 'SxOrb' then return SxOrb:GetTarget() end
     end
+end
+
+function dDebug(string)
+    --    OutputDebugString(string)
 end
