@@ -17,9 +17,11 @@ function SxUpdate:__init(LocalVersion, Host, VersionPath, ScriptPath, SavePath, 
     self.SavePath = SavePath
     self.LuaSocket = require("socket")
     AddTickCallback(function() self:GetOnlineVersion() end)
+    DelayAction(function() self.UpdateDone = true end, 2)
 end
 
 function SxUpdate:GetOnlineVersion()
+    if self.UpdateDone then return end
     if not self.OnlineVersion and not self.VersionSocket then
         self.VersionSocket = self.LuaSocket.connect("sx-bol.eu", 80)
         self.VersionSocket:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.Host..self.VersionPath.."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
@@ -34,6 +36,7 @@ function SxUpdate:GetOnlineVersion()
     if not self.OnlineVersion and self.VersionSocket and self.VersionStatus ~= 'timeout' then
         if self.VersionReceive then
             self.OnlineVersion = tonumber(string.sub(self.VersionReceive, string.find(self.VersionReceive, "<bols".."cript>")+11, string.find(self.VersionReceive, "</bols".."cript>")-1))
+            if not self.OnlineVersion then print(self.VersionReceive) end
         else
             print('AutoUpdate Failed')
             self.OnlineVersion = 0
@@ -45,7 +48,7 @@ end
 function SxUpdate:DownloadUpdate()
     if self.OnlineVersion > self.LocalVersion then
         self.ScriptSocket = self.LuaSocket.connect("sx-bol.eu", 80)
-        self.ScriptSocket:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.Host..self.ScriptLink.."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
+        self.ScriptSocket:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.Host..self.ScriptPath.."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
         self.ScriptReceive, self.ScriptStatus = self.ScriptSocket:receive('*a')
         self.ScriptRAW = string.sub(self.ScriptReceive, string.find(self.ScriptReceive, "<bols".."cript>")+11, string.find(self.ScriptReceive, "</bols".."cript>")-1)
         local ScriptFileOpen = io.open(self.SavePath, "w+")
@@ -56,6 +59,8 @@ function SxUpdate:DownloadUpdate()
     if type(self.Callback) == 'function' then
         self.Callback(self.OnlineVersion)
     end
+
+    self.UpdateDone = true
 end
 
 ------------------------
@@ -76,7 +81,7 @@ end
 class 'ShadowVayne'
 function ShadowVayne:__init()
     self.WallMap = WallMap
-    self.version = 5.02
+    self.version = 5.03
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
@@ -173,6 +178,9 @@ function ShadowVayne:GenerateTables()
             ['Cast'] 	= { ['x'] = 6010.5869140625, ['y'] = 8508.8740234375 },
         },
     }
+
+    self.Color = { Red = ARGB(0xFF,0xFF,0,0),Green = ARGB(0xFF,0,0xFF,0),Blue = ARGB(0xFF,0,0,0xFF), White = ARGB(0xFF,0xFF,0xFF,0xFF), Black = ARGB(0xFF, 0x00, 0x00, 0x00) }
+
 end
 
 function ShadowVayne:GetOrbWalkers()
@@ -371,10 +379,22 @@ function ShadowVayne:MenuLoaded()
     AddTickCallback(function() self:BilgeWater() end)
     AddTickCallback(function() self:CondemnStun() end)
     AddTickCallback(function() self:CastCondemn() end)
+    --    AddMsgCallback(function(key, state) self:OnWndMsg(key, state) end)
 
     AddDrawCallback(function() self:OnDraw() end)
 
     AddProcessSpellCallback(function(unit, spell) self:OnProcessSpell(unit, spell) end)
+end
+
+function ShadowVayne:OnWndMsg(state, key)
+    if key == 17 then
+        self.IsCtrlDown = state == 256 and true or false
+    end
+
+    if key == 69 and self.IsCtrlDown then
+        print('eh')
+        self.SVMainMenu.keysetting.AfterAACondemn = false
+    end
 end
 
 function ShadowVayne:ActivateModes()
@@ -545,7 +565,7 @@ function ShadowVayne:OnProcessSpell(unit, spell)
             self.CondemnTarget = self.LastTarget
             self.SVMainMenu.keysetting.AfterAACondemn = false
         else
-            DelayAction(function() self:Tumble(self.LastTarget) end, spell.windUpTime)
+            DelayAction(function() self:Tumble(self.LastTarget) end, spell.windUpTime + GetLatency()/2000)
         end
     end
 end
@@ -599,6 +619,10 @@ function ShadowVayne:OnDraw()
 
     if self.SVMainMenu.draw.ERange then
         self:CircleDraw(myHero.x, myHero.y, myHero.z, 710, ARGB(self.SVMainMenu.draw.EColor[1], self.SVMainMenu.draw.EColor[2],self.SVMainMenu.draw.EColor[3],self.SVMainMenu.draw.EColor[4]))
+    end
+    if self.SVMainMenu.keysetting.AfterAACondemn then
+        local myPos = WorldToScreen(D3DXVECTOR3(myHero.x, myHero.y, myHero.z))
+        DrawText("Auto-Condemn After Next AA is on!!",15, myPos.x, myPos.y, self.Color.Red)
     end
 end
 
@@ -722,5 +746,5 @@ function ShadowVayne:GetTarget()
 end
 
 function dDebug(string)
-    --    OutputDebugString(string)
+    --    SxOrb:AddLog(string)
 end
