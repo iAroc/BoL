@@ -81,7 +81,7 @@ end
 class 'ShadowVayne'
 function ShadowVayne:__init()
     self.WallMap = WallMap
-    self.version = 5.03
+    self.version = 5.04
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
@@ -92,7 +92,7 @@ function ShadowVayne:__init()
         "/Superx321/BoL/master/ShadowVayne.Version",
         "/Superx321/BoL/master/ShadowVayne.lua",
         SCRIPT_PATH.."ShadowVayne.lua",
-        function(NewVersion) if NewVersion > self.version then print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">Updated to "..NewVersion..". Please Reload with 2x F9</b></font>") else print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">No Updates Found</b></font>") end end)
+        function(NewVersion) if NewVersion > self.version then print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">Updated to "..NewVersion..". Please Reload with 2x F9</b></font>") else print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">You have the Latest Version</b></font>") end end)
     self:GenerateTables()
     self:GetOrbWalkers()
 end
@@ -590,10 +590,10 @@ end
 function ShadowVayne:Tumble(Target)
     dDebug('ShadowVayne:Tumble()')
     if Target and Target.type ~= 'obj_AI_Turret' then
-        if  (self.SVMainMenu.tumble.FightMode and (SxOrb:GetMode() == 1) and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaFightMode)) or
-                (self.SVMainMenu.tumble.HarassMode and (SxOrb:GetMode() == 2) and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaHarassMode)) or
-                (self.SVMainMenu.tumble.LaneClear and (SxOrb:GetMode() == 3) and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaLaneClear)) or
-                (self.SVMainMenu.tumble.LastHit and  (SxOrb:GetMode() == 4) and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaLastHit)) or
+        if  (self.SVMainMenu.tumble.FightMode and (self.IsFight == 1) and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaFightMode)) or
+                (self.SVMainMenu.tumble.HarassMode and (self.IsHarass == 2) and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaHarassMode)) or
+                (self.SVMainMenu.tumble.LaneClear and (self.IsLaneClear == 3) and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaLaneClear)) or
+                (self.SVMainMenu.tumble.LastHit and  (self.IsLastHit == 4) and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaLastHit)) or
                 (self.SVMainMenu.tumble.Always) then
             local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
             local DistanceAfterTumble = GetDistanceSqr(AfterTumblePos, Target)
