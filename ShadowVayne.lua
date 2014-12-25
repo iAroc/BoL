@@ -81,7 +81,7 @@ end
 class 'ShadowVayne'
 function ShadowVayne:__init()
     self.WallMap = WallMap
-    self.version = 5.04
+    self.version = 5.05
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
@@ -590,10 +590,10 @@ end
 function ShadowVayne:Tumble(Target)
     dDebug('ShadowVayne:Tumble()')
     if Target and Target.type ~= 'obj_AI_Turret' then
-        if  (self.SVMainMenu.tumble.FightMode and (self.IsFight == 1) and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaFightMode)) or
-                (self.SVMainMenu.tumble.HarassMode and (self.IsHarass == 2) and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaHarassMode)) or
-                (self.SVMainMenu.tumble.LaneClear and (self.IsLaneClear == 3) and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaLaneClear)) or
-                (self.SVMainMenu.tumble.LastHit and  (self.IsLastHit == 4) and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaLastHit)) or
+        if  (self.SVMainMenu.tumble.FightMode and self.IsFight and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaFightMode)) or
+                (self.SVMainMenu.tumble.HarassMode and self.IsHarass and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaHarassMode)) or
+                (self.SVMainMenu.tumble.LaneClear and self.IsLaneClear and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaLaneClear)) or
+                (self.SVMainMenu.tumble.LastHit and  self.IsLastHit and (100/myHero.maxMana*myHero.mana > self.SVMainMenu.tumble.ManaLastHit)) or
                 (self.SVMainMenu.tumble.Always) then
             local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
             local DistanceAfterTumble = GetDistanceSqr(AfterTumblePos, Target)
