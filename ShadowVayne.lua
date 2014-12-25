@@ -81,7 +81,7 @@ end
 class 'ShadowVayne'
 function ShadowVayne:__init()
     self.WallMap = WallMap
-    self.version = 5.05
+    self.version = 5.06
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
@@ -549,7 +549,7 @@ function ShadowVayne:OnProcessSpell(unit, spell)
                     Range = self.isAGapcloserUnitNoTarget[spell.name].range,
                     Speed = self.isAGapcloserUnitNoTarget[spell.name].projSpeed,
                 }
-                self:CondemnGapCloser(SpellInfo)
+                --                self:CondemnGapCloser(SpellInfo)
             end
         end
     end
