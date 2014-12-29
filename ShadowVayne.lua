@@ -81,7 +81,7 @@ end
 class 'ShadowVayne'
 function ShadowVayne:__init()
     self.WallMap = WallMap
-    self.version = 5.06
+    self.version = 5.07
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
@@ -180,6 +180,8 @@ function ShadowVayne:GenerateTables()
     }
 
     self.Color = { Red = ARGB(0xFF,0xFF,0,0),Green = ARGB(0xFF,0,0xFF,0),Blue = ARGB(0xFF,0,0,0xFF), White = ARGB(0xFF,0xFF,0xFF,0xFF), Black = ARGB(0xFF, 0x00, 0x00, 0x00) }
+
+    self.StunDrawPos = {}
 
 end
 
@@ -400,6 +402,7 @@ end
 function ShadowVayne:ActivateModes()
     dDebug('ShadowVayne:ActivateModes()')
     -- Get The Selected Orbwalker
+    self.IsFight, self.IsHarass, self.IsLaneClear, self.IsLastHit = false,false,false,false
     local FightModeOrbText = self.SVMainMenu.keysetting._param[self.StartListParam].listTable[self.SVMainMenu.keysetting.FightModeOrb]
     local HarassModeOrbText = self.SVMainMenu.keysetting._param[self.StartListParam+1].listTable[self.SVMainMenu.keysetting.HarassModeOrb]
     local LaneClearOrbText = self.SVMainMenu.keysetting._param[self.StartListParam+2].listTable[self.SVMainMenu.keysetting.LaneClearOrb]
@@ -629,38 +632,35 @@ end
 function ShadowVayne:CheckWallStun(Target)
     dDebug('ShadowVayne:CheckWallStun()')
     if Target and Target.type == myHero.type then
+        --        print(Target.charName)
         local CastPosition, HitChance, PredictPosition = Target, 2, Target
         --        local CastPosition, HitChance, PredictPosition = VP:GetPredictedPos(Target, 0.35, 1200, myHero, false)
-        dDebug('..After VPred')
+        self.StunDrawPos[Target.charName] = DrawPos
         if HitChance > 1 then
-            dDebug('..After HitChance')
             for i = 1, self.SVMainMenu.autostunn.PushDistance, 65  do
-                dDebug('..StunCalc: '..i)
                 local CheckWallPos = Vector(PredictPosition) + (Vector(PredictPosition) - myHero):normalized()*(i)
-                dDebug('..CheckWallPos')
                 if self.MapIndex == 15 then
                     if self.WallMap[math.ceil(CheckWallPos.x/25)][math.ceil(CheckWallPos.z/25)] then
-                        dDebug('..After WallMap')
                         if UnderTurret(CheckWallPos, true) then
                             if self.SVMainMenu.autostunn.TowerStun then
                                 self.CondemnTarget = Target
                                 break
                             end
                         else
+                            self.StunDrawPos[Target.charName] = CheckWallPos
                             self.CondemnTarget = Target
                             break
                         end
                     end
                 else
                     if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
-                        dDebug('..After IsWall')
                         if UnderTurret(CheckWallPos, true) then
-                            dDebug('..After UnderTurret')
                             if self.SVMainMenu.autostunn.TowerStun then
                                 self.CondemnTarget = Target
                                 break
                             end
                         else
+                            self.StunDrawPos[Target.charName] = CheckWallPos
                             self.CondemnTarget = Target
                             break
                         end
