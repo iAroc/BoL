@@ -1,120 +1,55 @@
-if myHero.charName ~= "Vayne" then return end
-if not VIP_USER then return end
+if myHero.charName ~= "Vayne" or not VIP_USER then return end
 
-local TumbleSpots = {
-		["VisionPos_1"] = { ["x"] = 11589, ["y"] = 52, ["z"] = 4657 },
-		["VisionPos_2"] = { ["x"] = 6623, ["y"] = 56, ["z"] = 8649 },
-		["StandPos_1"] = { ["x"] = 11590.95, ["y"] = 4656.26 },
-		["StandPos_2"] = { ["x"] = 6623.00, ["y"] = 8649.00 },
-		["CastPos_1"] = { ["x"] = 11334.74, ["y"] = 4517.47 },
-		["CastPos_2"] = { ["x"] = 6010.5869140625, ["y"] = 8508.8740234375 }
-	}
-
-
-function OnLoad()
-AddDrawCallback(_WallTumbleDraw)
-AddTickCallback(_WallTumble)
-end
-
-function RoundNumber(num, idp)
-  return tonumber(string.format("%." .. (idp or 0) .. "f", num))
-end
-
-function _WallTumble()
-	if VIP_USER then
-		if TumbleOverWall_1 then
-			if myHero:CanUseSpell(_Q) ~= READY then TumbleOverWall_1 = false;myHero:HoldPosition() end
-			if GetDistance(TumbleSpots.StandPos_1) <= 25 then
-				TumbleOverWall_1 = false
-				CastSpell(_Q, TumbleSpots.CastPos_1.x,  TumbleSpots.CastPos_1.y)
-				myHero:HoldPosition()
-			else
-				if GetDistance(TumbleSpots.StandPos_1) > 25 then myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y) end
-			end
-		end
-		if TumbleOverWall_2 then
-			if myHero:CanUseSpell(_Q) ~= READY then TumbleOverWall_2 = false;myHero:HoldPosition() end
-			if GetDistance(TumbleSpots.StandPos_2) <= 25 then
-				TumbleOverWall_2 = false
-				CastSpell(_Q, TumbleSpots.CastPos_2.x,  TumbleSpots.CastPos_2.y)
-				myHero:HoldPosition()
-			else
-				if GetDistance(TumbleSpots.StandPos_2) > 25 then myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y) end
-			end
-		end
-	end
-end
-
-function _WallTumbleDraw()
-	if VIP_USER then
-		if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
-			DrawCircle(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x107458)
-		else
-			DrawCircle(TumbleSpots.VisionPos_1.x, TumbleSpots.VisionPos_1.y, TumbleSpots.VisionPos_1.z, 100, 0x80FFFF)
-		end
-		if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
-			DrawCircle(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x107458)
-		else
-			DrawCircle(TumbleSpots.VisionPos_2.x, TumbleSpots.VisionPos_2.y, TumbleSpots.VisionPos_2.z, 100, 0x80FFFF)
-		end
-	end
-end
+local DoTumble = false
 
 function OnSendPacket(p)
-	if p.header == _G.Packet.headers.S_CAST then
-		if GetDistance(TumbleSpots.VisionPos_1) < 125 or GetDistance(TumbleSpots.VisionPos_1, mousePos) < 125 then
-			p.pos = 1
-			P_NetworkID = p:DecodeF()
-			P_SpellID = p:Decode1()
-			if P_NetworkID == myHero.networkID and P_SpellID == _Q then
-				if DontBlockNext then
-					DontBlockNext = false
-				else
-					p:Block()
-					DontBlockNext = true
-					TumbleOverWall_1 = true
-				end
-			end
-		end
+    if p.header == 0x00DE then
+        p.pos = 26
+        if p:Decode1() == _Q and not DoTumble then
 
-		if GetDistance(TumbleSpots.VisionPos_2) < 125 or GetDistance(TumbleSpots.VisionPos_2, mousePos) < 125 then
-			p.pos = 1
-			P_NetworkID = p:DecodeF()
-			P_SpellID = p:Decode1()
-			if P_NetworkID == myHero.networkID and P_SpellID == _Q then
-				if DontBlockNext then
-					DontBlockNext = false
-				else
-					p:Block()
-					DontBlockNext = true
-					TumbleOverWall_2 = true
-				end
-			end
-		end
-	end
+            if  GetDistanceSqr(mousePos, Point(12060, 4806)) < 80*80 then
+                myHero:MoveTo(12060, 4806)
+                DoTumble = 1
+                p:Block()
+            end
 
-	if p.header == _G.Packet.headers.S_MOVE then
-		p.pos = 1
-		P_NetworkID = p:DecodeF()
-		p:Decode1()
-		P_X = p:DecodeF()
-		P_X2 = tonumber(string.format("%." .. (2) .. "f", P_X))
+            if GetDistanceSqr(mousePos, Point(6962, 8952)) < 80*80 then
+                myHero:MoveTo(6962, 8952)
+                DoTumble = 2
+                p:Block()
+            end
+        elseif DoTumble then
+            DoTumble = false
+        end
+    end
+end
 
-		P_Y = p:DecodeF()
-		P_Y2 = tonumber(string.format("%." .. (2) .. "f", P_Y))
-		if TumbleOverWall_1 == true then
-			RunToX, RunToY = TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y
-			if not (P_X2 == RunToX and P_Y2 == RunToY) then
-				p:Block()
-				myHero:MoveTo(TumbleSpots.StandPos_1.x, TumbleSpots.StandPos_1.y)
-			end
-		end
-		if TumbleOverWall_2 == true then
-			RunToX, RunToY = TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y
-			if not (P_X2 == RunToX and P_Y2 == RunToY) then
-				p:Block()
-				myHero:MoveTo(TumbleSpots.StandPos_2.x, TumbleSpots.StandPos_2.y)
-			end
-		end
-	end
+function OnTick()
+    if DoTumble == 1 then
+        if myHero.x == 12060 and myHero.z == 4806 then
+            CastSpell(_Q,11745.198242188,4625.4379882813)
+        else
+            myHero:MoveTo(12060, 4806)
+        end
+    elseif DoTumble == 2 then
+        if myHero.x == 6962 and myHero.z == 8952 then
+            CastSpell(_Q,6667.3271484375,8794.64453125)
+        else
+            myHero:MoveTo(6962, 8952)
+        end
+    end
+end
+
+function OnDraw()
+    if GetDistanceSqr(mousePos, Point(12060, 4806)) > 80*80 then
+        DrawCircle(12060, 51, 4806,80, ARGB(0xFF,0xFF,0,0))
+    else
+        DrawCircle(12060, 51, 4806,80, ARGB(0xFF,0,0xFF,0))
+    end
+
+    if GetDistanceSqr(mousePos, Point(6962, 8952)) > 80*80 then
+        DrawCircle(6962, 51, 8952,80, ARGB(0xFF,0xFF,0,0))
+    else
+        DrawCircle(6962, 51, 8952,80, ARGB(0xFF,0,0xFF,0))
+    end
 end
