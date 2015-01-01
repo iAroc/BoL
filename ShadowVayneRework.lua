@@ -55,10 +55,10 @@ function SxUpdate:DownloadUpdate()
 end
 
 function OnLoad()
-    SxUpdate(self.version,
+    SxUpdate(1,
         "raw.githubusercontent.com",
         "/Superx321/BoL/master/ShadowVayne.Version",
         "/Superx321/BoL/master/ShadowVayne.lua",
         SCRIPT_PATH.."ShadowVayne.lua",
-        function(NewVersion) if NewVersion > self.version then print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">Updated to "..NewVersion..". Please Reload with 2x F9</b></font>") else print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">You have the Latest Version</b></font>") end end)
+        function(NewVersion) if NewVersion > 1 then print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">Updated to "..NewVersion..". Please Reload with 2x F9</b></font>") else print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">You have the Latest Version</b></font>") end end)
 end
