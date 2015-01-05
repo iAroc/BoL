@@ -81,7 +81,7 @@ end
 ------------------------
 class 'ShadowVayne'
 function ShadowVayne:__init()
-    self.version = 5.08
+    self.version = 5.09
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
@@ -185,8 +185,10 @@ function ShadowVayne:GetOrbWalkers()
 end
 
 function ShadowVayne:WaitForReborn()
-    if _G.AutoCarry and self.Loaded then return end
-    self:LoadMenu()
+    if self.Loaded then return end
+    if _G.AutoCarry then
+        self:LoadMenu()
+    end
 end
 
 function ShadowVayne:LoadMenu()
@@ -635,19 +637,19 @@ end
 function ShadowVayne:GetTarget()
     if self.IsFight then
         if self.FightModeOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
-        if self.FightModeOrbText == 'SAC:Reborn' then return SACTarget:GetTarget() end
+        if self.FightModeOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
         if self.FightModeOrbText == 'SxOrb' then return SxOrb:GetTarget() end
     elseif self.IsHarass then
         if self.HarassModeOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
-        if self.HarassModeOrbText == 'SAC:Reborn' then return SACTarget:GetTarget() end
+        if self.HarassModeOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
         if self.HarassModeOrbText == 'SxOrb' then return SxOrb:GetTarget() end
     elseif self.IsLastHit then
         if self.LastHitOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
-        if self.LastHitOrbText == 'SAC:Reborn' then return SACTarget:GetTarget() end
+        if self.LastHitOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
         if self.LastHitOrbText == 'SxOrb' then return SxOrb:GetTarget() end
     elseif self.IsLaneClear then
         if self.LaneClearOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
-        if self.LaneClearOrbText == 'SAC:Reborn' then return SACTarget:GetTarget() end
+        if self.LaneClearOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
         if self.LaneClearOrbText == 'SxOrb' then return SxOrb:GetTarget() end
     end
 end
