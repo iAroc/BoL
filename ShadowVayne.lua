@@ -6,7 +6,6 @@
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
 	]]
 if myHero.charName ~= 'Vayne' then return end
-
 class "SxUpdate"
 function SxUpdate:__init(LocalVersion, Host, VersionPath, ScriptPath, SavePath, Callback)
     self.Callback = Callback
@@ -70,8 +69,8 @@ function OnLoad()
     require 'VPrediction'
     VP = VPrediction()
     DelayAction(function()
-        if not SxOrb or not SxOrb.Version or SxOrb.Version < 2.11 then print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Loading Failed. Please Update SxOrbWalk to newest Version</font>') return end
-        if not VP or not VP.version or VP.version < 1.4 then print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Loading Failed. Please Update VPrediction to newest Version</font>') return end
+        if not SxOrb or not SxOrb.Version or SxOrb.Version < 2.29 then print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Loading Failed. Please Update SxOrbWalk to newest Version</font>') return end
+        if not VP or not VP.version or VP.version < 2.863 then print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Loading Failed. Please Update VPrediction to newest Version</font>') return end
         ShadowVayne()
     end,0.1)
 end
@@ -81,7 +80,7 @@ end
 ------------------------
 class 'ShadowVayne'
 function ShadowVayne:__init()
-    self.version = 5.09
+    self.version = 5.10
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
@@ -408,9 +407,9 @@ end
 function ShadowVayne:CheckLevelChange()
     if self.LastLevelCheck + 250 < GetTickCount() then
         if self.MapIndex == 8 and myHero.level < 4 and self.Menu.autolevel.UseAutoLevelFirst then
-            LevelSpell(_Q)
-            LevelSpell(_W)
-            LevelSpell(_E)
+            self:LevelSpell(_Q)
+            self:LevelSpell(_W)
+            self:LevelSpell(_E)
         end
 
         self.LastLevelCheck = GetTickCount()
@@ -423,11 +422,11 @@ end
 
 function ShadowVayne:LevelUpSpell()
     if self.Menu.autolevel.UseAutoLevelFirst and myHero.level < 4 then
-        LevelSpell(self.AutoLevelSpellTable[self.AutoLevelSpellTable['SpellOrder'][self.Menu.autolevel.First3Level]][myHero.level])
+        self:LevelSpell(self.AutoLevelSpellTable[self.AutoLevelSpellTable['SpellOrder'][self.Menu.autolevel.First3Level]][myHero.level])
     end
 
     if self.Menu.autolevel.UseAutoLevelRest and myHero.level > 3 then
-        LevelSpell(self.AutoLevelSpellTable[self.AutoLevelSpellTable['SpellOrder'][self.Menu.autolevel.RestLevel]][myHero.level])
+        self:LevelSpell(self.AutoLevelSpellTable[self.AutoLevelSpellTable['SpellOrder'][self.Menu.autolevel.RestLevel]][myHero.level])
     end
 end
 
@@ -544,9 +543,13 @@ function ShadowVayne:Tumble(Target)
             local DistanceAfterTumble = GetDistanceSqr(AfterTumblePos, Target)
             if  DistanceAfterTumble < 630*630 and DistanceAfterTumble > 100*100 then
                 CastSpell(_Q, mousePos.x, mousePos.z)
+                --                SendChat("/l")
+                --                myHero:Attack(Target)
             end
             if GetDistanceSqr(Target) > 630*630 and DistanceAfterTumble < 630*630 then
                 CastSpell(_Q, mousePos.x, mousePos.z)
+                --                SendChat("/l")
+                --                myHero:Attack(Target)
             end
         end
     end
@@ -556,11 +559,16 @@ function ShadowVayne:OnDraw()
     if self.Menu.draw.ERange then
         self:CircleDraw(myHero.x, myHero.y, myHero.z, 710, ARGB(self.Menu.draw.EColor[1], self.Menu.draw.EColor[2],self.Menu.draw.EColor[3],self.Menu.draw.EColor[4]))
     end
+    if self.CastEDraw then
+        DrawCircle(self.CastEDraw.x, self.CastEDraw.y, self.CastEDraw.z, 150, ARGB(0xFF,0xFF,0xFF,0xFF))
+    end
 
     if self.Menu.keysetting.AfterAACondemn then
         local myPos = WorldToScreen(D3DXVECTOR3(myHero.x, myHero.y, myHero.z))
         DrawText("Auto-Condemn After Next AA is on!!",15, myPos.x, myPos.y, self.Color.Red)
     end
+
+
 end
 
 function ShadowVayne:CheckWallStun(Target)
@@ -574,7 +582,11 @@ function ShadowVayne:CheckWallStun(Target)
             if not FoundGrass and IsWallOfGrass(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
                 FoundGrass = CheckWallPos
             end
-            if IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z)) then
+            local WallPoint = IsWall(D3DXVECTOR3(CheckWallPos.x, CheckWallPos.y, CheckWallPos.z))
+            --            local Distance = GetDistanceSqr(WallPoint.endPath, CheckWallPos)
+            if WallPoint then
+                self.CastEDraw = CheckWallPos
+                --                print('CastSpell E:' ..math.sqrt(Distance))
                 if UnderTurret(CheckWallPos, true) then
                     if self.Menu.autostunn.TowerStun then
                         CastSpell(_E, Target)
@@ -652,4 +664,18 @@ function ShadowVayne:GetTarget()
         if self.LaneClearOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
         if self.LaneClearOrbText == 'SxOrb' then return SxOrb:GetTarget() end
     end
+end
+
+function ShadowVayne:LevelSpell(Spell)
+    LevelSpell(Spell)
+    --        local packet = CLoLPacket(0x00D9)
+    --        packet.vTable = 0xE774FC
+    --        packet:EncodeF(myHero.networkID)
+    --        packet:Encode1(Spell == _Q and 0x06 or Spell == _W and 0xE2 or Spell == _E and 0x7E or Spell == _R and 0x70)
+    --        packet:Encode4(0xBD * 4)
+    --        packet:Encode1(0x83)
+    --        packet:Encode4(0x73 * 4)
+    --        packet:Encode4(0x13 * 4)
+    --        packet:EncodeF(GetGameTimer())
+    --        SendPacket(packet)
 end
