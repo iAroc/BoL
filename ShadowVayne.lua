@@ -89,7 +89,7 @@ end
 ------------------------
 class 'ShadowVayne'
 function ShadowVayne:__init()
-    self.version = 5.12
+    self.version = 5.13
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
@@ -706,7 +706,7 @@ end
 
 _G.scriptConfig.SxaddParam = _G.scriptConfig.addParam
 function _G.scriptConfig.addParam(self,pVar, pText, pType, defaultValue, a, b, c)
-    if (pType == SCRIPT_PARAM_ONKEYDOWN or pType == SCRIPT_PARAM_ONKEYTOGGLE) and (self.name == 'SxOrb_Keys' or self.name:find('sidasacsetup')) then
+    if (pType == SCRIPT_PARAM_ONKEYDOWN or pType == SCRIPT_PARAM_ONKEYTOGGLE) and (self.name == 'SxOrb_Keys' or self.name:find('sidasacsetup_')) then
         pType = SCRIPT_PARAM_INFO
         pText = 'Choose the Orbwalker in ShadowVayne'
         defaultValue = false
@@ -746,4 +746,12 @@ function _G.scriptConfig.addParam(self,pVar, pText, pType, defaultValue, a, b, c
         end
     end
     _G.scriptConfig.SxaddParam(self,pVar, pText, pType, defaultValue, a, b, c)
+end
+
+_G.scriptConfig.Sx_DrawParam = _G.scriptConfig._DrawParam
+function _G.scriptConfig._DrawParam(self,varIndex)
+    if self._param[varIndex].pType == SCRIPT_PARAM_INFO and self._param[varIndex].text == 'Choose the Orbwalker in ShadowVayne' then
+        self._param[varIndex].var = 'sep'
+    end
+    _G.scriptConfig.Sx_DrawParam(self,varIndex)
 end
