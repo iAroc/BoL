@@ -64,6 +64,15 @@ end
 ------------------------
 ------ LoadScript ------
 ------------------------
+local SAC_FightMode = {Menu = nil, Sub = nil, Key = nil}
+local SAC_LastHit = {Menu = nil, Sub = nil, Key = nil}
+local SAC_MixedMode = {Menu = nil, Sub = nil, Key = nil}
+local SAC_LaneClear = {Menu = nil, Sub = nil, Key = nil}
+local SxOrb_FightMode = {Menu = nil, Sub = nil}
+local SxOrb_LastHit = {Menu = nil, Sub = nil}
+local SxOrb_MixedMode = {Menu = nil, Sub = nil}
+local SxOrb_LaneClear = {Menu = nil, Sub = nil}
+
 function OnLoad()
     require 'SxOrbWalk'
     require 'VPrediction'
@@ -80,7 +89,7 @@ end
 ------------------------
 class 'ShadowVayne'
 function ShadowVayne:__init()
-    self.version = 5.10
+    self.version = 5.11
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
@@ -207,6 +216,10 @@ function ShadowVayne:LoadMenu()
     -- KeySetting Menu
     self.Menu.keysetting:addParam('nil','Basic Key Settings', SCRIPT_PARAM_INFO, '')
     self.Menu.keysetting:addParam('AfterAACondemn','Condemn on next BasicAttack:', SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte( 'E' ))
+    self.Menu.keysetting:addParam('Fight','AutoCarry Key:', SCRIPT_PARAM_ONKEYDOWN, false, 32)
+    self.Menu.keysetting:addParam('Harass','MixedMode Key:', SCRIPT_PARAM_ONKEYDOWN, false, 67)
+    self.Menu.keysetting:addParam('LastHit','LastHit Key:', SCRIPT_PARAM_ONKEYDOWN, false, 88)
+    self.Menu.keysetting:addParam('LaneClear','LaneClear Key:', SCRIPT_PARAM_ONKEYDOWN, false, 86)
     self.Menu.keysetting:addParam('nil','', SCRIPT_PARAM_INFO, '')
     self.Menu.keysetting:addParam('FightModeOrb', 'Orbwalker in FightMode: ', SCRIPT_PARAM_LIST, 1, self.OrbWalkers)
     self.Menu.keysetting:addParam('HarassModeOrb', 'Orbwalker in HarassMode: ', SCRIPT_PARAM_LIST, 1, self.OrbWalkers)
@@ -363,29 +376,40 @@ end
 
 function ShadowVayne:ActivateModes()
     -- Get The Selected Orbwalker
-    self.IsFight, self.IsHarass, self.IsLaneClear, self.IsLastHit = false,false,false,false
     self.FightModeOrbText = self.Menu.keysetting._param[self.StartListParam].listTable[self.Menu.keysetting.FightModeOrb]
     self.HarassModeOrbText = self.Menu.keysetting._param[self.StartListParam+1].listTable[self.Menu.keysetting.HarassModeOrb]
     self.LaneClearOrbText = self.Menu.keysetting._param[self.StartListParam+2].listTable[self.Menu.keysetting.LaneClearOrb]
     self.LastHitOrbText = self.Menu.keysetting._param[self.StartListParam+3].listTable[self.Menu.keysetting.LastHitOrb]
 
-    -- Activate MMA
-    if self.FightModeOrbText == 'MMA' then self.IsFight = _G.MMA_IsOrbwalking end
-    if self.HarassModeOrbText == 'MMA' then self.IsHarass = _G.MMA_IsHybrid end
-    if self.LaneClearOrbText == 'MMA' then self.IsLaneClear = _G.MMA_IsClearing end
-    if self.LastHitOrbText == 'MMA' then self.IsLastHit = _G.MMA_IsLasthitting end
+    -- Get the Currnt Mode
+    self.IsFight = self.Menu.keysetting.Fight
+    self.IsHarass = self.Menu.keysetting.Harass
+    self.IsLastHit = self.Menu.keysetting.LastHit
+    self.IsLaneClear = self.Menu.keysetting.LaneClear
+
+    -- Deactivate All SAC
+    SAC_FightMode.Menu[SAC_FightMode.Sub] = false
+    SAC_LastHit.Menu[SAC_LastHit.Sub] = false
+    SAC_MixedMode.Menu[SAC_MixedMode.Sub] = false
+    SAC_LaneClear.Menu[SAC_LaneClear.Sub] = false
 
     -- Activate SAC:Reborn
-    if self.FightModeOrbText == 'SAC:Reborn' then self.IsFight = _G.AutoCarry.Keys.AutoCarry end
-    if self.HarassModeOrbText == 'SAC:Reborn' then self.IsHarass = _G.AutoCarry.Keys.MixedMode end
-    if self.LaneClearOrbText == 'SAC:Reborn' then self.IsLaneClear = _G.AutoCarry.Keys.LaneClear end
-    if self.LastHitOrbText   == 'SAC:Reborn' then self.IsLastHit = _G.AutoCarry.Keys.LastHit end
+    if self.FightModeOrbText == 'SAC:Reborn' then SAC_FightMode.Menu[SAC_FightMode.Sub] = self.IsFight end
+    if self.HarassModeOrbText == 'SAC:Reborn' then SAC_MixedMode.Menu[SAC_MixedMode.Sub] = self.IsHarass end
+    if self.LaneClearOrbText == 'SAC:Reborn' then SAC_LaneClear.Menu[SAC_LaneClear.Sub] = self.IsLaneClear end
+    if self.LastHitOrbText   == 'SAC:Reborn' then SAC_LastHit.Menu[SAC_LastHit.Sub] = self.IsLastHit end
+
+    -- Deactivate all SxOrb
+    SxOrb_FightMode.Menu[SxOrb_FightMode.Sub] = false
+    SxOrb_LastHit.Menu[SxOrb_LastHit.Sub] = false
+    SxOrb_MixedMode.Menu[SxOrb_MixedMode.Sub] = false
+    SxOrb_LaneClear.Menu[SxOrb_LaneClear.Sub] = false
 
     -- Activate SxOrbWalker
-    if self.FightModeOrbText == 'SxOrb' then self.IsFight = SxOrb.IsFight end
-    if self.HarassModeOrbText == 'SxOrb' then self.IsHarass = SxOrb.IsHarass end
-    if self.LaneClearOrbText == 'SxOrb' then self.IsLaneClear = SxOrb.IsLaneClear end
-    if self.LastHitOrbText   == 'SxOrb' then self.IsLastHit = SxOrb.IsLastHit end
+    if self.FightModeOrbText == 'SxOrb' then SxOrb_FightMode.Menu[SxOrb_FightMode.Sub] = self.IsFight end
+    if self.HarassModeOrbText == 'SxOrb' then SxOrb_MixedMode.Menu[SxOrb_MixedMode.Sub] = self.IsHarass end
+    if self.LaneClearOrbText == 'SxOrb' then SxOrb_LaneClear.Menu[SxOrb_LaneClear.Sub] = self.IsLaneClear end
+    if self.LastHitOrbText   == 'SxOrb' then SxOrb_LastHit.Menu[SxOrb_LastHit.Sub] = self.IsLastHit end
 end
 
 function ShadowVayne:CheckModesActive(Menu)
@@ -678,4 +702,48 @@ function ShadowVayne:LevelSpell(Spell)
     --        packet:Encode4(0x13 * 4)
     --        packet:EncodeF(GetGameTimer())
     --        SendPacket(packet)
+end
+
+_G.scriptConfig.SxaddParam = _G.scriptConfig.addParam
+function _G.scriptConfig.addParam(self,pVar, pText, pType, defaultValue, a, b, c)
+    if (pType == SCRIPT_PARAM_ONKEYDOWN or pType == SCRIPT_PARAM_ONKEYTOGGLE) and (self.name == 'SxOrb_Keys' or self.name:find('sidasacsetup')) then
+        pType = SCRIPT_PARAM_INFO
+        pText = 'Choose the Orbwalker in ShadowVayne'
+        defaultValue = false
+        if self.name == 'sidasacsetup_sidasacautocarrysub' then
+            SAC_FightMode.Menu = self
+            SAC_FightMode.Sub = pVar
+        end
+        if self.name == 'sidasacsetup_sidasaclasthitsub' then
+            SAC_LastHit.Menu = self
+            SAC_LastHit.Sub = pVar
+        end
+        if self.name == 'sidasacsetup_sidasacmixedmodesub' then
+            SAC_MixedMode.Menu = self
+            SAC_MixedMode.Sub = pVar
+        end
+        if self.name == 'sidasacsetup_sidasaclaneclearsub' then
+            SAC_LaneClear.Menu = self
+            SAC_LaneClear.Sub = pVar
+        end
+        if self.name == 'SxOrb_Keys' then
+            if pVar == 'Fight' then
+                SxOrb_FightMode.Menu = self
+                SxOrb_FightMode.Sub = pVar
+            end
+            if pVar == 'LastHit' then
+                SxOrb_LastHit.Menu = self
+                SxOrb_LastHit.Sub = pVar
+            end
+            if pVar == 'Harass' then
+                SxOrb_MixedMode.Menu = self
+                SxOrb_MixedMode.Sub = pVar
+            end
+            if pVar == 'LaneClear' then
+                SxOrb_LaneClear.Menu = self
+                SxOrb_LaneClear.Sub = pVar
+            end
+        end
+    end
+    _G.scriptConfig.SxaddParam(self,pVar, pText, pType, defaultValue, a, b, c)
 end
