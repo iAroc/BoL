@@ -6,59 +6,106 @@
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
 	]]
 if myHero.charName ~= 'Vayne' then return end
-class "SxUpdate"
-function SxUpdate:__init(LocalVersion, Host, VersionPath, ScriptPath, SavePath, Callback)
-    self.Callback = Callback
+class "ScriptUpdate"
+function ScriptUpdate:__init(LocalVersion, Host, VersionPath, ScriptPath, SavePath, CallbackUpdate, CallbackNoUpdate, CallbackNewVersion)
     self.LocalVersion = LocalVersion
     self.Host = Host
-    self.VersionPath = VersionPath
-    self.ScriptPath = ScriptPath
+    self.VersionPath = '/BoL/TCPUpdater/GetScript2.php?script='..self:Base64Encode(self.Host..VersionPath)..'&rand='..math.random(99999999)
+    self.ScriptPath = '/BoL/TCPUpdater/GetScript2.php?script='..self:Base64Encode(self.Host..ScriptPath)..'&rand='..math.random(99999999)
     self.SavePath = SavePath
+    self.CallbackUpdate = CallbackUpdate
+    self.CallbackNoUpdate = CallbackNoUpdate
+    self.CallbackNewVersion = CallbackNewVersion
     self.LuaSocket = require("socket")
+    self.Socket = self.LuaSocket.connect('sx-bol.eu', 80)
+    self.Socket:send("GET "..self.VersionPath.." HTTP/1.0\r\nHost: sx-bol.eu\r\n\r\n")
+    self.Socket:settimeout(0, 'b')
+    self.Socket:settimeout(99999999, 't')
+    self.LastPrint = ""
+    self.File = ""
     AddTickCallback(function() self:GetOnlineVersion() end)
-    DelayAction(function() self.UpdateDone = true end, 2)
 end
 
-function SxUpdate:GetOnlineVersion()
-    if self.UpdateDone then return end
-    if not self.OnlineVersion and not self.VersionSocket then
-        self.VersionSocket = self.LuaSocket.connect("sx-bol.eu", 80)
-        self.VersionSocket:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.Host..self.VersionPath.."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
-    end
+function ScriptUpdate:Base64Encode(data)
+    local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    return ((data:gsub('.', function(x)
+        local r,b='',x:byte()
+        for i=8,1,-1 do r=r..(b%2^i-b%2^(i-1)>0 and '1' or '0') end
+        return r;
+    end)..'0000'):gsub('%d%d%d?%d?%d?%d?', function(x)
+        if (#x < 6) then return '' end
+        local c=0
+        for i=1,6 do c=c+(x:sub(i,i)=='1' and 2^(6-i) or 0) end
+        return b:sub(c+1,c+1)
+    end)..({ '', '==', '=' })[#data%3+1])
+end
 
-    if not self.OnlineVersion and self.VersionSocket then
-        self.VersionSocket:settimeout(0, 'b')
-        self.VersionSocket:settimeout(99999999, 't')
-        self.VersionReceive, self.VersionStatus = self.VersionSocket:receive('*a')
-    end
+function ScriptUpdate:GetOnlineVersion()
+    if self.Status == 'closed' then return end
+    self.Receive, self.Status, self.Snipped = self.Socket:receive(1024)
 
-    if not self.OnlineVersion and self.VersionSocket and self.VersionStatus ~= 'timeout' then
-        if self.VersionReceive then
-            self.OnlineVersion = tonumber(string.sub(self.VersionReceive, string.find(self.VersionReceive, "<bols".."cript>")+11, string.find(self.VersionReceive, "</bols".."cript>")-1))
-            if not self.OnlineVersion then print(self.VersionReceive) end
-        else
-            print('AutoUpdate Failed')
-            self.OnlineVersion = 0
+    if self.Receive then
+        if self.LastPrint ~= self.Receive then
+            self.LastPrint = self.Receive
+            self.File = self.File .. self.Receive
         end
-        self:DownloadUpdate()
+    end
+
+    if self.Snipped ~= "" and self.Snipped then
+        self.File = self.File .. self.Snipped
+    end
+    if self.Status == 'closed' then
+        local HeaderEnd, ContentStart = self.File:find('\r\n\r\n')
+        if HeaderEnd and ContentStart then
+            self.OnlineVersion = tonumber(self.File:sub(ContentStart + 1))
+            if self.OnlineVersion > self.LocalVersion then
+                if self.CallbackNewVersion and type(self.CallbackNewVersion) == 'function' then
+                    self.CallbackNewVersion(self.OnlineVersion,self.LocalVersion)
+                end
+                self.DownloadSocket = self.LuaSocket.connect('sx-bol.eu', 80)
+                self.DownloadSocket:send("GET "..self.ScriptPath.." HTTP/1.0\r\nHost: sx-bol.eu\r\n\r\n")
+                self.DownloadSocket:settimeout(0, 'b')
+                self.DownloadSocket:settimeout(99999999, 't')
+                self.LastPrint = ""
+                self.File = ""
+                AddTickCallback(function() self:DownloadUpdate() end)
+            else
+                if self.CallbackNoUpdate and type(self.CallbackNoUpdate) == 'function' then
+                    self.CallbackNoUpdate(self.LocalVersion)
+                end
+            end
+        else
+            print('Error: Could not get end of Header')
+        end
     end
 end
 
-function SxUpdate:DownloadUpdate()
-    if self.OnlineVersion > self.LocalVersion then
-        self.ScriptSocket = self.LuaSocket.connect("sx-bol.eu", 80)
-        self.ScriptSocket:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.Host..self.ScriptPath.."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
-        self.ScriptReceive, self.ScriptStatus = self.ScriptSocket:receive('*a')
-        self.ScriptRAW = string.sub(self.ScriptReceive, string.find(self.ScriptReceive, "<bols".."cript>")+11, string.find(self.ScriptReceive, "</bols".."cript>")-1)
-        local ScriptFileOpen = io.open(self.SavePath, "w+")
-        ScriptFileOpen:write(self.ScriptRAW)
-        ScriptFileOpen:close()
+function ScriptUpdate:DownloadUpdate()
+    if self.DownloadStatus == 'closed' then return end
+    self.DownloadReceive, self.DownloadStatus, self.DownloadSnipped = self.DownloadSocket:receive(1024)
+
+    if self.DownloadReceive then
+        if self.LastPrint ~= self.DownloadReceive then
+            self.LastPrint = self.DownloadReceive
+            self.File = self.File .. self.DownloadReceive
+        end
     end
 
-    if type(self.Callback) == 'function' then
-        self.Callback(self.OnlineVersion)
+    if self.DownloadSnipped ~= "" and self.DownloadSnipped then
+        self.File = self.File .. self.DownloadSnipped
     end
-    self.UpdateDone = true
+
+    if self.DownloadStatus == 'closed' then
+        local HeaderEnd, ContentStart = self.File:find('\r\n\r\n')
+        if HeaderEnd and ContentStart then
+            local ScriptFileOpen = io.open(self.SavePath, "w+")
+            ScriptFileOpen:write(self.File:sub(ContentStart + 1))
+            ScriptFileOpen:close()
+            if self.CallbackUpdate and type(self.CallbackUpdate) == 'function' then
+                self.CallbackUpdate(self.OnlineVersion,self.LocalVersion)
+            end
+        end
+    end
 end
 
 ------------------------
@@ -89,18 +136,22 @@ end
 ------------------------
 class 'ShadowVayne'
 function ShadowVayne:__init()
-    self.version = 5.13
+    self.version = 5.14
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
     self.MapIndex = GetGame().map.index
     print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Version '..self.version..' loaded</font>')
-    SxUpdate(self.version,
-        "raw.githubusercontent.com",
-        "/Superx321/BoL/master/ShadowVayne.Version",
-        "/Superx321/BoL/master/ShadowVayne.lua",
-        SCRIPT_PATH.."ShadowVayne.lua",
-        function(NewVersion) if NewVersion > self.version then print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">Updated to "..NewVersion..". Please Reload with 2x F9</b></font>") else print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">You have the Latest Version</b></font>") end end)
+    local ToUpdate = {}
+    ToUpdate.Version = self.Version
+    ToUpdate.Host = "raw.githubusercontent.com"
+    ToUpdate.VersionPath = "/Superx321/BoL/master/ShadowVayne.Version"
+    ToUpdate.ScriptPath = "/Superx321/BoL/master/ShadowVayne.lua"
+    ToUpdate.SavePath = LIB_PATH.."ShadowVayne.lua"
+    ToUpdate.CallbackUpdate = function(NewVersion,OldVersion) print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">Updated to "..NewVersion..". Please Reload with 2x F9</b></font>") end
+    ToUpdate.CallbackNoUpdate = function(OldVersion) print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">No Updates Found</b></font>") end
+    ToUpdate.CallbackNewVersion = function(NewVersion) print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">New Version found ("..NewVersion.."). Please wait until its downloaded</b></font>") end
+    ScriptUpdate(ToUpdate.Version, ToUpdate.Host, ToUpdate.VersionPath, ToUpdate.ScriptPath, ToUpdate.SavePath, ToUpdate.CallbackUpdate,ToUpdate.CallbackNoUpdate, ToUpdate.CallbackNewVersion)
     self:GenerateTables()
     self:GetOrbWalkers()
 end
@@ -183,7 +234,7 @@ function ShadowVayne:GetOrbWalkers()
         table.insert(self.OrbWalkers, 'MMA')
     end
 
-    if _G.Reborn_Loaded then
+    if _G.RebornScriptName then
         table.insert(self.OrbWalkers, 'SAC:Reborn')
         print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Waiting for SAC:Reborn Auth</font>')
         AddTickCallback(function() self:WaitForReborn() end)
