@@ -89,7 +89,7 @@ end
 ------------------------
 class 'ShadowVayne'
 function ShadowVayne:__init()
-    self.version = 5.11
+    self.version = 5.12
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
@@ -386,19 +386,19 @@ function ShadowVayne:ActivateModes()
     self.IsHarass = self.Menu.keysetting.Harass
     self.IsLastHit = self.Menu.keysetting.LastHit
     self.IsLaneClear = self.Menu.keysetting.LaneClear
+    if _G.AutoCarry then
+        -- Deactivate All SAC
+        SAC_FightMode.Menu[SAC_FightMode.Sub] = false
+        SAC_LastHit.Menu[SAC_LastHit.Sub] = false
+        SAC_MixedMode.Menu[SAC_MixedMode.Sub] = false
+        SAC_LaneClear.Menu[SAC_LaneClear.Sub] = false
 
-    -- Deactivate All SAC
-    SAC_FightMode.Menu[SAC_FightMode.Sub] = false
-    SAC_LastHit.Menu[SAC_LastHit.Sub] = false
-    SAC_MixedMode.Menu[SAC_MixedMode.Sub] = false
-    SAC_LaneClear.Menu[SAC_LaneClear.Sub] = false
-
-    -- Activate SAC:Reborn
-    if self.FightModeOrbText == 'SAC:Reborn' then SAC_FightMode.Menu[SAC_FightMode.Sub] = self.IsFight end
-    if self.HarassModeOrbText == 'SAC:Reborn' then SAC_MixedMode.Menu[SAC_MixedMode.Sub] = self.IsHarass end
-    if self.LaneClearOrbText == 'SAC:Reborn' then SAC_LaneClear.Menu[SAC_LaneClear.Sub] = self.IsLaneClear end
-    if self.LastHitOrbText   == 'SAC:Reborn' then SAC_LastHit.Menu[SAC_LastHit.Sub] = self.IsLastHit end
-
+        -- Activate SAC:Reborn
+        if self.FightModeOrbText == 'SAC:Reborn' then SAC_FightMode.Menu[SAC_FightMode.Sub] = self.IsFight end
+        if self.HarassModeOrbText == 'SAC:Reborn' then SAC_MixedMode.Menu[SAC_MixedMode.Sub] = self.IsHarass end
+        if self.LaneClearOrbText == 'SAC:Reborn' then SAC_LaneClear.Menu[SAC_LaneClear.Sub] = self.IsLaneClear end
+        if self.LastHitOrbText   == 'SAC:Reborn' then SAC_LastHit.Menu[SAC_LastHit.Sub] = self.IsLastHit end
+    end
     -- Deactivate all SxOrb
     SxOrb_FightMode.Menu[SxOrb_FightMode.Sub] = false
     SxOrb_LastHit.Menu[SxOrb_LastHit.Sub] = false
