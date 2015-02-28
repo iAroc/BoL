@@ -136,24 +136,25 @@ end
 ------------------------
 class 'ShadowVayne'
 function ShadowVayne:__init()
-    self.version = 5.14
+    self.version = 5.15
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
     self.MapIndex = GetGame().map.index
     print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Version '..self.version..' loaded</font>')
     local ToUpdate = {}
-    ToUpdate.Version = self.Version
+    ToUpdate.Version = self.version
     ToUpdate.Host = "raw.githubusercontent.com"
     ToUpdate.VersionPath = "/Superx321/BoL/master/ShadowVayne.Version"
     ToUpdate.ScriptPath = "/Superx321/BoL/master/ShadowVayne.lua"
-    ToUpdate.SavePath = LIB_PATH.."ShadowVayne.lua"
+    ToUpdate.SavePath = SCRIPT_PATH.."ShadowVayne.lua"
     ToUpdate.CallbackUpdate = function(NewVersion,OldVersion) print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">Updated to "..NewVersion..". Please Reload with 2x F9</b></font>") end
     ToUpdate.CallbackNoUpdate = function(OldVersion) print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">No Updates Found</b></font>") end
     ToUpdate.CallbackNewVersion = function(NewVersion) print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">New Version found ("..NewVersion.."). Please wait until its downloaded</b></font>") end
     ScriptUpdate(ToUpdate.Version, ToUpdate.Host, ToUpdate.VersionPath, ToUpdate.ScriptPath, ToUpdate.SavePath, ToUpdate.CallbackUpdate,ToUpdate.CallbackNoUpdate, ToUpdate.CallbackNewVersion)
     self:GenerateTables()
     self:GetOrbWalkers()
+    --    self:LevelSpell(_W)
 end
 
 function ShadowVayne:GenerateTables()
@@ -267,25 +268,14 @@ function ShadowVayne:LoadMenu()
     -- KeySetting Menu
     self.Menu.keysetting:addParam('nil','Basic Key Settings', SCRIPT_PARAM_INFO, '')
     self.Menu.keysetting:addParam('AfterAACondemn','Condemn on next BasicAttack:', SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte( 'E' ))
-    self.Menu.keysetting:addParam('Fight','AutoCarry Key:', SCRIPT_PARAM_ONKEYDOWN, false, 32)
-    self.Menu.keysetting:addParam('Harass','MixedMode Key:', SCRIPT_PARAM_ONKEYDOWN, false, 67)
-    self.Menu.keysetting:addParam('LastHit','LastHit Key:', SCRIPT_PARAM_ONKEYDOWN, false, 88)
-    self.Menu.keysetting:addParam('LaneClear','LaneClear Key:', SCRIPT_PARAM_ONKEYDOWN, false, 86)
-    self.Menu.keysetting:addParam('nil','', SCRIPT_PARAM_INFO, '')
-    self.Menu.keysetting:addParam('FightModeOrb', 'Orbwalker in FightMode: ', SCRIPT_PARAM_LIST, 1, self.OrbWalkers)
-    self.Menu.keysetting:addParam('HarassModeOrb', 'Orbwalker in HarassMode: ', SCRIPT_PARAM_LIST, 1, self.OrbWalkers)
-    self.Menu.keysetting:addParam('LaneClearOrb', 'Orbwalker in LaneClear: ', SCRIPT_PARAM_LIST, 1, self.OrbWalkers)
-    self.Menu.keysetting:addParam('LastHitOrb', 'Orbwalker in LastHit: ', SCRIPT_PARAM_LIST, 1, self.OrbWalkers)
+    self.Menu.keysetting:addParam('OrbWalker', 'Choose the Orbwalker: ', SCRIPT_PARAM_LIST, 1, self.OrbWalkers)
 
     for index, param in pairs(self.Menu.keysetting._param) do
-        if param['var'] == 'FightModeOrb' then
+        if param['var'] == 'OrbWalker' then
             self.StartListParam = index
         end
     end
-    if self.Menu.keysetting._param[self.StartListParam].listTable[self.Menu.keysetting.FightModeOrb] == nil then self.Menu.keysetting.FightModeOrb = 1 end
-    if self.Menu.keysetting._param[self.StartListParam+1].listTable[self.Menu.keysetting.HarassModeOrb] == nil then self.Menu.keysetting.HarassModeOrb = 1 end
-    if self.Menu.keysetting._param[self.StartListParam+2].listTable[self.Menu.keysetting.LaneClearOrb] == nil then self.Menu.keysetting.LaneClearOrb = 1 end
-    if self.Menu.keysetting._param[self.StartListParam+3].listTable[self.Menu.keysetting.LastHitOrb] == nil then self.Menu.keysetting.LastHitOrb = 1 end
+    if self.Menu.keysetting._param[self.StartListParam].listTable[self.Menu.keysetting.OrbWalker] == nil then self.Menu.keysetting.OrbWalker = 1 end
 
     -- GapCloser
     local FoundAGapCloser = false
@@ -421,46 +411,16 @@ function ShadowVayne:MenuLoaded()
     AddTickCallback(function() self:CondemnStun() end)
 
     AddDrawCallback(function() self:OnDraw() end)
-
     AddProcessSpellCallback(function(unit, spell) self:OnProcessSpell(unit, spell) end)
 end
 
 function ShadowVayne:ActivateModes()
-    -- Get The Selected Orbwalker
-    self.FightModeOrbText = self.Menu.keysetting._param[self.StartListParam].listTable[self.Menu.keysetting.FightModeOrb]
-    self.HarassModeOrbText = self.Menu.keysetting._param[self.StartListParam+1].listTable[self.Menu.keysetting.HarassModeOrb]
-    self.LaneClearOrbText = self.Menu.keysetting._param[self.StartListParam+2].listTable[self.Menu.keysetting.LaneClearOrb]
-    self.LastHitOrbText = self.Menu.keysetting._param[self.StartListParam+3].listTable[self.Menu.keysetting.LastHitOrb]
-
-    -- Get the Currnt Mode
-    self.IsFight = self.Menu.keysetting.Fight
-    self.IsHarass = self.Menu.keysetting.Harass
-    self.IsLastHit = self.Menu.keysetting.LastHit
-    self.IsLaneClear = self.Menu.keysetting.LaneClear
-    if _G.AutoCarry then
-        -- Deactivate All SAC
-        SAC_FightMode.Menu[SAC_FightMode.Sub] = false
-        SAC_LastHit.Menu[SAC_LastHit.Sub] = false
-        SAC_MixedMode.Menu[SAC_MixedMode.Sub] = false
-        SAC_LaneClear.Menu[SAC_LaneClear.Sub] = false
-
-        -- Activate SAC:Reborn
-        if self.FightModeOrbText == 'SAC:Reborn' then SAC_FightMode.Menu[SAC_FightMode.Sub] = self.IsFight end
-        if self.HarassModeOrbText == 'SAC:Reborn' then SAC_MixedMode.Menu[SAC_MixedMode.Sub] = self.IsHarass end
-        if self.LaneClearOrbText == 'SAC:Reborn' then SAC_LaneClear.Menu[SAC_LaneClear.Sub] = self.IsLaneClear end
-        if self.LastHitOrbText   == 'SAC:Reborn' then SAC_LastHit.Menu[SAC_LastHit.Sub] = self.IsLastHit end
+    self.SelectedOrbWalker  = self.Menu.keysetting.OrbWalker
+    if self.SelectedOrbWalker ~= 1 then
+        _G.SxOrb.Deactivate = true
+    else
+        _G.SxOrb.Deactivate = false
     end
-    -- Deactivate all SxOrb
-    SxOrb_FightMode.Menu[SxOrb_FightMode.Sub] = false
-    SxOrb_LastHit.Menu[SxOrb_LastHit.Sub] = false
-    SxOrb_MixedMode.Menu[SxOrb_MixedMode.Sub] = false
-    SxOrb_LaneClear.Menu[SxOrb_LaneClear.Sub] = false
-
-    -- Activate SxOrbWalker
-    if self.FightModeOrbText == 'SxOrb' then SxOrb_FightMode.Menu[SxOrb_FightMode.Sub] = self.IsFight end
-    if self.HarassModeOrbText == 'SxOrb' then SxOrb_MixedMode.Menu[SxOrb_MixedMode.Sub] = self.IsHarass end
-    if self.LaneClearOrbText == 'SxOrb' then SxOrb_LaneClear.Menu[SxOrb_LaneClear.Sub] = self.IsLaneClear end
-    if self.LastHitOrbText   == 'SxOrb' then SxOrb_LastHit.Menu[SxOrb_LastHit.Sub] = self.IsLastHit end
 end
 
 function ShadowVayne:CheckModesActive(Menu)
@@ -742,67 +702,69 @@ function ShadowVayne:GetTarget()
 end
 
 function ShadowVayne:LevelSpell(Spell)
-    LevelSpell(Spell)
-    --        local packet = CLoLPacket(0x00D9)
-    --        packet.vTable = 0xE774FC
-    --        packet:EncodeF(myHero.networkID)
-    --        packet:Encode1(Spell == _Q and 0x06 or Spell == _W and 0xE2 or Spell == _E and 0x7E or Spell == _R and 0x70)
-    --        packet:Encode4(0xBD * 4)
-    --        packet:Encode1(0x83)
-    --        packet:Encode4(0x73 * 4)
-    --        packet:Encode4(0x13 * 4)
-    --        packet:EncodeF(GetGameTimer())
-    --        SendPacket(packet)
+    local packet = CLoLPacket(0x009A)
+    packet.vTable = 0xF246E0
+    packet:EncodeF(myHero.networkID)
+    packet:Encode4(0x5A5A5A5A)
+    packet:Encode1(0x46)
+    packet:Encode4(0xD5D5D5D5)
+    packet:Encode1(Spell == _Q and 0x83 or Spell == _W and 0x08 or Spell == _E and 0xB5 or Spell == _R and 0xEC)
+    packet:Encode4(0x07070707)
+    packet:Encode1(Spell == _Q and 0x2C or Spell == _W and 0xB0 or Spell == _E and 0xC3 or Spell == _R and 0x31)
+    packet:Encode1(Spell == _Q and 0xC1 or Spell == _W and 0xC3 or Spell == _E and 0xC6 or Spell == _R and 0xC8)
+    packet:Encode1(0x31)
+    packet:Encode1(0x1F)
+    SendPacket(packet)
 end
 
-_G.scriptConfig.SxaddParam = _G.scriptConfig.addParam
-function _G.scriptConfig.addParam(self,pVar, pText, pType, defaultValue, a, b, c)
-    if (pType == SCRIPT_PARAM_ONKEYDOWN or pType == SCRIPT_PARAM_ONKEYTOGGLE) and (self.name == 'SxOrb_Keys' or self.name:find('sidasacsetup_')) then
-        pType = SCRIPT_PARAM_INFO
-        pText = 'Choose the Orbwalker in ShadowVayne'
-        defaultValue = false
-        if self.name == 'sidasacsetup_sidasacautocarrysub' then
-            SAC_FightMode.Menu = self
-            SAC_FightMode.Sub = pVar
-        end
-        if self.name == 'sidasacsetup_sidasaclasthitsub' then
-            SAC_LastHit.Menu = self
-            SAC_LastHit.Sub = pVar
-        end
-        if self.name == 'sidasacsetup_sidasacmixedmodesub' then
-            SAC_MixedMode.Menu = self
-            SAC_MixedMode.Sub = pVar
-        end
-        if self.name == 'sidasacsetup_sidasaclaneclearsub' then
-            SAC_LaneClear.Menu = self
-            SAC_LaneClear.Sub = pVar
-        end
-        if self.name == 'SxOrb_Keys' then
-            if pVar == 'Fight' then
-                SxOrb_FightMode.Menu = self
-                SxOrb_FightMode.Sub = pVar
-            end
-            if pVar == 'LastHit' then
-                SxOrb_LastHit.Menu = self
-                SxOrb_LastHit.Sub = pVar
-            end
-            if pVar == 'Harass' then
-                SxOrb_MixedMode.Menu = self
-                SxOrb_MixedMode.Sub = pVar
-            end
-            if pVar == 'LaneClear' then
-                SxOrb_LaneClear.Menu = self
-                SxOrb_LaneClear.Sub = pVar
-            end
-        end
-    end
-    _G.scriptConfig.SxaddParam(self,pVar, pText, pType, defaultValue, a, b, c)
-end
-
-_G.scriptConfig.Sx_DrawParam = _G.scriptConfig._DrawParam
-function _G.scriptConfig._DrawParam(self,varIndex)
-    if self._param[varIndex].pType == SCRIPT_PARAM_INFO and self._param[varIndex].text == 'Choose the Orbwalker in ShadowVayne' then
-        self._param[varIndex].var = 'sep'
-    end
-    _G.scriptConfig.Sx_DrawParam(self,varIndex)
-end
+--_G.scriptConfig.SxaddParam = _G.scriptConfig.addParam
+--function _G.scriptConfig.addParam(self,pVar, pText, pType, defaultValue, a, b, c)
+--    if (pType == SCRIPT_PARAM_ONKEYDOWN or pType == SCRIPT_PARAM_ONKEYTOGGLE) and (self.name == 'SxOrb_Keys' or self.name:find('sidasacsetup_')) then
+--        pType = SCRIPT_PARAM_INFO
+--        pText = 'Choose the Orbwalker in ShadowVayne'
+--        defaultValue = false
+--        if self.name == 'sidasacsetup_sidasacautocarrysub' then
+--            SAC_FightMode.Menu = self
+--            SAC_FightMode.Sub = pVar
+--        end
+--        if self.name == 'sidasacsetup_sidasaclasthitsub' then
+--            SAC_LastHit.Menu = self
+--            SAC_LastHit.Sub = pVar
+--        end
+--        if self.name == 'sidasacsetup_sidasacmixedmodesub' then
+--            SAC_MixedMode.Menu = self
+--            SAC_MixedMode.Sub = pVar
+--        end
+--        if self.name == 'sidasacsetup_sidasaclaneclearsub' then
+--            SAC_LaneClear.Menu = self
+--            SAC_LaneClear.Sub = pVar
+--        end
+--        if self.name == 'SxOrb_Keys' then
+--            if pVar == 'Fight' then
+--                SxOrb_FightMode.Menu = self
+--                SxOrb_FightMode.Sub = pVar
+--            end
+--            if pVar == 'LastHit' then
+--                SxOrb_LastHit.Menu = self
+--                SxOrb_LastHit.Sub = pVar
+--            end
+--            if pVar == 'Harass' then
+--                SxOrb_MixedMode.Menu = self
+--                SxOrb_MixedMode.Sub = pVar
+--            end
+--            if pVar == 'LaneClear' then
+--                SxOrb_LaneClear.Menu = self
+--                SxOrb_LaneClear.Sub = pVar
+--            end
+--        end
+--    end
+--    _G.scriptConfig.SxaddParam(self,pVar, pText, pType, defaultValue, a, b, c)
+--end
+--
+--_G.scriptConfig.Sx_DrawParam = _G.scriptConfig._DrawParam
+--function _G.scriptConfig._DrawParam(self,varIndex)
+--    if self._param[varIndex].pType == SCRIPT_PARAM_INFO and self._param[varIndex].text == 'Choose the Orbwalker in ShadowVayne' then
+--        self._param[varIndex].var = 'sep'
+--    end
+--    _G.scriptConfig.Sx_DrawParam(self,varIndex)
+--end
