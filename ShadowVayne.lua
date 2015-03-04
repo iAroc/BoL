@@ -5,7 +5,7 @@
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
 	]]
-if myHero.charName ~= 'Vayne' then return end
+--if myHero.charName ~= 'Vayne' then return end
 class "ScriptUpdate"
 function ScriptUpdate:__init(LocalVersion, Host, VersionPath, ScriptPath, SavePath, CallbackUpdate, CallbackNoUpdate, CallbackNewVersion)
     self.LocalVersion = LocalVersion
@@ -111,14 +111,6 @@ end
 ------------------------
 ------ LoadScript ------
 ------------------------
-local SAC_FightMode = {Menu = nil, Sub = nil, Key = nil}
-local SAC_LastHit = {Menu = nil, Sub = nil, Key = nil}
-local SAC_MixedMode = {Menu = nil, Sub = nil, Key = nil}
-local SAC_LaneClear = {Menu = nil, Sub = nil, Key = nil}
-local SxOrb_FightMode = {Menu = nil, Sub = nil}
-local SxOrb_LastHit = {Menu = nil, Sub = nil}
-local SxOrb_MixedMode = {Menu = nil, Sub = nil}
-local SxOrb_LaneClear = {Menu = nil, Sub = nil}
 
 function OnLoad()
     require 'SxOrbWalk'
@@ -136,7 +128,7 @@ end
 ------------------------
 class 'ShadowVayne'
 function ShadowVayne:__init()
-    self.version = 5.15
+    self.version = 5.16
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
@@ -154,7 +146,7 @@ function ShadowVayne:__init()
     ScriptUpdate(ToUpdate.Version, ToUpdate.Host, ToUpdate.VersionPath, ToUpdate.ScriptPath, ToUpdate.SavePath, ToUpdate.CallbackUpdate,ToUpdate.CallbackNoUpdate, ToUpdate.CallbackNewVersion)
     self:GenerateTables()
     self:GetOrbWalkers()
-    --    self:LevelSpell(_W)
+--    self:LevelSpell(_W)
 end
 
 function ShadowVayne:GenerateTables()
@@ -420,6 +412,17 @@ function ShadowVayne:ActivateModes()
         _G.SxOrb.Deactivate = true
     else
         _G.SxOrb.Deactivate = false
+    end
+    if self.SelectedOrbWalker then
+        self.IsFight = _G.SxOrb.IsFight
+        self.IsHarass = _G.SxOrb.IsHarass
+        self.IsLaneClear = _G.SxOrb.IsLaneClear
+        self.IsLastHit = _G.SxOrb.IsLastHit
+    else
+        self.IsFight = _G.AutoCarry.Keys.AutoCarry
+        self.IsHarass = _G.AutoCarry.Keys.MixedMode
+        self.IsLaneClear = _G.AutoCarry.Keys.LaneClear
+        self.IsLastHit = _G.AutoCarry.Keys.LastHit
     end
 end
 
@@ -702,69 +705,17 @@ function ShadowVayne:GetTarget()
 end
 
 function ShadowVayne:LevelSpell(Spell)
-    local packet = CLoLPacket(0x009A)
-    packet.vTable = 0xF246E0
-    packet:EncodeF(myHero.networkID)
-    packet:Encode4(0x5A5A5A5A)
-    packet:Encode1(0x46)
-    packet:Encode4(0xD5D5D5D5)
-    packet:Encode1(Spell == _Q and 0x83 or Spell == _W and 0x08 or Spell == _E and 0xB5 or Spell == _R and 0xEC)
-    packet:Encode4(0x07070707)
-    packet:Encode1(Spell == _Q and 0x2C or Spell == _W and 0xB0 or Spell == _E and 0xC3 or Spell == _R and 0x31)
-    packet:Encode1(Spell == _Q and 0xC1 or Spell == _W and 0xC3 or Spell == _E and 0xC6 or Spell == _R and 0xC8)
-    packet:Encode1(0x31)
-    packet:Encode1(0x1F)
-    SendPacket(packet)
+        local packet = CLoLPacket(0x009A)
+        packet.vTable = 0xF246E0
+        packet:EncodeF(myHero.networkID)
+        packet:Encode4(0x5A5A5A5A)
+        packet:Encode1(0x46)
+        packet:Encode4(0xD5D5D5D5)
+        packet:Encode1(Spell == _Q and 0x83 or Spell == _W and 0x08 or Spell == _E and 0xB5 or Spell == _R and 0xEC)
+        packet:Encode4(0x07070707)
+        packet:Encode1(Spell == _Q and 0x2C or Spell == _W and 0xB0 or Spell == _E and 0xC3 or Spell == _R and 0x31)
+        packet:Encode1(Spell == _Q and 0xC1 or Spell == _W and 0xC3 or Spell == _E and 0xC6 or Spell == _R and 0xC8)
+        packet:Encode1(0x31)
+        packet:Encode1(0x1F)
+        SendPacket(packet)
 end
-
---_G.scriptConfig.SxaddParam = _G.scriptConfig.addParam
---function _G.scriptConfig.addParam(self,pVar, pText, pType, defaultValue, a, b, c)
---    if (pType == SCRIPT_PARAM_ONKEYDOWN or pType == SCRIPT_PARAM_ONKEYTOGGLE) and (self.name == 'SxOrb_Keys' or self.name:find('sidasacsetup_')) then
---        pType = SCRIPT_PARAM_INFO
---        pText = 'Choose the Orbwalker in ShadowVayne'
---        defaultValue = false
---        if self.name == 'sidasacsetup_sidasacautocarrysub' then
---            SAC_FightMode.Menu = self
---            SAC_FightMode.Sub = pVar
---        end
---        if self.name == 'sidasacsetup_sidasaclasthitsub' then
---            SAC_LastHit.Menu = self
---            SAC_LastHit.Sub = pVar
---        end
---        if self.name == 'sidasacsetup_sidasacmixedmodesub' then
---            SAC_MixedMode.Menu = self
---            SAC_MixedMode.Sub = pVar
---        end
---        if self.name == 'sidasacsetup_sidasaclaneclearsub' then
---            SAC_LaneClear.Menu = self
---            SAC_LaneClear.Sub = pVar
---        end
---        if self.name == 'SxOrb_Keys' then
---            if pVar == 'Fight' then
---                SxOrb_FightMode.Menu = self
---                SxOrb_FightMode.Sub = pVar
---            end
---            if pVar == 'LastHit' then
---                SxOrb_LastHit.Menu = self
---                SxOrb_LastHit.Sub = pVar
---            end
---            if pVar == 'Harass' then
---                SxOrb_MixedMode.Menu = self
---                SxOrb_MixedMode.Sub = pVar
---            end
---            if pVar == 'LaneClear' then
---                SxOrb_LaneClear.Menu = self
---                SxOrb_LaneClear.Sub = pVar
---            end
---        end
---    end
---    _G.scriptConfig.SxaddParam(self,pVar, pText, pType, defaultValue, a, b, c)
---end
---
---_G.scriptConfig.Sx_DrawParam = _G.scriptConfig._DrawParam
---function _G.scriptConfig._DrawParam(self,varIndex)
---    if self._param[varIndex].pType == SCRIPT_PARAM_INFO and self._param[varIndex].text == 'Choose the Orbwalker in ShadowVayne' then
---        self._param[varIndex].var = 'sep'
---    end
---    _G.scriptConfig.Sx_DrawParam(self,varIndex)
---end
