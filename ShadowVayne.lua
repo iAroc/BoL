@@ -128,7 +128,7 @@ end
 ------------------------
 class 'ShadowVayne'
 function ShadowVayne:__init()
-    self.version = 5.16
+    self.version = 5.17
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
@@ -705,6 +705,7 @@ function ShadowVayne:GetTarget()
 end
 
 function ShadowVayne:LevelSpell(Spell)
+	if VIP_USER then
         local packet = CLoLPacket(0x009A)
         packet.vTable = 0xF246E0
         packet:EncodeF(myHero.networkID)
@@ -718,4 +719,5 @@ function ShadowVayne:LevelSpell(Spell)
         packet:Encode1(0x31)
         packet:Encode1(0x1F)
         SendPacket(packet)
+        end
 end
