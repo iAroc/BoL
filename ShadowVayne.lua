@@ -34,7 +34,7 @@ function ScriptUpdate:__init(LocalVersion,UseHttps, Host, VersionPath, ScriptPat
 end
 
 function ScriptUpdate:OnDraw()
-    DrawText('Download Status: '..(self.DownloadStatus or 'Unknown'),50,10,50,ARGB(0xFF,0xFF,0xFF,0xFF))
+    --    DrawText('Download Status: '..(self.DownloadStatus or 'Unknown'),50,10,50,ARGB(0xFF,0xFF,0xFF,0xFF))
 end
 
 function ScriptUpdate:CreateSocket(url)
@@ -164,12 +164,10 @@ end
 ------------------------
 
 function OnLoad()
-    require 'SxOrbWalk'
     require 'VPrediction'
     VP = VPrediction()
     DelayAction(function()
-        if not SxOrb or not SxOrb.Version or SxOrb.Version < 2.40 then print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Loading Failed. Please Update SxOrbWalk to newest Version</font>') return end
-        if not VP or not VP.version or VP.version < 2.863 then print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Loading Failed. Please Update VPrediction to newest Version</font>') return end
+        if not VP or not VP.version or VP.version < 2.863 then print('<font color=\'#FF794C\'><b>ShadowVayne:</b></font> <font color=\'#FFDFBF\'>Loading Failed. Please Update VPrediction to newest Version</font>') return end
         ShadowVayne()
     end,0.1)
 end
@@ -273,17 +271,18 @@ end
 
 function ShadowVayne:GetOrbWalkers()
     self.OrbWalkers = {}
-    table.insert(self.OrbWalkers, 'SxOrb')
-
-    if _G.MMA_Loaded then
-        table.insert(self.OrbWalkers, 'MMA')
-    end
 
     if _G.RebornScriptName then
         table.insert(self.OrbWalkers, 'SAC:Reborn')
         print('<font color=\'#FF794C\'><b>ShadowVayne:</b></font> <font color=\'#FFDFBF\'>Waiting for SAC:Reborn Auth</font>')
         AddTickCallback(function() self:WaitForReborn() end)
+    elseif _G.MMA_Loaded then
+        table.insert(self.OrbWalkers, 'MMA')
+        self:LoadMenu()
     else
+        require 'SxOrbWalk'
+        if not SxOrb or not SxOrb.Version or SxOrb.Version < 2.40 then print('<font color=\'#FF794C\'><b>ShadowVayne:</b></font> <font color=\'#FFDFBF\'>Loading Failed. Please Update SxOrbWalk to newest Version</font>') return end
+        table.insert(self.OrbWalkers, 'SxOrb')
         self:LoadMenu()
     end
 end
@@ -446,7 +445,7 @@ end
 
 function ShadowVayne:MenuLoaded()
     self.Loaded = true
-    SxOrb:LoadToMenu(nil)
+    if SxOrb then SxOrb:LoadToMenu(nil) end
     AddTickCallback(function() self:CheckLevelChange() end)
     AddTickCallback(function() self:CheckItems() end)
     AddTickCallback(function() self:ActivateModes() end)
@@ -459,13 +458,8 @@ function ShadowVayne:MenuLoaded()
 end
 
 function ShadowVayne:ActivateModes()
-    self.SelectedOrbWalker  = self.Menu.keysetting.OrbWalker
-    if self.SelectedOrbWalker ~= 1 then
-        _G.SxOrb.Deactivate = true
-    else
-        _G.SxOrb.Deactivate = false
-    end
-    if self.SelectedOrbWalker then
+    self.SelectedOrbWalker  = self.Menu.keysetting._param[self.StartListParam].listTable[self.Menu.keysetting.OrbWalker]
+    if self.SelectedOrbWalker == 'SxOrb' then
         self.IsFight = _G.SxOrb.IsFight
         self.IsHarass = _G.SxOrb.IsHarass
         self.IsLaneClear = _G.SxOrb.IsLaneClear
@@ -737,24 +731,24 @@ function ShadowVayne:CircleDraw(x,y,z,radius, color)
 end
 
 function ShadowVayne:GetTarget()
-    return SxOrb:GetTarget()
-    --    if self.IsFight then
-    --        if self.FightModeOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
-    --        if self.FightModeOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
-    --        if self.FightModeOrbText == 'SxOrb' then return SxOrb:GetTarget() end
-    --    elseif self.IsHarass then
-    --        if self.HarassModeOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
-    --        if self.HarassModeOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
-    --        if self.HarassModeOrbText == 'SxOrb' then return SxOrb:GetTarget() end
-    --    elseif self.IsLastHit then
-    --        if self.LastHitOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
-    --        if self.LastHitOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
-    --        if self.LastHitOrbText == 'SxOrb' then return SxOrb:GetTarget() end
-    --    elseif self.IsLaneClear then
-    --        if self.LaneClearOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
-    --        if self.LaneClearOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
-    --        if self.LaneClearOrbText == 'SxOrb' then return SxOrb:GetTarget() end
-    --    end
+    self.SelectedOrbwalker = self.Menu.keysetting._param[self.StartListParam].listTable[self.Menu.keysetting.OrbWalker]
+    if self.IsFight then
+        if self.SelectedOrbwalker == 'MMA' then return _G.MMA_ConsideredTarget() end
+        if self.SelectedOrbwalker == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
+        if self.SelectedOrbwalker == 'SxOrb' then return SxOrb:GetTarget() end
+    elseif self.IsHarass then
+        if self.SelectedOrbwalker == 'MMA' then return _G.MMA_ConsideredTarget() end
+        if self.SelectedOrbwalker == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
+        if self.SelectedOrbwalker == 'SxOrb' then return SxOrb:GetTarget() end
+    elseif self.IsLastHit then
+        if self.SelectedOrbwalker == 'MMA' then return _G.MMA_ConsideredTarget() end
+        if self.SelectedOrbwalker == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
+        if self.SelectedOrbwalker == 'SxOrb' then return SxOrb:GetTarget() end
+    elseif self.IsLaneClear then
+        if self.SelectedOrbwalker == 'MMA' then return _G.MMA_ConsideredTarget() end
+        if self.SelectedOrbwalker == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
+        if self.SelectedOrbwalker == 'SxOrb' then return SxOrb:GetTarget() end
+    end
 end
 
 function ShadowVayne:LevelSpell(Spell)
