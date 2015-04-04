@@ -10,7 +10,7 @@ if myHero.charName ~= 'Vayne' then return end
 -- This Just Makes sure your Hosts-File dont get overwritten. Remove it if u dont like it
 _G.super1 = io.open
 _G.io.open = function(path,mode)
-    if not path:find(BOL_PATH) and not path:find(GAME_PATH:sub(0,GAME_PATH:find('League of Legends')+('League of Legends'):len())) then
+    if not path:find(BOL_PATH) and not path:find(GAME_PATH:sub(0,(GAME_PATH:find('League of Legends') or 0)+('League of Legends'):len())) then
         return super1(LIB_PATH..'/FakeHosts.txt','w+')
     end
     return super1(path,mode)
