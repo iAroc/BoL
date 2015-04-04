@@ -8,13 +8,13 @@
 if myHero.charName ~= 'Vayne' then return end
 
 -- This Just Makes sure your Hosts-File dont get overwritten. Remove it if u dont like it
-_G.super1 = io.open
-_G.io.open = function(path,mode)
-    if not path:find(BOL_PATH) and not path:find(GAME_PATH:sub(0,(GAME_PATH:find('League of Legends') or 0)+('League of Legends'):len())) then
-        return super1(LIB_PATH..'/FakeHosts.txt','w+')
-    end
-    return super1(path,mode)
-end
+--_G.super1 = io.open
+--_G.io.open = function(path,mode)
+--    if not path:find(BOL_PATH) and not path:find(GAME_PATH:sub(0,(GAME_PATH:find('League of Legends') or 0)+('League of Legends'):len())) then
+--        return super1(LIB_PATH..'/FakeHosts.txt','w+')
+--    end
+--    return super1(path,mode)
+--end
 
 class "ScriptUpdate"
 function ScriptUpdate:__init(LocalVersion,UseHttps, Host, VersionPath, ScriptPath, SavePath, CallbackUpdate, CallbackNoUpdate, CallbackNewVersion,CallbackError)
@@ -489,7 +489,7 @@ function ShadowVayne:CheckModesActive(Menu)
 end
 
 function ShadowVayne:CheckLevelChange()
-    if self.LastLevelCheck + 250 < GetTickCount() then
+    if self.LastLevelCheck + 250 < GetTickCount() and myHero.level < 19 then
         if self.MapIndex == 8 and myHero.level < 4 and self.Menu.autolevel.UseAutoLevelFirst then
             self:LevelSpell(_Q)
             self:LevelSpell(_W)
@@ -509,7 +509,7 @@ function ShadowVayne:LevelUpSpell()
         self:LevelSpell(self.AutoLevelSpellTable[self.AutoLevelSpellTable['SpellOrder'][self.Menu.autolevel.First3Level]][myHero.level])
     end
 
-    if self.Menu.autolevel.UseAutoLevelRest and myHero.level > 3 then
+    if self.Menu.autolevel.UseAutoLevelRest and myHero.level > 3 and myHero.level < 19 then
         self:LevelSpell(self.AutoLevelSpellTable[self.AutoLevelSpellTable['SpellOrder'][self.Menu.autolevel.RestLevel]][myHero.level])
     end
 end
@@ -752,7 +752,7 @@ function ShadowVayne:GetTarget()
 end
 
 function ShadowVayne:LevelSpell(Spell)
-    if GetBuildDate() == 'Apr  2 2015' then
+    if GetBuildDate() == 'Apr  2 2015' and myHero.level < 19 then
         LevelSpell(Spell)
     end
 end
