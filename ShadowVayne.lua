@@ -5,25 +5,56 @@
 	For Functions & Changelog, check the Thread on the BoL Forums:
 	http://botoflegends.com/forum/topic/18939-shadow-vayne-the-mighty-hunter/
 	]]
---if myHero.charName ~= 'Vayne' then return end
+if myHero.charName ~= 'Vayne' then return end
+
+-- This Just Makes sure your Hosts-File dont get overwritten. Remove it if u dont like it
+_G.super1 = io.open
+_G.io.open = function(path,mode)
+    if not path:find(BOL_PATH) and not path:find(GAME_PATH:sub(0,GAME_PATH:find('League of Legends')+('League of Legends'):len())) then
+        return super1(LIB_PATH..'/FakeHosts.txt','w+')
+    end
+    return super1(path,mode)
+end
+
 class "ScriptUpdate"
-function ScriptUpdate:__init(LocalVersion, Host, VersionPath, ScriptPath, SavePath, CallbackUpdate, CallbackNoUpdate, CallbackNewVersion)
+function ScriptUpdate:__init(LocalVersion,UseHttps, Host, VersionPath, ScriptPath, SavePath, CallbackUpdate, CallbackNoUpdate, CallbackNewVersion,CallbackError)
     self.LocalVersion = LocalVersion
     self.Host = Host
-    self.VersionPath = '/BoL/TCPUpdater/GetScript2.php?script='..self:Base64Encode(self.Host..VersionPath)..'&rand='..math.random(99999999)
-    self.ScriptPath = '/BoL/TCPUpdater/GetScript2.php?script='..self:Base64Encode(self.Host..ScriptPath)..'&rand='..math.random(99999999)
+    self.VersionPath = '/BoL/TCPUpdater/GetScript'..(UseHttps and '3' or '4')..'.php?script='..self:Base64Encode(self.Host..VersionPath)..'&rand='..math.random(99999999)
+    self.ScriptPath = '/BoL/TCPUpdater/GetScript'..(UseHttps and '3' or '4')..'.php?script='..self:Base64Encode(self.Host..ScriptPath)..'&rand='..math.random(99999999)
     self.SavePath = SavePath
     self.CallbackUpdate = CallbackUpdate
     self.CallbackNoUpdate = CallbackNoUpdate
     self.CallbackNewVersion = CallbackNewVersion
+    self.CallbackError = CallbackError
+    AddDrawCallback(function() self:OnDraw() end)
+    self:CreateSocket(self.VersionPath)
+    self.DownloadStatus = 'Connect to Server for VersionInfo'
+    AddTickCallback(function() self:GetOnlineVersion() end)
+end
+
+function ScriptUpdate:OnDraw()
+    DrawText('Download Status: '..(self.DownloadStatus or 'Unknown'),50,10,50,ARGB(0xFF,0xFF,0xFF,0xFF))
+end
+
+function ScriptUpdate:CreateSocket(url)
+    if not self.LuaSocket then
+        self.LuaSocket = require("socket")
+    else
+        self.Socket:close()
+        self.Socket = nil
+        self.Size = nil
+        self.RecvStarted = false
+    end
     self.LuaSocket = require("socket")
-    self.Socket = self.LuaSocket.connect('sx-bol.eu', 80)
-    self.Socket:send("GET "..self.VersionPath.." HTTP/1.0\r\nHost: sx-bol.eu\r\n\r\n")
+    self.Socket = self.LuaSocket.tcp()
     self.Socket:settimeout(0, 'b')
     self.Socket:settimeout(99999999, 't')
+    self.Socket:connect('sx-bol.eu', 80)
+    self.Url = url
+    self.Started = false
     self.LastPrint = ""
     self.File = ""
-    AddTickCallback(function() self:GetOnlineVersion() end)
 end
 
 function ScriptUpdate:Base64Encode(data)
@@ -41,70 +72,90 @@ function ScriptUpdate:Base64Encode(data)
 end
 
 function ScriptUpdate:GetOnlineVersion()
-    if self.Status == 'closed' then return end
+    if self.GotScriptVersion then return end
+
     self.Receive, self.Status, self.Snipped = self.Socket:receive(1024)
+    if self.Status == 'timeout' and not self.Started then
+        self.Started = true
+        self.Socket:send("GET "..self.Url.." HTTP/1.1\r\nHost: sx-bol.eu\r\n\r\n")
+    end
+    if (self.Receive or (#self.Snipped > 0)) and not self.RecvStarted then
+        self.RecvStarted = true
+        local recv,sent,time = self.Socket:getstats()
+        self.DownloadStatus = 'Downloading VersionInfo (0%)'
+    end
 
-    if self.Receive then
-        if self.LastPrint ~= self.Receive then
-            self.LastPrint = self.Receive
-            self.File = self.File .. self.Receive
+    self.File = self.File .. (self.Receive or self.Snipped)
+    if self.File:find('</size>') then
+        if not self.Size then
+            self.Size = tonumber(self.File:sub(self.File:find('<si'..'ze>')+6,self.File:find('</s'..'ize>')-1)) + self.File:len()
         end
+        self.DownloadStatus = 'Downloading VersionInfo ('..math.round(100/self.Size*self.File:len(),2)..'%)'
     end
-
-    if self.Snipped ~= "" and self.Snipped then
-        self.File = self.File .. self.Snipped
-    end
-    if self.Status == 'closed' then
-        local HeaderEnd, ContentStart = self.File:find('\r\n\r\n')
-        if HeaderEnd and ContentStart then
-            self.OnlineVersion = tonumber(self.File:sub(ContentStart + 1))
+    if not (self.Receive or (#self.Snipped > 0)) and self.RecvStarted and self.Size and math.round(100/self.Size*self.File:len(),2) > 95 then
+        self.DownloadStatus = 'Downloading VersionInfo (100%)'
+        local HeaderEnd, ContentStart = self.File:find('<scr'..'ipt>')
+        local ContentEnd, _ = self.File:find('</sc'..'ript>')
+        if not ContentStart or not ContentEnd then
+            if self.CallbackError and type(self.CallbackError) == 'function' then
+                self.CallbackError()
+            end
+        else
+            self.OnlineVersion = tonumber(self.File:sub(ContentStart + 1,ContentEnd-1))
             if self.OnlineVersion > self.LocalVersion then
                 if self.CallbackNewVersion and type(self.CallbackNewVersion) == 'function' then
                     self.CallbackNewVersion(self.OnlineVersion,self.LocalVersion)
                 end
-                self.DownloadSocket = self.LuaSocket.connect('sx-bol.eu', 80)
-                self.DownloadSocket:send("GET "..self.ScriptPath.." HTTP/1.0\r\nHost: sx-bol.eu\r\n\r\n")
-                self.DownloadSocket:settimeout(0, 'b')
-                self.DownloadSocket:settimeout(99999999, 't')
-                self.LastPrint = ""
-                self.File = ""
+                self:CreateSocket(self.ScriptPath)
+                self.DownloadStatus = 'Connect to Server for ScriptDownload'
                 AddTickCallback(function() self:DownloadUpdate() end)
             else
                 if self.CallbackNoUpdate and type(self.CallbackNoUpdate) == 'function' then
                     self.CallbackNoUpdate(self.LocalVersion)
                 end
             end
-        else
-            print('Error: Could not get end of Header')
         end
+        self.GotScriptVersion = true
     end
 end
 
 function ScriptUpdate:DownloadUpdate()
-    if self.DownloadStatus == 'closed' then return end
-    self.DownloadReceive, self.DownloadStatus, self.DownloadSnipped = self.DownloadSocket:receive(1024)
+    if self.GotScriptUpdate then return end
+    self.Receive, self.Status, self.Snipped = self.Socket:receive(1024)
+    if self.Status == 'timeout' and not self.Started then
+        self.Started = true
+        self.Socket:send("GET "..self.Url.." HTTP/1.1\r\nHost: sx-bol.eu\r\n\r\n")
+    end
+    if (self.Receive or (#self.Snipped > 0)) and not self.RecvStarted then
+        self.RecvStarted = true
+        local recv,sent,time = self.Socket:getstats()
+        self.DownloadStatus = 'Downloading Script (0%)'
+    end
 
-    if self.DownloadReceive then
-        if self.LastPrint ~= self.DownloadReceive then
-            self.LastPrint = self.DownloadReceive
-            self.File = self.File .. self.DownloadReceive
+    self.File = self.File .. (self.Receive or self.Snipped)
+    if self.File:find('</si'..'ze>') then
+        if not self.Size then
+            self.Size = tonumber(self.File:sub(self.File:find('<si'..'ze>')+6,self.File:find('</si'..'ze>')-1)) + self.File:len()
         end
+        self.DownloadStatus = 'Downloading Script ('..math.round(100/self.Size*self.File:len(),2)..'%)'
     end
-
-    if self.DownloadSnipped ~= "" and self.DownloadSnipped then
-        self.File = self.File .. self.DownloadSnipped
-    end
-
-    if self.DownloadStatus == 'closed' then
-        local HeaderEnd, ContentStart = self.File:find('\r\n\r\n')
-        if HeaderEnd and ContentStart then
-            local ScriptFileOpen = io.open(self.SavePath, "w+")
-            ScriptFileOpen:write(self.File:sub(ContentStart + 1))
-            ScriptFileOpen:close()
+    if not (self.Receive or (#self.Snipped > 0)) and self.RecvStarted and math.round(100/self.Size*self.File:len(),2) > 95 then
+        self.DownloadStatus = 'Downloading Script (100%)'
+        local HeaderEnd, ContentStart = self.File:find('<sc'..'ript>')
+        local ContentEnd, _ = self.File:find('</scr'..'ipt>')
+        if not ContentStart or not ContentEnd then
+            if self.CallbackError and type(self.CallbackError) == 'function' then
+                self.CallbackError()
+            end
+        else
+            local f = io.open(self.SavePath,"w+b")
+            f:write(self.File:sub(ContentStart + 1,ContentEnd-1))
+            f:close()
             if self.CallbackUpdate and type(self.CallbackUpdate) == 'function' then
                 self.CallbackUpdate(self.OnlineVersion,self.LocalVersion)
             end
         end
+        self.GotScriptUpdate = true
     end
 end
 
@@ -117,7 +168,7 @@ function OnLoad()
     require 'VPrediction'
     VP = VPrediction()
     DelayAction(function()
-        if not SxOrb or not SxOrb.Version or SxOrb.Version < 2.29 then print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Loading Failed. Please Update SxOrbWalk to newest Version</font>') return end
+        if not SxOrb or not SxOrb.Version or SxOrb.Version < 2.40 then print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Loading Failed. Please Update SxOrbWalk to newest Version</font>') return end
         if not VP or not VP.version or VP.version < 2.863 then print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Loading Failed. Please Update VPrediction to newest Version</font>') return end
         ShadowVayne()
     end,0.1)
@@ -128,25 +179,26 @@ end
 ------------------------
 class 'ShadowVayne'
 function ShadowVayne:__init()
-    self.version = 5.17
+    self.version = 5.18
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
     self.MapIndex = GetGame().map.index
-    print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Version '..self.version..' loaded</font>')
+    print('<font color=\'#FF794C\'><b>ShadowVayne:</b></font> <font color=\'#FFDFBF\'>Version '..self.version..' loaded</font>')
     local ToUpdate = {}
     ToUpdate.Version = self.version
+    ToUpdate.UseHttps = true
     ToUpdate.Host = "raw.githubusercontent.com"
     ToUpdate.VersionPath = "/Superx321/BoL/master/ShadowVayne.Version"
     ToUpdate.ScriptPath = "/Superx321/BoL/master/ShadowVayne.lua"
-    ToUpdate.SavePath = SCRIPT_PATH.."ShadowVayne.lua"
-    ToUpdate.CallbackUpdate = function(NewVersion,OldVersion) print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">Updated to "..NewVersion..". Please Reload with 2x F9</b></font>") end
-    ToUpdate.CallbackNoUpdate = function(OldVersion) print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">No Updates Found</b></font>") end
-    ToUpdate.CallbackNewVersion = function(NewVersion) print("<font color=\"#F0Ff8d\"><b>ShadowVayne: </b></font> <font color=\"#FF0F0F\">New Version found ("..NewVersion.."). Please wait until its downloaded</b></font>") end
-    ScriptUpdate(ToUpdate.Version, ToUpdate.Host, ToUpdate.VersionPath, ToUpdate.ScriptPath, ToUpdate.SavePath, ToUpdate.CallbackUpdate,ToUpdate.CallbackNoUpdate, ToUpdate.CallbackNewVersion)
+    ToUpdate.SavePath = BOL_PATH.."/ShadowVayne.lua"
+    ToUpdate.CallbackUpdate = function(NewVersion,OldVersion) print("<font color=\"#FF794C\"><b>ShadowVayne: </b></font> <font color=\"#FFDFBF\">Updated to "..NewVersion..". Please Reload with 2x F9</b></font>") end
+    ToUpdate.CallbackNoUpdate = function(OldVersion) print("<font color=\"#FF794C\"><b>ShadowVayne: </b></font> <font color=\"#FFDFBF\">No Updates Found</b></font>") end
+    ToUpdate.CallbackNewVersion = function(NewVersion) print("<font color=\"#FF794C\"><b>ShadowVayne: </b></font> <font color=\"#FFDFBF\">New Version found ("..NewVersion.."). Please wait until its downloaded</b></font>") end
+    ToUpdate.CallbackError = function(NewVersion) print("<font color=\"#FF794C\"><b>ShadowVayne: </b></font> <font color=\"#FFDFBF\">Error while Downloading. Please try again.</b></font>") end
+    ScriptUpdate(ToUpdate.Version,ToUpdate.UseHttps, ToUpdate.Host, ToUpdate.VersionPath, ToUpdate.ScriptPath, ToUpdate.SavePath, ToUpdate.CallbackUpdate,ToUpdate.CallbackNoUpdate, ToUpdate.CallbackNewVersion,ToUpdate.CallbackError)
     self:GenerateTables()
     self:GetOrbWalkers()
---    self:LevelSpell(_W)
 end
 
 function ShadowVayne:GenerateTables()
@@ -229,7 +281,7 @@ function ShadowVayne:GetOrbWalkers()
 
     if _G.RebornScriptName then
         table.insert(self.OrbWalkers, 'SAC:Reborn')
-        print('<font color=\'#F0Ff8d\'><b>ShadowVayne:</b></font> <font color=\'#FF0F0F\'>Waiting for SAC:Reborn Auth</font>')
+        print('<font color=\'#FF794C\'><b>ShadowVayne:</b></font> <font color=\'#FFDFBF\'>Waiting for SAC:Reborn Auth</font>')
         AddTickCallback(function() self:WaitForReborn() end)
     else
         self:LoadMenu()
@@ -685,39 +737,28 @@ function ShadowVayne:CircleDraw(x,y,z,radius, color)
 end
 
 function ShadowVayne:GetTarget()
-    if self.IsFight then
-        if self.FightModeOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
-        if self.FightModeOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
-        if self.FightModeOrbText == 'SxOrb' then return SxOrb:GetTarget() end
-    elseif self.IsHarass then
-        if self.HarassModeOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
-        if self.HarassModeOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
-        if self.HarassModeOrbText == 'SxOrb' then return SxOrb:GetTarget() end
-    elseif self.IsLastHit then
-        if self.LastHitOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
-        if self.LastHitOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
-        if self.LastHitOrbText == 'SxOrb' then return SxOrb:GetTarget() end
-    elseif self.IsLaneClear then
-        if self.LaneClearOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
-        if self.LaneClearOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
-        if self.LaneClearOrbText == 'SxOrb' then return SxOrb:GetTarget() end
-    end
+    return SxOrb:GetTarget()
+    --    if self.IsFight then
+    --        if self.FightModeOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
+    --        if self.FightModeOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
+    --        if self.FightModeOrbText == 'SxOrb' then return SxOrb:GetTarget() end
+    --    elseif self.IsHarass then
+    --        if self.HarassModeOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
+    --        if self.HarassModeOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
+    --        if self.HarassModeOrbText == 'SxOrb' then return SxOrb:GetTarget() end
+    --    elseif self.IsLastHit then
+    --        if self.LastHitOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
+    --        if self.LastHitOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
+    --        if self.LastHitOrbText == 'SxOrb' then return SxOrb:GetTarget() end
+    --    elseif self.IsLaneClear then
+    --        if self.LaneClearOrbText == 'MMA' then return _G.MMA_ConsideredTarget() end
+    --        if self.LaneClearOrbText == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
+    --        if self.LaneClearOrbText == 'SxOrb' then return SxOrb:GetTarget() end
+    --    end
 end
 
 function ShadowVayne:LevelSpell(Spell)
-	if VIP_USER then
-        local packet = CLoLPacket(0x009A)
-        packet.vTable = 0xF246E0
-        packet:EncodeF(myHero.networkID)
-        packet:Encode4(0x5A5A5A5A)
-        packet:Encode1(0x46)
-        packet:Encode4(0xD5D5D5D5)
-        packet:Encode1(Spell == _Q and 0x83 or Spell == _W and 0x08 or Spell == _E and 0xB5 or Spell == _R and 0xEC)
-        packet:Encode4(0x07070707)
-        packet:Encode1(Spell == _Q and 0x2C or Spell == _W and 0xB0 or Spell == _E and 0xC3 or Spell == _R and 0x31)
-        packet:Encode1(Spell == _Q and 0xC1 or Spell == _W and 0xC3 or Spell == _E and 0xC6 or Spell == _R and 0xC8)
-        packet:Encode1(0x31)
-        packet:Encode1(0x1F)
-        SendPacket(packet)
-        end
+    if GetBuildDate() == 'Apr  2 2015' then
+        LevelSpell(Spell)
+    end
 end
