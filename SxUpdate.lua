@@ -20,7 +20,7 @@ function ScriptUpdate:print(str)
 end
 
 function ScriptUpdate:OnDraw()
-    if self.DownloadStatus ~= 'Downloading Script (100%)' then
+    if self.DownloadStatus ~= 'Downloading Script (100%)' and self.DownloadStatus ~= 'Downloading VersionInfo (100%)'then
         DrawText('Download Status: '..(self.DownloadStatus or 'Unknown'),50,10,50,ARGB(0xFF,0xFF,0xFF,0xFF))
     end
 end
@@ -79,10 +79,16 @@ function ScriptUpdate:GetOnlineVersion()
         end
         self.DownloadStatus = 'Downloading VersionInfo ('..math.round(100/self.Size*self.File:len(),2)..'%)'
     end
-    if not (self.Receive or (#self.Snipped > 0)) and self.RecvStarted and self.Size and math.round(100/self.Size*self.File:len(),2) > 95 or self.Status == 'closed' then
+    if not (self.Receive or (#self.Snipped > 0)) and self.RecvStarted and (self.Status == 'closed' or self.Status == 'timeout') then
         self.DownloadStatus = 'Downloading VersionInfo (100%)'
-        self.File = self.File:gsub('%b\n\n',function(c) if c:len() < 10 then return '' else return c end end)
-        self.File = self.File:gsub('\n',''):gsub('\r',''):gsub('\r\n','')
+        local a,b = self.File:find('\r\n\r\n')
+        self.File = self.File:sub(a,-1)
+        self.NewFile = ''
+        for line,content in ipairs(self.File:split('\n')) do
+            if content:len() > 5 then
+                self.NewFile = self.NewFile .. content
+            end
+        end
         local HeaderEnd, ContentStart = self.File:find('<scr'..'ipt>')
         local ContentEnd, _ = self.File:find('</sc'..'ript>')
         if not ContentStart or not ContentEnd then
@@ -127,19 +133,27 @@ function ScriptUpdate:DownloadUpdate()
         end
         self.DownloadStatus = 'Downloading Script ('..math.round(100/self.Size*self.File:len(),2)..'%)'
     end
-    if not (self.Receive or (#self.Snipped > 0)) and self.RecvStarted and math.round(100/self.Size*self.File:len(),2) > 95 or self.Status == 'closed' then
+    if not (self.Receive or (#self.Snipped > 0)) and self.RecvStarted and (self.Status == 'closed' or self.Status == 'timeout') then
         self.DownloadStatus = 'Downloading Script (100%)'
-        self.File = self.File:gsub('%b\n\n',function(c) if c:len() < 10 then return '' else return c end end)
-        self.File = self.File:gsub('\n',''):gsub('\r',''):gsub('\r\n','')
-        local HeaderEnd, ContentStart = self.File:find('<sc'..'ript>')
-        local ContentEnd, _ = self.File:find('</scr'..'ipt>')
+        local a,b = self.File:find('\r\n\r\n')
+        self.File = self.File:sub(a,-1)
+        self.NewFile = ''
+        for line,content in ipairs(self.File:split('\n')) do
+            if content:len() > 5 then
+                self.NewFile = self.NewFile .. content
+            end
+        end
+        local HeaderEnd, ContentStart = self.NewFile:find('<sc'..'ript>')
+        local ContentEnd, _ = self.NewFile:find('</scr'..'ipt>')
         if not ContentStart or not ContentEnd then
             if self.CallbackError and type(self.CallbackError) == 'function' then
                 self.CallbackError()
             end
         else
+            local newf = self.NewFile:sub(ContentStart+1,ContentEnd-1)
+            local newf = newf:gsub('\r','')
             local f = io.open(self.SavePath,"w+b")
-            f:write(self.File:sub(ContentStart + 1,ContentEnd-1))
+            f:write(newf)
             f:close()
             if self.CallbackUpdate and type(self.CallbackUpdate) == 'function' then
                 self.CallbackUpdate(self.OnlineVersion,self.LocalVersion)
@@ -155,9 +169,9 @@ function OnLoad()
     ToUpdate.UseHttps = true
     ToUpdate.Host = "raw.githubusercontent.com"
     ToUpdate.VersionPath = "/Superx321/BoL/master/common/SxOrbWalk.Version"
-    ToUpdate.ScriptPath =  "/Superx321/BoL/master/common/SxOrbWalk.lua"
-    ToUpdate.SavePath = LIB_PATH.."/SxOrbWalk.lua"
-    ToUpdate.CallbackUpdate = function(NewVersion,OldVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">Updated to "..NewVersion..". </b></font>") end
+    ToUpdate.ScriptPath =  "/Superx321/BoL/master/common/SxOrbWalk_Test.lua"
+    ToUpdate.SavePath = LIB_PATH.."/SxOrbWalk_Test.lua"
+    ToUpdate.CallbackUpdate = function(NewVersion,OldVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">Updated to "..NewVersion..". </b></font>") require "SxOrbWalk_Test" end
     ToUpdate.CallbackNoUpdate = function(OldVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">No Updates Found</b></font>") end
     ToUpdate.CallbackNewVersion = function(NewVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">New Version found ("..NewVersion.."). Please wait until its downloaded</b></font>") end
     ToUpdate.CallbackError = function(NewVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">Error while Downloading. Please try again.</b></font>") end
