@@ -15,8 +15,14 @@ function ScriptUpdate:__init(LocalVersion,UseHttps, Host, VersionPath, ScriptPat
     AddTickCallback(function() self:GetOnlineVersion() end)
 end
 
+function ScriptUpdate:print(str)
+    print('<font color="#FFFFFF">'..os.clock()..': '..str)
+end
+
 function ScriptUpdate:OnDraw()
-    DrawText('Download Status: '..(self.DownloadStatus or 'Unknown'),50,10,50,ARGB(0xFF,0xFF,0xFF,0xFF))
+    if self.DownloadStatus ~= 'Downloading Script (100%)' then
+        DrawText('Download Status: '..(self.DownloadStatus or 'Unknown'),50,10,50,ARGB(0xFF,0xFF,0xFF,0xFF))
+    end
 end
 
 function ScriptUpdate:CreateSocket(url)
@@ -63,7 +69,6 @@ function ScriptUpdate:GetOnlineVersion()
     end
     if (self.Receive or (#self.Snipped > 0)) and not self.RecvStarted then
         self.RecvStarted = true
-        local recv,sent,time = self.Socket:getstats()
         self.DownloadStatus = 'Downloading VersionInfo (0%)'
     end
 
@@ -74,8 +79,10 @@ function ScriptUpdate:GetOnlineVersion()
         end
         self.DownloadStatus = 'Downloading VersionInfo ('..math.round(100/self.Size*self.File:len(),2)..'%)'
     end
-    if not (self.Receive or (#self.Snipped > 0)) and self.RecvStarted and self.Size and math.round(100/self.Size*self.File:len(),2) > 95 then
+    if not (self.Receive or (#self.Snipped > 0)) and self.RecvStarted and self.Size and math.round(100/self.Size*self.File:len(),2) > 95 or self.Status == 'closed' then
         self.DownloadStatus = 'Downloading VersionInfo (100%)'
+        self.File = self.File:gsub('%b\n\n',function(c) if c:len() < 10 then return '' else return c end end)
+        self.File = self.File:gsub('\n',''):gsub('\r',''):gsub('\r\n','')
         local HeaderEnd, ContentStart = self.File:find('<scr'..'ipt>')
         local ContentEnd, _ = self.File:find('</sc'..'ript>')
         if not ContentStart or not ContentEnd then
@@ -110,7 +117,6 @@ function ScriptUpdate:DownloadUpdate()
     end
     if (self.Receive or (#self.Snipped > 0)) and not self.RecvStarted then
         self.RecvStarted = true
-        local recv,sent,time = self.Socket:getstats()
         self.DownloadStatus = 'Downloading Script (0%)'
     end
 
@@ -121,8 +127,10 @@ function ScriptUpdate:DownloadUpdate()
         end
         self.DownloadStatus = 'Downloading Script ('..math.round(100/self.Size*self.File:len(),2)..'%)'
     end
-    if not (self.Receive or (#self.Snipped > 0)) and self.RecvStarted and math.round(100/self.Size*self.File:len(),2) > 95 then
+    if not (self.Receive or (#self.Snipped > 0)) and self.RecvStarted and math.round(100/self.Size*self.File:len(),2) > 95 or self.Status == 'closed' then
         self.DownloadStatus = 'Downloading Script (100%)'
+        self.File = self.File:gsub('%b\n\n',function(c) if c:len() < 10 then return '' else return c end end)
+        self.File = self.File:gsub('\n',''):gsub('\r',''):gsub('\r\n','')
         local HeaderEnd, ContentStart = self.File:find('<sc'..'ript>')
         local ContentEnd, _ = self.File:find('</scr'..'ipt>')
         if not ContentStart or not ContentEnd then
@@ -143,13 +151,13 @@ end
 
 function OnLoad()
     local ToUpdate = {}
-    ToUpdate.Version = 2.31
+    ToUpdate.Version = 1
     ToUpdate.UseHttps = true
     ToUpdate.Host = "raw.githubusercontent.com"
     ToUpdate.VersionPath = "/Superx321/BoL/master/common/SxOrbWalk.Version"
     ToUpdate.ScriptPath =  "/Superx321/BoL/master/common/SxOrbWalk.lua"
-    ToUpdate.SavePath = LIB_PATH.."/SxOrbWalk_test.lua"
-    ToUpdate.CallbackUpdate = function(NewVersion,OldVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">Updated to "..NewVersion..". Please Reload with 2x F9</b></font>") end
+    ToUpdate.SavePath = LIB_PATH.."/SxOrbWalk.lua"
+    ToUpdate.CallbackUpdate = function(NewVersion,OldVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">Updated to "..NewVersion..". </b></font>") end
     ToUpdate.CallbackNoUpdate = function(OldVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">No Updates Found</b></font>") end
     ToUpdate.CallbackNewVersion = function(NewVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">New Version found ("..NewVersion.."). Please wait until its downloaded</b></font>") end
     ToUpdate.CallbackError = function(NewVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">Error while Downloading. Please try again.</b></font>") end
