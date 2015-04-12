@@ -2,8 +2,8 @@ class "ScriptUpdate"
 function ScriptUpdate:__init(LocalVersion,UseHttps, Host, VersionPath, ScriptPath, SavePath, CallbackUpdate, CallbackNoUpdate, CallbackNewVersion,CallbackError)
     self.LocalVersion = LocalVersion
     self.Host = Host
-    self.VersionPath = '/BoL/TCPUpdater/GetScript'..(UseHttps and '3' or '4')..'.php?script='..self:Base64Encode(self.Host..VersionPath)..'&rand='..math.random(99999999)
-    self.ScriptPath = '/BoL/TCPUpdater/GetScript'..(UseHttps and '3' or '4')..'.php?script='..self:Base64Encode(self.Host..ScriptPath)..'&rand='..math.random(99999999)
+    self.VersionPath = '/BoL/TCPUpdater/GetScript'..(UseHttps and '5' or '6')..'.php?script='..self:Base64Encode(self.Host..VersionPath)..'&rand='..math.random(99999999)
+    self.ScriptPath = '/BoL/TCPUpdater/GetScript'..(UseHttps and '5' or '6')..'.php?script='..self:Base64Encode(self.Host..ScriptPath)..'&rand='..math.random(99999999)
     self.SavePath = SavePath
     self.CallbackUpdate = CallbackUpdate
     self.CallbackNoUpdate = CallbackNoUpdate
@@ -73,13 +73,19 @@ function ScriptUpdate:GetOnlineVersion()
     end
 
     self.File = self.File .. (self.Receive or self.Snipped)
-    if self.File:find('</size>') then
+    if self.File:find('</s'..'ize>') then
         if not self.Size then
-            self.Size = tonumber(self.File:sub(self.File:find('<si'..'ze>')+6,self.File:find('</s'..'ize>')-1)) + self.File:len()
+            self.Size = tonumber(self.File:sub(self.File:find('<si'..'ze>')+6,self.File:find('</si'..'ze>')-1))
         end
-        self.DownloadStatus = 'Downloading VersionInfo ('..math.round(100/self.Size*self.File:len(),2)..'%)'
+        if self.File:find('<scr'..'ipt>') then
+            local _,ScriptFind = self.File:find('<scr'..'ipt>')
+            local ScriptEnd = self.File:find('</scr'..'ipt>')
+            if ScriptEnd then ScriptEnd = ScriptEnd - 1 end
+            local DownloadedSize = self.File:sub(ScriptFind+1,ScriptEnd or -1):len()
+            self.DownloadStatus = 'Downloading VersionInfo ('..math.round(100/self.Size*DownloadedSize,2)..'%)'
+        end
     end
-    if not (self.Receive or (#self.Snipped > 0)) and self.RecvStarted and (self.Status == 'closed' or self.Status == 'timeout') then
+    if self.File:find('</scr'..'ipt>') then
         self.DownloadStatus = 'Downloading VersionInfo (100%)'
         local a,b = self.File:find('\r\n\r\n')
         self.File = self.File:sub(a,-1)
@@ -96,7 +102,8 @@ function ScriptUpdate:GetOnlineVersion()
                 self.CallbackError()
             end
         else
-            self.OnlineVersion = tonumber(self.File:sub(ContentStart + 1,ContentEnd-1))
+            self.OnlineVersion = (Base64Decode(self.File:sub(ContentStart + 1,ContentEnd-1)))
+            self.OnlineVersion = tonumber(self.OnlineVersion)
             if self.OnlineVersion > self.LocalVersion then
                 if self.CallbackNewVersion and type(self.CallbackNewVersion) == 'function' then
                     self.CallbackNewVersion(self.OnlineVersion,self.LocalVersion)
@@ -129,11 +136,17 @@ function ScriptUpdate:DownloadUpdate()
     self.File = self.File .. (self.Receive or self.Snipped)
     if self.File:find('</si'..'ze>') then
         if not self.Size then
-            self.Size = tonumber(self.File:sub(self.File:find('<si'..'ze>')+6,self.File:find('</si'..'ze>')-1)) + self.File:len()
+            self.Size = tonumber(self.File:sub(self.File:find('<si'..'ze>')+6,self.File:find('</si'..'ze>')-1))
         end
-        self.DownloadStatus = 'Downloading Script ('..math.round(100/self.Size*self.File:len(),2)..'%)'
+        if self.File:find('<scr'..'ipt>') then
+            local _,ScriptFind = self.File:find('<scr'..'ipt>')
+            local ScriptEnd = self.File:find('</scr'..'ipt>')
+            if ScriptEnd then ScriptEnd = ScriptEnd - 1 end
+            local DownloadedSize = self.File:sub(ScriptFind+1,ScriptEnd or -1):len()
+            self.DownloadStatus = 'Downloading Script ('..math.round(100/self.Size*DownloadedSize,2)..'%)'
+        end
     end
-    if not (self.Receive or (#self.Snipped > 0)) and self.RecvStarted and (self.Status == 'closed' or self.Status == 'timeout') then
+    if self.File:find('</scr'..'ipt>') then
         self.DownloadStatus = 'Downloading Script (100%)'
         local a,b = self.File:find('\r\n\r\n')
         self.File = self.File:sub(a,-1)
@@ -152,6 +165,7 @@ function ScriptUpdate:DownloadUpdate()
         else
             local newf = self.NewFile:sub(ContentStart+1,ContentEnd-1)
             local newf = newf:gsub('\r','')
+            local newf = Base64Decode(newf)
             local f = io.open(self.SavePath,"w+b")
             f:write(newf)
             f:close()
@@ -169,9 +183,9 @@ function OnLoad()
     ToUpdate.UseHttps = true
     ToUpdate.Host = "raw.githubusercontent.com"
     ToUpdate.VersionPath = "/Superx321/BoL/master/common/SxOrbWalk.Version"
-    ToUpdate.ScriptPath =  "/Superx321/BoL/master/common/SxOrbWalk_Test.lua"
+    ToUpdate.ScriptPath =  "/Superx321/BoL/master/common/SxOrbWalk.lua"
     ToUpdate.SavePath = LIB_PATH.."/SxOrbWalk_Test.lua"
-    ToUpdate.CallbackUpdate = function(NewVersion,OldVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">Updated to "..NewVersion..". </b></font>") require "SxOrbWalk_Test" end
+    ToUpdate.CallbackUpdate = function(NewVersion,OldVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">Updated to "..NewVersion..". </b></font>") end
     ToUpdate.CallbackNoUpdate = function(OldVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">No Updates Found</b></font>") end
     ToUpdate.CallbackNewVersion = function(NewVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">New Version found ("..NewVersion.."). Please wait until its downloaded</b></font>") end
     ToUpdate.CallbackError = function(NewVersion) print("<font color=\"#FF794C\"><b>SxOrbWalk: </b></font> <font color=\"#FFDFBF\">Error while Downloading. Please try again.</b></font>") end
