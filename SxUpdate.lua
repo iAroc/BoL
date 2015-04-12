@@ -34,15 +34,18 @@ function ScriptUpdate:CreateSocket(url)
         self.Size = nil
         self.RecvStarted = false
     end
-    self.LuaSocket = require("socket")
     self.Socket = self.LuaSocket.tcp()
-    self.Socket:settimeout(0, 'b')
-    self.Socket:settimeout(99999999, 't')
-    self.Socket:connect('sx-bol.eu', 80)
-    self.Url = url
-    self.Started = false
-    self.LastPrint = ""
-    self.File = ""
+    if not self.Socket then
+        print('Socket Error')
+    else
+        self.Socket:settimeout(0, 'b')
+        self.Socket:settimeout(99999999, 't')
+        self.Socket:connect('sx-bol.eu', 80)
+        self.Url = url
+        self.Started = false
+        self.LastPrint = ""
+        self.File = ""
+    end
 end
 
 function ScriptUpdate:Base64Encode(data)
@@ -60,7 +63,7 @@ function ScriptUpdate:Base64Encode(data)
 end
 
 function ScriptUpdate:GetOnlineVersion()
-    if self.GotScriptVersion then return end
+    if self.GotScriptVersion or not self.Socket then return end
 
     self.Receive, self.Status, self.Snipped = self.Socket:receive(1024)
     if self.Status == 'timeout' and not self.Started then
@@ -122,7 +125,7 @@ function ScriptUpdate:GetOnlineVersion()
 end
 
 function ScriptUpdate:DownloadUpdate()
-    if self.GotScriptUpdate then return end
+    if self.GotScriptUpdate or not self.Socket then return end
     self.Receive, self.Status, self.Snipped = self.Socket:receive(1024)
     if self.Status == 'timeout' and not self.Started then
         self.Started = true
