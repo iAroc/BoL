@@ -165,6 +165,12 @@ function ScriptUpdate:DownloadUpdate()
         else
             local newf = self.NewFile:sub(ContentStart+1,ContentEnd-1)
             local newf = newf:gsub('\r','')
+            if newf:len() ~= self.Size then
+                if self.CallbackError and type(self.CallbackError) == 'function' then
+                    self.CallbackError()
+                end
+                return
+            end
             local newf = Base64Decode(newf)
             if type(load(newf)) ~= 'function' then
                 if self.CallbackError and type(self.CallbackError) == 'function' then
