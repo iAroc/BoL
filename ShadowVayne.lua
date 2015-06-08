@@ -200,7 +200,7 @@ end
 ------------------------
 class 'ShadowVayne'
 function ShadowVayne:__init()
-    self.version = 5.20
+    self.version = 5.21
     self.LastTarget = nil
     self.LastLevelCheck = 0
     self.Items = {}
@@ -303,7 +303,7 @@ function ShadowVayne:GetOrbWalkers()
         self:LoadMenu()
     else
         require 'SxOrbWalk'
-        if not SxOrb or not SxOrb.Version or SxOrb.Version < 2.40 then print('<font color=\'#FF794C\'><b>ShadowVayne:</b></font> <font color=\'#FFDFBF\'>Loading Failed. Please Update SxOrbWalk to newest Version</font>') return end
+        if not SxOrb or not SxOrb.Version or SxOrb.Version < 3.01 then print('<font color=\'#FF794C\'><b>ShadowVayne:</b></font> <font color=\'#FFDFBF\'>Loading Failed. Please Update SxOrbWalk to newest Version</font>') return end
         table.insert(self.OrbWalkers, 'SxOrb')
         self:LoadMenu()
     end
@@ -481,37 +481,45 @@ function ShadowVayne:MenuLoaded()
     AddTickCallback(function() self:WallTumble() end)
 
     AddDrawCallback(function() self:OnDraw() end)
+    AddNewPathCallback(function(...) self:NewPath(...) end)
     AddProcessSpellCallback(function(unit, spell) self:OnProcessSpell(unit, spell) end)
+end
+
+function ShadowVayne:NewPath(unit, startPos, endPos, isDash, dashSpeed ,dashGravity, dashDistance)
+    if unit.charName == 'Rengar' and isDash and GetDistanceSqr(endPos) < 100*100 and myHero:CanUseSpell(_E) == 0 then
+        CastSpell(_E,unit)
+        print('Rengar E')
+    end
 end
 
 function ShadowVayne:ActivateModes()
     self.SelectedOrbWalker  = self.Menu.keysetting._param[self.StartListParam].listTable[self.Menu.keysetting.OrbWalker]
     if self.SelectedOrbWalker == 'SxOrb' then
-        self.IsFight = _G.SxOrb.IsFight
-        self.IsHarass = _G.SxOrb.IsHarass
-        self.IsLaneClear = _G.SxOrb.IsLaneClear
-        self.IsLastHit = _G.SxOrb.IsLastHit
+        self.isFight = _G.SxOrb.isFight
+        self.isHarass = _G.SxOrb.isHarass
+        self.isLaneClear = _G.SxOrb.isLaneClear
+        self.isLastHit = _G.SxOrb.isLastHit
     elseif self.SelectedOrbWalker == 'MMA' then
-        self.IsFight = _G.MMA_IsOrbwalking
-        self.IsHarass = _G.MMA_IsHybrid
-        self.IsLaneClear = _G.MMA_IsClearing
-        self.IsLastHit = _G.MMA_IsLasthitting
+        self.isFight = _G.MMA_IsOrbwalking
+        self.isHarass = _G.MMA_IsHybrid
+        self.isLaneClear = _G.MMA_IsClearing
+        self.isLastHit = _G.MMA_IsLasthitting
     else
-        self.IsFight = _G.AutoCarry.Keys.AutoCarry
-        self.IsHarass = _G.AutoCarry.Keys.MixedMode
-        self.IsLaneClear = _G.AutoCarry.Keys.LaneClear
-        self.IsLastHit = _G.AutoCarry.Keys.LastHit
+        self.isFight = _G.AutoCarry.Keys.AutoCarry
+        self.isHarass = _G.AutoCarry.Keys.MixedMode
+        self.isLaneClear = _G.AutoCarry.Keys.LaneClear
+        self.isLastHit = _G.AutoCarry.Keys.LastHit
     end
 end
 
 function ShadowVayne:CheckModesActive(Menu)
-    if Menu.FightMode and self.IsFight then
+    if Menu.FightMode and self.isFight then
         return true
-    elseif Menu.HarassMode and self.IsHarass then
+    elseif Menu.HarassMode and self.isHarass then
         return true
-    elseif Menu.LaneClear and self.IsLaneClear then
+    elseif Menu.LaneClear and self.isLaneClear then
         return true
-    elseif Menu.LastHit and self.IsLastHit then
+    elseif Menu.LastHit and self.isLastHit then
         return true
     elseif Menu.Always then
         return true
@@ -549,7 +557,7 @@ end
 function ShadowVayne:CheckItems()
     if (self.LastItemCheck or 0) + 250 < GetTickCount() then
         self.LastItemCheck = GetTickCount()
-        self.Items.BotRK = GetInventorySlotItem(3153)
+        self.Items.BotRK = ITEM_1
         self.Items.BilgeWater = GetInventorySlotItem(3144)
         self.Items.Youmuus = GetInventorySlotItem(3142)
     end
@@ -580,6 +588,7 @@ function ShadowVayne:BilgeWater()
                         CastSpell(self.Items.BilgeWater, Target)
                     end
                 end
+
             end
         end
     end
@@ -650,22 +659,18 @@ end
 function ShadowVayne:Tumble(Target)
     if Target and Target.type ~= 'obj_AI_Turret' then
         local ManaCalc = 100/myHero.maxMana*myHero.mana
-        if  (self.Menu.tumble.FightMode and self.IsFight and (ManaCalc > self.Menu.tumble.ManaFightMode)) or
-                (self.Menu.tumble.HarassMode and self.IsHarass and (ManaCalc > self.Menu.tumble.ManaHarassMode)) or
-                (self.Menu.tumble.LaneClear and self.IsLaneClear and (ManaCalc > self.Menu.tumble.ManaLaneClear)) or
-                (self.Menu.tumble.LastHit and  self.IsLastHit and (ManaCalc > self.Menu.tumble.ManaLastHit)) or
+        if  (self.Menu.tumble.FightMode and self.isFight and (ManaCalc > self.Menu.tumble.ManaFightMode)) or
+                (self.Menu.tumble.HarassMode and self.isHarass and (ManaCalc > self.Menu.tumble.ManaHarassMode)) or
+                (self.Menu.tumble.LaneClear and self.isLaneClear and (ManaCalc > self.Menu.tumble.ManaLaneClear)) or
+                (self.Menu.tumble.LastHit and  self.isLastHit and (ManaCalc > self.Menu.tumble.ManaLastHit)) or
                 (self.Menu.tumble.Always) then
             local AfterTumblePos = myHero + (Vector(mousePos) - myHero):normalized() * 300
             local DistanceAfterTumble = GetDistanceSqr(AfterTumblePos, Target)
-            if  DistanceAfterTumble < 630*630 and DistanceAfterTumble > 100*100 then
+            if  DistanceAfterTumble < 630*630 and DistanceAfterTumble > 300*300 then
                 CastSpell(_Q, mousePos.x, mousePos.z)
-                --                SendChat("/l")
-                --                myHero:Attack(Target)
             end
             if GetDistanceSqr(Target) > 630*630 and DistanceAfterTumble < 630*630 then
                 CastSpell(_Q, mousePos.x, mousePos.z)
-                --                SendChat("/l")
-                --                myHero:Attack(Target)
             end
         end
     end
@@ -735,9 +740,11 @@ function ShadowVayne:CheckWallStun(Target)
                 if UnderTurret(CheckWallPos, true) then
                     if self.Menu.autostunn.TowerStun then
                         CastSpell(_E, Target)
+                        --                        print('caste')
                         break
                     end
                 else
+                    --                    print('caste')
                     CastSpell(_E, Target)
                     if FoundGrass then DelayAction(function() CastSpell(ITEM_7) end, 0.25) end
                     break
@@ -793,19 +800,19 @@ end
 
 function ShadowVayne:GetTarget()
     self.SelectedOrbwalker = self.Menu.keysetting._param[self.StartListParam].listTable[self.Menu.keysetting.OrbWalker]
-    if self.IsFight then
+    if self.isFight then
         if self.SelectedOrbwalker == 'MMA' then return _G.MMA_ConsideredTarget() end
         if self.SelectedOrbwalker == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
         if self.SelectedOrbwalker == 'SxOrb' then return SxOrb:GetTarget() end
-    elseif self.IsHarass then
+    elseif self.isHarass then
         if self.SelectedOrbwalker == 'MMA' then return _G.MMA_ConsideredTarget() end
         if self.SelectedOrbwalker == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
         if self.SelectedOrbwalker == 'SxOrb' then return SxOrb:GetTarget() end
-    elseif self.IsLastHit then
+    elseif self.isLastHit then
         if self.SelectedOrbwalker == 'MMA' then return _G.MMA_ConsideredTarget() end
         if self.SelectedOrbwalker == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
         if self.SelectedOrbwalker == 'SxOrb' then return SxOrb:GetTarget() end
-    elseif self.IsLaneClear then
+    elseif self.isLaneClear then
         if self.SelectedOrbwalker == 'MMA' then return _G.MMA_ConsideredTarget() end
         if self.SelectedOrbwalker == 'SAC:Reborn' then return _G.AutoCarry.Crosshair:GetTarget() end
         if self.SelectedOrbwalker == 'SxOrb' then return SxOrb:GetTarget() end
